@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="camera" name="image_publisher" type="image_publisher.py" output="screen" />
+  <node pkg="camera" name="cam_node" type="camera" output="screen" />
+</launch>
