@@ -178,7 +178,7 @@ class tracking_node:
             
             
 
-            self.pubCmdVel(pub, ctrl_linear_vel=0.007, ctrl_angular_vel=0.009) # need modify
+            self.pubCmdVel(pub) # need modify!!!!!!
             rate.sleep()
 
         rospy.spin()
