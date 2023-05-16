@@ -52,7 +52,7 @@ void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
 
 
     }
-    cv::imshow(OPENCV_WINDOW, imageCopy);
+    // cv::imshow(OPENCV_WINDOW, imageCopy);
     cv::waitKey(1);
 
 }
