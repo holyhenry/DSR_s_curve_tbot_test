@@ -3,6 +3,7 @@ import time
 
 # ros library
 import rospy
+from tf import transformations
 from geometry_msgs.msg import Twist, Point
 from nav_msgs.msg import Odometry
 
@@ -127,9 +128,14 @@ class tracking_node:
         global (+)y = robotOdom (+)x  
         global (+)yaw = robotOdom (+)yaw + np.pi/2
         '''
-        self_x = -data.pose.pose.position.y
-        self_y = data.pose.pose.position.x
-        self_yaw = data.pose.pose.orientation.z + np.pi/2
+        q_x = data.pose.pose.orientaion.x
+        q_y = data.pose.pose.orientaion.y
+        q_z = data.pose.pose.orientaion.z
+        q_w = data.pose.pose.orientaion.w
+        (_, _, yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
+        self_x   = -data.pose.pose.position.y
+        self_y   = data.pose.pose.position.x
+        self_yaw = yaw + np.pi/2
         self.state = np.array([self_x, self_y, self_yaw])
 
     def pubCmdVel(self, pub, ctrl_linear_vel=0.0, ctrl_angular_vel=0.0):
