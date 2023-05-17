@@ -28,11 +28,11 @@ class PID:
         self.linear_u = np.zeros(3)
         self.angular_u = np.zeros(3)
 
-    def pid(self, robot, s_desired):
+    def pid(self, state, goal):
 
         # linear control input calculation
-        p_actual = robot.s[:2]
-        p_desired = s_desired[:2]
+        p_actual = state[:2]
+        p_desired = goal[:2]
         pos_error = np.linalg.norm(p_desired - p_actual)
                 
         self.linear_u[0] = self.kp_linear * pos_error
@@ -44,7 +44,7 @@ class PID:
         linear_control_input = np.sum(self.linear_u) # v, m/s
 
         # angular control input calculation
-        a_actual = robot.s[2]
+        a_actual = state[2]
         a_desired = np.arctan2(p_desired[1]-p_actual[1], p_desired[0]-p_actual[0])
         ang_error = a_desired - a_actual
 
@@ -77,21 +77,21 @@ class PD:
         self.v = 0.0
         self.w = 0.0
 
-    def pd(self, robot, s_desired):
+    def pd(self, state, velocity, goal):
         
-        p_actual  = robot.get_state()[:2]
-        p_desired = s_desired[:2]
-        theta     = robot.get_state()[2]
+        p_actual  = state[:2]
+        p_desired = goal[:2]
+        theta     = state[2]
         
         ex = (p_desired - p_actual)[0]
         ey = (p_desired - p_actual)[1]
         
-        self.ux_ddot = self.alpha*((ex-self.ex_last)/self.dt + self.kp*ex) - self.kp*robot.get_velocity()*np.cos(theta)
-        self.uy_ddot = self.alpha*((ey-self.ey_last)/self.dt + self.kp*ey) - self.kp*robot.get_velocity()*np.sin(theta)
+        self.ux_ddot = self.alpha*((ex-self.ex_last)/self.dt + self.kp*ex) - self.kp*velocity*np.cos(theta)
+        self.uy_ddot = self.alpha*((ey-self.ey_last)/self.dt + self.kp*ey) - self.kp*velocity*np.sin(theta)
 
         # dynamic fb linearization map
-        aw_2_xy = np.array([[np.cos(robot.get_state()[2]), -robot.get_velocity()*np.sin(robot.get_state()[2])],
-                            [np.sin(robot.get_state()[2]), robot.get_velocity()*np.cos(robot.get_state()[2])]])
+        aw_2_xy = np.array([[np.cos(theta), -velocity*np.sin(theta)],
+                            [np.sin(theta), velocity*np.cos(theta)]])
         
         self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
         self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
@@ -105,8 +105,10 @@ class tracking_node:
 
     def __init__(self) -> None:
 
-        self.state = np.zeros(3) # self x,y,yaw
+        self.state = np.zeros(3)        # self x,y,yaw
+        self.velocity = np.zeros(2)     # self v,w
         self.leader_state = np.zeros(2) # leader x,y
+        self.states = []
         self.leader_states = []
 
     def initNode(self, freq):
@@ -146,6 +148,7 @@ class tracking_node:
         self_y   = data.pose.pose.position.x
         self_yaw = yaw + np.pi/2
         self.state = np.array([self_x, self_y, self_yaw])
+        self.velocity = data.twist.twist.linear.x
 
     def pubCmdVel(self, pub, ctrl_linear_vel=0.0, ctrl_angular_vel=0.0):
 
@@ -186,11 +189,17 @@ class tracking_node:
         freq = 25.0
         cmdVelPub, rate = self.initNode(freq)
 
+        # controller setups
         dt = 1.0/freq
         ctrl_ = PID(dt=dt)
         ctrl  = PD(dt=dt, kp = 4.0, kd = 1.0, alpha=5.0)
 
         while not rospy.is_shutdown():
+            
+            goal = self.getTrackingTarget(distance=0.4)
+            u = ctrl.pd(self.state, self.velocity, goal) if self.velocity>0.005 else ctrl_.pid(self.state, goal)
+
+            print('u',u)
             
             self.pubCmdVel(cmdVelPub) # need modify!!!!!!
             rate.sleep()
