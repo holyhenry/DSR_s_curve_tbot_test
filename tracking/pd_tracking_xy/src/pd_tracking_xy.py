@@ -125,10 +125,11 @@ class tracking_node:
         '''
         global (+)x = robotOdom (-)y
         global (+)y = robotOdom (+)x  
+        global (+)yaw = robotOdom (+)yaw + np.pi/2
         '''
         self_x = -data.pose.pose.position.y
         self_y = data.pose.pose.position.x
-        self_yaw = data.pose.pose.orientation.z
+        self_yaw = data.pose.pose.orientation.z + np.pi/2
         self.state = np.array([self_x, self_y, self_yaw])
 
     def pubCmdVel(self, pub, ctrl_linear_vel=0.0, ctrl_angular_vel=0.0):
@@ -177,7 +178,7 @@ class tracking_node:
         while not rospy.is_shutdown():
             
             
-
+            
             self.pubCmdVel(pub) # need modify!!!!!!
             rate.sleep()
 
