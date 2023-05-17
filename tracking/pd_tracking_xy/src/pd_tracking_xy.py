@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 
 class PID:
 
-    def __init__(self, dt, kp_linear = 10.0, ki_linear = 1.0, kd_linear = 1.0,
+    def __init__(self, dt, kp_linear = 5.0, ki_linear = 0.5, kd_linear = 1.0,
                        kp_angular = 5.0, ki_angular = 0.0, kd_angular = 0.):
 
         self.dt = dt
@@ -109,8 +109,18 @@ class tracking_node:
         self.leader_state = np.zeros(2) # leader x,y
         self.leader_states = []
 
-    def aprilTagCallback(self, data):
+    def initNode(self, freq):
 
+        rospy.init_node('pd_tracking_xy')
+        rate = rospy.Rate(int(freq))
+
+        rospy.Subscriber("/odom", Odometry, self.odometeryCallback, queue_size=1)
+        rospy.Subscriber("/april_data", Point, self.aprilTagCallback, queue_size=1)
+        pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
+
+        return pub, rate
+
+    def aprilTagCallback(self, data):
         '''
         global (+)x = aprilTag (+)x - 0.03m
         global (+)y = aprilTag (+)z
@@ -122,7 +132,6 @@ class tracking_node:
         self.leader_states.append(self.leader_state)
 
     def odometeryCallback(self, data):
-
         '''
         global (+)x = robotOdom (-)y
         global (+)y = robotOdom (+)x  
@@ -173,25 +182,23 @@ class tracking_node:
         return target
 
     def run(self):
+        
+        freq = 25.0
+        cmdVelPub, rate = self.initNode(freq)
 
-        rospy.init_node('pd_tracking_xy')
-        rate = rospy.Rate(25)
-
-        rospy.Subscriber("/odom", Odometry, self.odometeryCallback, queue_size=1)
-        rospy.Subscriber("/april_data", Point, self.aprilTagCallback, queue_size=1)
-        pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
+        dt = 1.0/freq
+        ctrl_ = PID(dt=dt)
+        ctrl  = PD(dt=dt, kp = 4.0, kd = 1.0, alpha=5.0)
 
         while not rospy.is_shutdown():
             
-            
-            
-            self.pubCmdVel(pub) # need modify!!!!!!
+            self.pubCmdVel(cmdVelPub) # need modify!!!!!!
             rate.sleep()
 
         rospy.spin()
 
 
 if __name__ == '__main__':
-    
+
     Tracking_node = tracking_node()
     Tracking_node.run()
