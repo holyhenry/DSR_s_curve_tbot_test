@@ -128,10 +128,10 @@ class tracking_node:
         global (+)y = robotOdom (+)x  
         global (+)yaw = robotOdom (+)yaw + np.pi/2
         '''
-        q_x = data.pose.pose.orientaion.x
-        q_y = data.pose.pose.orientaion.y
-        q_z = data.pose.pose.orientaion.z
-        q_w = data.pose.pose.orientaion.w
+        q_x = data.pose.pose.orientation.x
+        q_y = data.pose.pose.orientation.y
+        q_z = data.pose.pose.orientation.z
+        q_w = data.pose.pose.orientation.w
         (_, _, yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
         self_x   = -data.pose.pose.position.y
         self_y   = data.pose.pose.position.x
