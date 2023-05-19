@@ -3,5 +3,5 @@
 <launch>
 	<include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
 	<include file="$(find camera)/launch/camera.launch" />
-	<include file="$(find pd_tracking_xy)/launch/pd_tracking_xy.launch" />
+	<!--include file="$(find pd_tracking_xy)/launch/pd_tracking_xy.launch" /-->
 </launch>
