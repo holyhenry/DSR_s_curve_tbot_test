@@ -1,5 +1,4 @@
 import numpy as np
-import bezier
 
 # ros library
 import rospy
@@ -80,7 +79,7 @@ class PD:
         self.w = 0.0
     
     def lowPass(self,u,y_last):
-        lowPassGain = 0.95
+        lowPassGain = 0.95;
         y = lowPassGain*y_last + (1 - lowPassGain)*u
         return y
 
@@ -91,78 +90,22 @@ class PD:
         else:
             y = 1/thre
         """ 
-        if v < 0:
-            y = -((-k*v)**(1/a))
-        else:
-            y = (k*v)**(1/a)
+            if v < 0:
+                y = -((-k*v)**(1/a))
+            else:
+                y = (k*v)**(1/a)
         """
         return y
 
     def omegaLim(self, v):
         w_max = min(4*np.abs(v),1.58)
         return w_max
-
-    def get_bezier_target(self, state, leader_states):
-        '''
-        return: s_l(t)-s_f(t) and desired heading
-        '''
-        indx = 1
-        threshold = 5*1e-2
-        check_length = 300 # Use larger number if interbot_distance is longer
-
-        while(indx<check_length):
-            dist = np.linalg.norm(state[:2]-leader_states[-indx,:2], ord=2)
-            
-            if (dist<=threshold or indx==len(leader_states)):
-                bezier_states = np.asfortranarray([np.append(state[0], leader_states[-indx:,0]),
-                                                   np.append(state[1], leader_states[-indx:,1])])
-                curve = bezier.Curve(bezier_states, degree=indx)
-
-                # evaluate a desired heading angle
-                x = (curve.evaluate(0.05).reshape(2)-state[:2])[0]
-                y = (curve.evaluate(0.05).reshape(2)-state[:2])[1]
-                theta = np.arctan2(y, x)
-                
-                self.ctrl_status = 1 if dist<=threshold else 2
-                return curve.length, theta, True
-            
-            indx += 1
-
-        # no feasible fitting point within the 'check_length'
-        return -1.0, None, False
-
-    def updateLocalFrame(self, states, leader_states):
-
-        del_theta = states[-1,2] - states[-2,2]
-        del_pos = states[-1,:2] - states[-2,:2]
-
-        # frame translation
-        leader_states[:-1] = np.add(leader_states[:-1], -del_pos)
-
-        # frame rotation matrix T 
-        T = np.array([[np.cos(del_theta), np.sin(del_theta)],
-                      [-np.sin(del_theta), np.cos(del_theta)]])
-
-        leader_states[:-1] = np.einsum('ij,kj->ki', T, leader_states[:-1])
-
-        return leader_states
     
-    def pd(self, states, velocity, goal, dataPub, leader_states):
-        '''
-        states are represented in follower local frame
-        '''
-        # p_actual  = state[:2]
+    def pd(self, state, velocity, goal, dataPub):
+        
+        #p_actual  = state[:2]
         p_desired = goal[:2]
         # theta     = state[2]
-
-        # S Bezier curve 
-        leader_states = self.updateLocalFrame(states, leader_states)
-        del_s, theta_s, found_bezier_target = self.get_bezier_target(states, leader_states)
-        if found_bezier_target:
-            es = del_s - 0.35
-            esx = es*np.cos(theta_s)
-            esy = es*np.sin(theta_s)
-            print('esx ', esx, 'esy ', esy)
 
         ex = p_desired[0]
         ey = p_desired[1]
@@ -183,16 +126,14 @@ class PD:
         
         # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
         y_bar = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
-        #print('x bar cmd:',x_bar)
-        #print('y bar cmd',y_bar)
-
+        
+        print('x bar cmd:',x_bar)
+        print('y bar cmd',y_bar)
         # dynamic fb linearization map
         # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
                            # [np.sin(theta), tmp_vel*np.cos(theta)]])
-                           
         #self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
         #self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
-
         self.v += (x_bar)*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
@@ -219,21 +160,10 @@ class tracking_node:
     def __init__(self) -> None:
 
         self.state = np.zeros(3)        # self x,y,yaw
-        self.state_last = np.zeros(3)   
-        self.velocity = 0.0             
-
+        self.velocity = 0.0             # self v
         self.leader_state = np.zeros(2) # leader x,y
-
         self.states = []
         self.leader_states = []
-
-    def getLeaderStates(self):
-
-        return np.array(self.leader_states).copy()
-
-    def getStates(self):
-
-        return np.array(self.states).copy()
 
     def initNode(self, freq):
 
@@ -272,16 +202,14 @@ class tracking_node:
         q_y = data.pose.pose.orientation.y
         q_z = data.pose.pose.orientation.z
         q_w = data.pose.pose.orientation.w
-        (_, _, self_yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
-        self_x = data.pose.pose.position.x
-        self_y = data.pose.pose.position.y
-        # self_x = 0.0 # local frame
-        # self_y = 0.0 # local frame
+        (_, _, yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
+        # self_x   = data.pose.pose.position.x
+        # self_y   = data.pose.pose.position.y
+        self_x = 0.0 # local frame
+        self_y = 0.0 # local frame
+        self_yaw = yaw 
         self.state = np.array([self_x, self_y, self_yaw])
-        self.states.append(self.state)
-
         self.velocity = data.twist.twist.linear.x
-        
 
     def pubCmdVel(self, pub, ctrl_linear_vel=0.0, ctrl_angular_vel=0.0):
         
