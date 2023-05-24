@@ -154,7 +154,7 @@ class PD:
         # p_actual  = state[:2]
         p_desired = goal[:2]
         # theta     = state[2]
-
+        
         # S Bezier curve 
         leader_states = self.updateLocalFrame(states, leader_states)
         del_s, theta_s, found_bezier_target = self.get_bezier_target(states, leader_states)
@@ -162,7 +162,7 @@ class PD:
             es = del_s - 0.35
             esx = es*np.cos(theta_s)
             esy = es*np.sin(theta_s)
-            print('esx ', esx, 'esy ', esy)
+            print('-------------esx ', esx, '-------------esy ', esy)
 
         ex = p_desired[0]
         ey = p_desired[1]
@@ -206,9 +206,9 @@ class PD:
         data.linear.z = self.w
         dataPub.publish(data)
 
-        print('linear v:', self.v)
-        print('angular w', self.w)
-        print('current vel:', velocity)
+        #print('linear v:', self.v)
+        #print('angular w', self.w)
+        #print('current vel:', velocity)
         self.ex_last = ex
         self.ey_last = ey
         self.w_last = self.w
@@ -224,8 +224,8 @@ class tracking_node:
 
         self.leader_state = np.zeros(2) # leader x,y
 
-        self.states = []
-        self.leader_states = []
+        self.states = [self.state]
+        self.leader_states = [self.leader_state]
 
     def getLeaderStates(self):
 
@@ -240,10 +240,12 @@ class tracking_node:
         rospy.init_node('pd_tracking_xy')
         rate = rospy.Rate(int(freq))
 
+        robot_name = rospy.get_namespace()
+
         rospy.Subscriber("/odom", Odometry, self.odometeryCallback, queue_size=1)
         rospy.Subscriber("/april_data", Point, self.aprilTagCallback, queue_size=1)
-        pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
-        pub_data = rospy.Publisher("/data",Twist, queue_size=1)
+        pub = rospy.Publisher(robot_name + "cmd_vel", Twist, queue_size=1)
+        pub_data = rospy.Publisher(robot_name + "data",Twist, queue_size=1)
 
         return pub, pub_data, rate
 
@@ -333,15 +335,16 @@ class tracking_node:
         ctrl  = PD(dt=dt, kp = 0.3, kd = 1.0, alpha=0.5)
 
         while not rospy.is_shutdown():
-            
+
             goal = self.getTrackingTarget(distance=0.35)
             # u = ctrl.pd(self.state, self.velocity, goal) if self.velocity>0.005 else ctrl_.pid(self.state, goal)
-            u = ctrl.pd(self.state, self.velocity, goal,dataPub)
-            # u = ctrl_.pid(self.state, goal)
+            # print('self.getStates() self.getLeaderStates()',self.getStates(), self.getLeaderStates())
+            u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
+            
             print('leader state',self.leader_state,'goal ', goal)
             print('vel cmd', u[0],'rot cmd',u[1])
             print('----------------------------------------------')
-            self.pubCmdVel(cmdVelPub, u[0], u[1]) # need modify!!!!!!
+            self.pubCmdVel(cmdVelPub, u[0], u[1])
             rate.sleep()
 
         rospy.spin()
