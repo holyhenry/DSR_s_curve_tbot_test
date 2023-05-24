@@ -182,12 +182,12 @@ class tracking_node:
 
         rospy.init_node('pd_tracking_xy')
         rate = rospy.Rate(int(freq))
-        robot_name = rospy.get_namespace()
+        ns = rospy.get_namespace()
 
         rospy.Subscriber("/odom", Odometry, self.odometeryCallback, queue_size=1)
-        rospy.Subscriber("/april_data", Point, self.aprilTagCallback, queue_size=1)
-        pub = rospy.Publisher(robot_name + "cmd_vel", Twist, queue_size=1)
-        pub_data = rospy.Publisher(robot_name + "data",Twist, queue_size=1)
+        rospy.Subscriber(ns + "april_data", Point, self.aprilTagCallback, queue_size=1)
+        pub = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
+        pub_data = rospy.Publisher(ns + "data",Twist, queue_size=1)
 
         return pub, pub_data, rate
 
