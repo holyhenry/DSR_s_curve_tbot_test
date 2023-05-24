@@ -101,51 +101,6 @@ class PD:
     def omegaLim(self, v):
         w_max = min(4*np.abs(v),1.58)
         return w_max
-
-    def get_bezier_target(self, state, leader_states):
-        '''
-        return: s_l(t)-s_f(t) and desired heading
-        '''
-        indx = 1
-        threshold = 5*1e-2
-        check_length = 300 # Use larger number if interbot_distance is longer
-
-        while(indx<check_length):
-            dist = np.linalg.norm(state[:2]-leader_states[-indx,:2], ord=2)
-            
-            if (dist<=threshold or indx==len(leader_states)):
-                bezier_states = np.asfortranarray([np.append(state[0], leader_states[-indx:,0]),
-                                                   np.append(state[1], leader_states[-indx:,1])])
-                curve = bezier.Curve(bezier_states, degree=indx)
-
-                # evaluate a desired heading angle
-                x = (curve.evaluate(0.05).reshape(2)-state[:2])[0]
-                y = (curve.evaluate(0.05).reshape(2)-state[:2])[1]
-                theta = np.arctan2(y, x)
-                
-                self.ctrl_status = 1 if dist<=threshold else 2
-                return curve.length, theta, True
-            
-            indx += 1
-
-        # no feasible fitting point within the 'check_length'
-        return -1.0, None, False
-
-    def updateLocalFrame(self, states, leader_states):
-
-        del_theta = states[-1,2] - states[-2,2]
-        del_pos = states[-1,:2] - states[-2,:2]
-
-        # frame translation
-        leader_states[:-1] = np.add(leader_states[:-1], -del_pos)
-
-        # frame rotation matrix T 
-        T = np.array([[np.cos(del_theta), np.sin(del_theta)],
-                      [-np.sin(del_theta), np.cos(del_theta)]])
-
-        leader_states[:-1] = np.einsum('ij,kj->ki', T, leader_states[:-1])
-
-        return leader_states
     
     def pd(self, states, velocity, goal, dataPub, leader_states):
         '''
@@ -154,15 +109,6 @@ class PD:
         # p_actual  = state[:2]
         p_desired = goal[:2]
         # theta     = state[2]
-        
-        # S Bezier curve 
-        leader_states = self.updateLocalFrame(states, leader_states)
-        del_s, theta_s, found_bezier_target = self.get_bezier_target(states, leader_states)
-        if found_bezier_target:
-            es = del_s - 0.35
-            esx = es*np.cos(theta_s)
-            esy = es*np.sin(theta_s)
-            print('-------------esx ', esx, '-------------esy ', esy)
 
         ex = p_desired[0]
         ey = p_desired[1]
@@ -206,9 +152,6 @@ class PD:
         data.linear.z = self.w
         dataPub.publish(data)
 
-        #print('linear v:', self.v)
-        #print('angular w', self.w)
-        #print('current vel:', velocity)
         self.ex_last = ex
         self.ey_last = ey
         self.w_last = self.w
@@ -239,7 +182,6 @@ class tracking_node:
 
         rospy.init_node('pd_tracking_xy')
         rate = rospy.Rate(int(freq))
-
         robot_name = rospy.get_namespace()
 
         rospy.Subscriber("/odom", Odometry, self.odometeryCallback, queue_size=1)
@@ -284,7 +226,6 @@ class tracking_node:
 
         self.velocity = data.twist.twist.linear.x
         
-
     def pubCmdVel(self, pub, ctrl_linear_vel=0.0, ctrl_angular_vel=0.0):
         
         ctrl_linear_vel  = np.clip(ctrl_linear_vel, -0.20, 0.20)
@@ -298,7 +239,7 @@ class tracking_node:
         twist.angular.z = ctrl_angular_vel
         pub.publish(twist)
 
-    def getTrackingTarget(self, distance):
+    def getUnitCircleTarget(self, distance):
 
         target = np.zeros(2)
         find_target = False
@@ -322,7 +263,60 @@ class tracking_node:
             #target[1] = self.leader_state[1] + distance*np.sin(theta)
             target[0] = self.leader_state[0] - distance*np.cos(theta)
             target[1] = self.leader_state[1] - distance*np.sin(theta)
+
         return target
+
+    def updateLocalFrame(self):
+        '''
+        get new readings for leader trajectory
+        '''
+        if (len(self.states)>=2):
+            del_theta = self.states[-1,2] - self.states[-2,2]
+            del_pos = self.states[-1,:2] - self.states[-2,:2]
+
+            # apply frame translation
+            self.leader_states[:-1] = np.add(self.leader_states[:-1], -del_pos)
+
+            # frame rotation matrix T 
+            T = np.array([[np.cos(del_theta), np.sin(del_theta)],
+                        [-np.sin(del_theta), np.cos(del_theta)]])
+
+            # apply rotaiton matrix T
+            self.leader_states[:-1] = np.einsum('ij,kj->ki', T, self.leader_states[:-1])
+
+    def getBezierTarget(self, distance):
+        '''
+        return: s_l(t)-s_f(t) and desired heading
+        '''
+        indx = 1
+        target = np.zeros(2)
+        threshold = 5*1e-2
+        check_length = 300 # Use larger number if interbot_distance is longer
+
+        while(indx<check_length):
+            dist = np.linalg.norm(self.state[:2]-self.leader_states[-indx,:2], ord=2)
+            
+            if (dist<=threshold or indx==len(self.leader_states)):
+                bezier_states = np.asfortranarray([np.append(self.state[0], self.leader_states[-indx:,0]),
+                                                   np.append(self.state[1], self.leader_states[-indx:,1])])
+                curve = bezier.Curve(bezier_states, degree=indx)
+
+                # evaluate a desired heading angle
+                x = (curve.evaluate(0.05).reshape(2)-self.state[:2])[0]
+                y = (curve.evaluate(0.05).reshape(2)-self.state[:2])[1]
+                theta_s = np.arctan2(y, x)
+
+                e_s = curve.length - distance
+                target[0] = e_s*np.cos(theta_s)
+                target[1] = e_s*np.sin(theta_s)
+                
+                #self.ctrl_status = 1 if dist<=threshold else 2
+                return target, True
+            
+            indx += 1
+
+        # no feasible fitting point within the 'check_length'
+        return None, False
 
     def run(self):
         
@@ -336,14 +330,14 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            goal = self.getTrackingTarget(distance=0.35)
-            # u = ctrl.pd(self.state, self.velocity, goal) if self.velocity>0.005 else ctrl_.pid(self.state, goal)
-            # print('self.getStates() self.getLeaderStates()',self.getStates(), self.getLeaderStates())
+            goal = self.getUnitCircleTarget(distance=0.35)
+
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             
             print('leader state',self.leader_state,'goal ', goal)
             print('vel cmd', u[0],'rot cmd',u[1])
             print('----------------------------------------------')
+
             self.pubCmdVel(cmdVelPub, u[0], u[1])
             rate.sleep()
 
