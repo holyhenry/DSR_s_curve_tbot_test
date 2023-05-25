@@ -164,11 +164,10 @@ class tracking_node:
         self.state = np.zeros(3)        # self x,y,yaw
         self.state_last = np.zeros(3)   
         self.velocity = 0.0             
-
         self.leader_state = np.zeros(2) # leader x,y
-
         self.states = [self.state]
         self.leader_states = [self.leader_state]
+        self.target_status = -1
 
     def getLeaderStates(self):
 
@@ -239,33 +238,6 @@ class tracking_node:
         twist.angular.z = ctrl_angular_vel
         pub.publish(twist)
 
-    def getUnitCircleTarget(self, distance):
-
-        target = np.zeros(2)
-        find_target = False
-        leader_traj = np.array(self.leader_states)
-
-        for i in range(len(leader_traj)-1, -1, -1):
-            travel_length = leader_traj[i][:]-self.leader_state[:]
-
-            if np.linalg.norm(travel_length, ord=2)>=distance:
-                target = leader_traj[i][:]
-                find_target = False
-                break
-
-        if not find_target:
-            #dx = self.state[0]-self.leader_state[0]
-            #dy = self.state[1]-self.leader_state[1]
-            dx = self.leader_state[0]
-            dy = self.leader_state[1]
-            theta = np.arctan2(dy, dx)
-            #target[0] = self.leader_state[0] + distance*np.cos(theta)
-            #target[1] = self.leader_state[1] + distance*np.sin(theta)
-            target[0] = self.leader_state[0] - distance*np.cos(theta)
-            target[1] = self.leader_state[1] - distance*np.sin(theta)
-
-        return target
-
     def updateLocalFrame(self):
         '''
         get new readings for leader trajectory
@@ -283,6 +255,35 @@ class tracking_node:
 
             # apply rotaiton matrix T
             self.leader_states[:-1] = np.einsum('ij,kj->ki', T, self.leader_states[:-1])
+
+    def getUnitCircleTarget(self, distance):
+
+        target = np.zeros(2)
+        find_target = False
+        leader_traj = np.array(self.leader_states)
+
+        for i in range(len(leader_traj)-1, -1, -1):
+            travel_length = leader_traj[i][:]-self.leader_state[:]
+
+            if np.linalg.norm(travel_length, ord=2)>=distance:
+                target = leader_traj[i][:]
+                self.target_status = 1
+                find_target = False
+                break
+
+        if not find_target:
+            #dx = self.state[0]-self.leader_state[0]
+            #dy = self.state[1]-self.leader_state[1]
+            dx = self.leader_state[0]
+            dy = self.leader_state[1]
+            theta = np.arctan2(dy, dx)
+            #target[0] = self.leader_state[0] + distance*np.cos(theta)
+            #target[1] = self.leader_state[1] + distance*np.sin(theta)
+            target[0] = self.leader_state[0] - distance*np.cos(theta)
+            target[1] = self.leader_state[1] - distance*np.sin(theta)
+            self.target_status = 0
+
+        return target
 
     def getBezierTarget(self, distance):
         '''
@@ -310,7 +311,7 @@ class tracking_node:
                 target[0] = e_s*np.cos(theta_s)
                 target[1] = e_s*np.sin(theta_s)
                 
-                #self.ctrl_status = 1 if dist<=threshold else 2
+                self.ctrl_status = 2 if dist<=threshold else 3
                 return target, True
             
             indx += 1
@@ -330,6 +331,7 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
+            self.updateLocalFrame()
             goal = self.getUnitCircleTarget(distance=0.35)
 
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
