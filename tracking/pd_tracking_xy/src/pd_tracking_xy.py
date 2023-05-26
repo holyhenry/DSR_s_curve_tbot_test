@@ -186,9 +186,10 @@ class tracking_node:
         rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data", Point, self.aprilTagCallback, queue_size=1)
         pub = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
-        pub_data = rospy.Publisher(ns + "data",Twist, queue_size=1)
+        pub_data = rospy.Publisher(ns + "data", Twist, queue_size=1)
+        pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
 
-        return pub, pub_data, rate
+        return pub, pub_data, pub_target, rate
 
     def aprilTagCallback(self, data):
         '''
@@ -257,7 +258,7 @@ class tracking_node:
             # apply rotaiton matrix T
             self.leader_states[:-1] = np.einsum('ij,kj->ki', T, self.leader_states[:-1])
 
-    def getUnitCircleTarget(self, distance):
+    def getUnitCircleTarget(self, pub, distance):
 
         target = np.zeros(2)
         find_target = False
@@ -284,6 +285,12 @@ class tracking_node:
             target[0] = self.leader_state[0] - distance*np.cos(theta)
             target[1] = self.leader_state[1] - distance*np.sin(theta)
             self.target_status = 0
+
+        # record topic 
+        target_point = Point()
+        target_point.x = target[0]
+        target_point.y = target[1]
+        pub.publish(target_point)
 
         return target
 
@@ -324,7 +331,7 @@ class tracking_node:
     def run(self):
         
         freq = 15.0
-        cmdVelPub, dataPub, rate = self.initNode(freq)
+        cmdVelPub, dataPub, targetPub, rate = self.initNode(freq)
 
         # controller setups
         dt = 1.0/freq
@@ -342,7 +349,7 @@ class tracking_node:
                 print('transformed leader start state :)',self.leader_states[-1])
             print("self.target_status", self.target_status)
 
-            goal = self.getUnitCircleTarget(distance=0.35)
+            goal = self.getUnitCircleTarget(targetPub, distance=0.35)
 
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             
