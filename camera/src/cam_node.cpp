@@ -3,7 +3,7 @@
 Cam_Node::Cam_Node(ros::NodeHandle *nh) 
 {
     std::string ns = ros::this_node::getNamespace();
-    cam_data_pub = nh->advertise<geometry_msgs::Point>(ns + "april_data", 1);
+    cam_data_pub = nh->advertise<geometry_msgs::Point>(ns + "/april_data", 1);
     img_raw_sub = nh->subscribe("/camera/color/image_raw", 1, &Cam_Node::img_raw_callback, this);
     
 };

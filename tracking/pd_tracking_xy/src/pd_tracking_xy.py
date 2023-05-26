@@ -165,8 +165,8 @@ class tracking_node:
         self.state_last = np.zeros(3)   
         self.velocity = 0.0             
         self.leader_state = np.zeros(2) # leader x,y
-        self.states = [self.state]
-        self.leader_states = [self.leader_state]
+        self.states = []
+        self.leader_states = []
         self.target_status = -1
 
     def getLeaderStates(self):
@@ -183,7 +183,7 @@ class tracking_node:
         rate = rospy.Rate(int(freq))
         ns = rospy.get_namespace()
 
-        rospy.Subscriber("/odom", Odometry, self.odometeryCallback, queue_size=1)
+        rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data", Point, self.aprilTagCallback, queue_size=1)
         pub = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
         pub_data = rospy.Publisher(ns + "data",Twist, queue_size=1)
@@ -242,9 +242,10 @@ class tracking_node:
         '''
         get new readings for leader trajectory
         '''
+        print('ishjrefgworeigjerlgnjesrljnerkgl',len(self.states))
         if (len(self.states)>=2):
-            del_theta = self.states[-1,2] - self.states[-2,2]
-            del_pos = self.states[-1,:2] - self.states[-2,:2]
+            del_theta = np.array(self.states)[-1,2] - np.array(self.states)[-2,2]
+            del_pos = np.array(self.states)[-1,:2] - np.array(self.states)[-2,:2]
 
             # apply frame translation
             self.leader_states[:-1] = np.add(self.leader_states[:-1], -del_pos)
@@ -252,7 +253,7 @@ class tracking_node:
             # frame rotation matrix T 
             T = np.array([[np.cos(del_theta), np.sin(del_theta)],
                         [-np.sin(del_theta), np.cos(del_theta)]])
-
+            
             # apply rotaiton matrix T
             self.leader_states[:-1] = np.einsum('ij,kj->ki', T, self.leader_states[:-1])
 
@@ -266,9 +267,10 @@ class tracking_node:
             travel_length = leader_traj[i][:]-self.leader_state[:]
 
             if np.linalg.norm(travel_length, ord=2)>=distance:
+                print("YES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 target = leader_traj[i][:]
                 self.target_status = 1
-                find_target = False
+                find_target = True
                 break
 
         if not find_target:
@@ -331,13 +333,21 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            self.updateLocalFrame()
+            #self.updateLocalFrame()
+            #print('target_status*************************',self.target_status)
+            #if (len(self.leader_states)>10):
+            #    print('leader_states & length',len(self.leader_states) , ' ',self.leader_states[-1:-10])
+            #print(':)',self.state,' ',self.states )
+            if (len(self.leader_states)>0):
+                print('transformed leader start state :)',self.leader_states[-1])
+            print("self.target_status", self.target_status)
+
             goal = self.getUnitCircleTarget(distance=0.35)
 
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             
             print('leader state',self.leader_state,'goal ', goal)
-            print('vel cmd', u[0],'rot cmd',u[1])
+            #print('vel cmd', u[0],'rot cmd',u[1])
             print('----------------------------------------------')
 
             self.pubCmdVel(cmdVelPub, u[0], u[1])
