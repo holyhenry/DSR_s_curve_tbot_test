@@ -5,59 +5,8 @@ import bezier
 import rospy
 from tf import transformations
 from geometry_msgs.msg import Twist, Point
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Float32MultiArray
 from nav_msgs.msg import Odometry
-
-class PID:
-
-    def __init__(self, dt, kp_linear = 1., ki_linear = 0.0, kd_linear = 0.,   
-                       kp_angular = 1., ki_angular = 0.0, kd_angular = 0.):
-
-        self.dt = dt
-        self.kp_linear = kp_linear
-        self.ki_linear = ki_linear
-        self.kd_linear = kd_linear
-
-        self.kp_angular = kp_angular
-        self.ki_angular = ki_angular
-        self.kd_angular = kd_angular
-
-        self.pos_error_last = 0
-        self.ang_error_last = 0
-
-        # linear & angular control input in P, I, D terms
-        self.linear_u = np.zeros(3)
-        self.angular_u = np.zeros(3)
-
-    def pid(self, state, goal):
-
-        # linear control input calculation
-        p_actual = state[:2]
-        p_desired = goal[:2]
-        pos_error = np.linalg.norm(p_desired - p_actual)
-                
-        self.linear_u[0] = self.kp_linear * pos_error
-        self.linear_u[1] += self.ki_linear * (pos_error+self.pos_error_last)/2 * self.dt
-        self.linear_u[2] = self.kd_linear * (pos_error-self.pos_error_last)/self.dt
-
-        self.pos_error_last = pos_error
-
-        linear_control_input = np.sum(self.linear_u) # v, m/s
-
-        # angular control input calculation
-        a_actual = state[2]
-        a_desired = np.arctan2(p_desired[1]-p_actual[1], p_desired[0]-p_actual[0])
-        ang_error = a_desired - a_actual
-
-        self.angular_u[0] = self.kp_angular * ang_error
-        self.angular_u[1] += self.ki_angular * (ang_error+self.ang_error_last)/2 * self.dt
-        self.angular_u[2] = self.kd_angular * (ang_error-self.ang_error_last)
-
-        self.ang_error_last = ang_error
-
-        angular_control_input = np.sum(self.angular_u) # w, rad/s
-
-        return np.array([linear_control_input, angular_control_input])
 
 class PD:
 
@@ -185,6 +134,7 @@ class tracking_node:
 
         rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data", Point, self.aprilTagCallback, queue_size=1)
+        rospy.Subscriber(ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
         pub = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
         pub_data = rospy.Publisher(ns + "data", Twist, queue_size=1)
         pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
@@ -204,6 +154,10 @@ class tracking_node:
         leader_y = -(data.x-cam_pose_offset)
         self.leader_state = np.array([leader_x, leader_y])
         self.leader_states.append(self.leader_state)
+
+    def multiAprilTagCallback(self, data):
+
+        print(data.data)
 
     def odometeryCallback(self, data):
         '''
@@ -243,7 +197,6 @@ class tracking_node:
         '''
         get new readings for leader trajectory
         '''
-        #print('ishjrefgworeigjerlgnjesrljnerkgl',len(self.states))
         if (len(self.states)>=2):
             del_theta = self.state[:2] -  np.array(self.states)[-2,2] # - np.array(self.states)[-2,2]
             del_pos = self.state[:2] - np.array(self.states)[-2,:2] # - np.array(self.states)[-2,:2]
@@ -335,7 +288,6 @@ class tracking_node:
 
         # controller setups
         dt = 1.0/freq
-        ctrl_ = PID(dt=dt)
         ctrl  = PD(dt=dt, kp = 0.3, kd = 1.0, alpha=0.5)
 
         while not rospy.is_shutdown():
