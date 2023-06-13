@@ -2,7 +2,7 @@
 
 Cam_Node::Cam_Node(ros::NodeHandle *nh) 
 {
-    cam_data_pub = nh->advertise<std_msgs::Float32MultiArray>("/cam_data", 10);
+    cam_data_pub = nh->advertise<std_msgs::Float32MultiArray>("/april_data_multi", 10);
     img_raw_sub = nh->subscribe("/camera/color/image_raw", 10, &Cam_Node::img_raw_callback, this);
     
 };
@@ -81,7 +81,7 @@ void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "cam_node");
+    ros::init(argc, argv, "camera_multi_tag");
     ros::NodeHandle nh;
     Cam_Node camnode = Cam_Node(&nh);
 
