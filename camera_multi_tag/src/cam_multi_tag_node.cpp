@@ -56,15 +56,17 @@ void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
             float x = tvec[2] - Zoffset;  //depth into camera .... offset is relative to coordinate frame of april tag
             float z = tvec[1] - Yoffset;    // .... offset is relative to coordinate frame of april tag
 
-            float dist = sqrt(pow(x,2) + pow(y,2) + pow(z,2));
-            float angle = std::atan2(y, x);
+            // float dist = sqrt(pow(x,2) + pow(y,2) + pow(z,2));
+            // float angle = std::atan2(y, x);
 
-            // std::cout << dist << "/n";
-
+            // vec[W*i] = id;
+            // vec[W*i + 1] = dist;
+            // vec[W*i + 2] = angle;
+            
             vec[W*i] = id;
-            vec[W*i + 1] = dist;
-            vec[W*i + 2] = angle;
-
+            vec[W*i + 1] = x;
+            vec[W*i + 2] = y;
+            vec[W*i + 3] = z;
         }
 
         ms.data = vec;
