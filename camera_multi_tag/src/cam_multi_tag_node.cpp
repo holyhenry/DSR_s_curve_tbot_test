@@ -31,7 +31,7 @@ void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
         ms.layout.dim[1].size = W;
         ms.layout.dim[0].stride = size*W;
         ms.layout.dim[1].stride = W;
-        ms.layout.data_offset = 0;
+        ms.layout.data_offset = markerLength;
         std::vector<float> vec(size*W, 0);
         cv::aruco::drawDetectedMarkers(imageCopy, corners, ids);
 
