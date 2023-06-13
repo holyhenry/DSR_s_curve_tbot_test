@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="camera_multi_tag" name="image_publisher" type="image_publisher.py" output="screen" />
+  <node pkg="camera_multi_tag" name="cam_multi_tag_node" type="camera_multi_tag" output="screen" />
+</launch>
