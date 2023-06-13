@@ -9,6 +9,7 @@ Cam_Node::Cam_Node(ros::NodeHandle *nh)
 
 void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
 {
+    const float markerLength = 0.04;
     cv::Mat imageCopy;
     cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
     cv_ptr->image.copyTo(imageCopy);
@@ -85,14 +86,14 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     Cam_Node camnode = Cam_Node(&nh);
 
-    if (nh.getParam("/params/ros__parameters/markerlength", camnode.markerLength))
-    {
-        ROS_INFO("Got camera width param");
-    }
-    else 
-    {
-        ROS_ERROR("Failed to get camera width param");
-    }
+    // if (nh.getParam("/params/ros__parameters/markerlength", camnode.markerLength))
+    // {
+    //     ROS_INFO("Got camera width param");
+    // }
+    // else 
+    // {
+    //     ROS_ERROR("Failed to get camera width param");
+    // }
 
     while(ros::ok())
     {
