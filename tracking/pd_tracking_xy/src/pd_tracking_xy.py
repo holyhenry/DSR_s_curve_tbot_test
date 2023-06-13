@@ -156,8 +156,22 @@ class tracking_node:
         self.leader_states.append(self.leader_state)
 
     def multiAprilTagCallback(self, data):
-
-        print(data.data)
+        
+        leader_x = 0.0
+        leader_y = 0.0
+        num_tag = 3
+        tag_space = 4
+        cam_pose_offset = 0.03
+        multi_tag = data.data
+        for i in range(len(multi_tag)):
+            if i%tag_space==3:
+                leader_x += multi_tag[i]
+            if i%tag_space==1:
+                leader_y += -(multi_tag[i]-cam_pose_offset)
+        leader_x /= (len(multi_tag)/tag_space)
+        leader_y /= (len(multi_tag)/tag_space)
+        self.leader_state = np.array([leader_x, leader_y])
+        self.leader_states.append(self.leader_state)
 
     def odometeryCallback(self, data):
         '''
@@ -292,12 +306,12 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            self.updateLocalFrame()
+            #self.updateLocalFrame()
 
-            if (len(self.leader_states)>0):
-                print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
-                print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
-            print("self.target_status", self.target_status)
+            #if (len(self.leader_states)>0):
+            #    print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
+            #    print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
+            #print("self.target_status", self.target_status)
 
             goal = self.getUnitCircleTarget(targetPub, distance=0.35)
 

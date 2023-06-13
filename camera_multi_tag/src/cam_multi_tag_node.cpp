@@ -71,7 +71,12 @@ void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
             vec[W*i] = id;
             vec[W*i + 1] = x;
             vec[W*i + 2] = y;
-            vec[W*i + 3] = z;
+            vec[W*i + 3] = z; 
+
+	    cv::Mat R(3,3,0.0f);
+	    Rodrigues(rvec, R);
+	    std::cout<<R<<std::endl;
+	    std::cout<<R.at<float>(1,1)<<std::endl;
         }
 
         ms.data = vec;
