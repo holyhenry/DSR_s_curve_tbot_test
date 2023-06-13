@@ -243,11 +243,11 @@ class tracking_node:
         '''
         get new readings for leader trajectory
         '''
-        print('ishjrefgworeigjerlgnjesrljnerkgl',len(self.states))
+        #print('ishjrefgworeigjerlgnjesrljnerkgl',len(self.states))
         if (len(self.states)>=2):
-            del_theta = np.array(self.states)[-1,2] - np.array(self.states)[-2,2]
-            del_pos = np.array(self.states)[-1,:2] - np.array(self.states)[-2,:2]
-
+            del_theta = self.state[:2] -  np.array(self.states)[-2,2] # - np.array(self.states)[-2,2]
+            del_pos = self.state[:2] - np.array(self.states)[-2,:2] # - np.array(self.states)[-2,:2]
+            print('del_pos~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',del_pos)
             # apply frame translation
             self.leader_states[:-1] = np.add(self.leader_states[:-1], -del_pos)
 
@@ -256,7 +256,7 @@ class tracking_node:
                         [-np.sin(del_theta), np.cos(del_theta)]])
             
             # apply rotaiton matrix T
-            self.leader_states[:-1] = np.einsum('ij,kj->ki', T, self.leader_states[:-1])
+            # self.leader_states[:-1] = np.einsum('ij,kj->ki', T, self.leader_states[:-1])
 
     def getUnitCircleTarget(self, pub, distance):
 
@@ -268,7 +268,7 @@ class tracking_node:
             travel_length = leader_traj[i][:]-self.leader_state[:]
 
             if np.linalg.norm(travel_length, ord=2)>=distance:
-                print("YES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                #print("YES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 target = leader_traj[i][:]
                 self.target_status = 1
                 find_target = True
@@ -330,7 +330,7 @@ class tracking_node:
 
     def run(self):
         
-        freq = 15.0
+        freq = 5.0
         cmdVelPub, dataPub, targetPub, rate = self.initNode(freq)
 
         # controller setups
@@ -340,13 +340,11 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            #self.updateLocalFrame()
-            #print('target_status*************************',self.target_status)
-            #if (len(self.leader_states)>10):
-            #    print('leader_states & length',len(self.leader_states) , ' ',self.leader_states[-1:-10])
-            #print(':)',self.state,' ',self.states )
+            self.updateLocalFrame()
+
             if (len(self.leader_states)>0):
-                print('transformed leader start state :)',self.leader_states[-1])
+                print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
+                print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
             print("self.target_status", self.target_status)
 
             goal = self.getUnitCircleTarget(targetPub, distance=0.35)
@@ -357,7 +355,7 @@ class tracking_node:
             #print('vel cmd', u[0],'rot cmd',u[1])
             print('----------------------------------------------')
 
-            self.pubCmdVel(cmdVelPub, u[0], u[1])
+            #self.pubCmdVel(cmdVelPub, u[0], u[1])
             rate.sleep()
 
         rospy.spin()
