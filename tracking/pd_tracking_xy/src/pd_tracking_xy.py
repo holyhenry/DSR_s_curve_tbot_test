@@ -173,7 +173,7 @@ class tracking_node:
                 print('original pos:',x, y)
                 print('infered pos :',self.transformTag2Middle(x,y,phi,id))
 
-    def transformTag2Middle(self, x, y, phi, id, num_tag=3, d=0.038):
+    def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
         '''
         <I/O>
         x,y: detected side tag pos
@@ -186,10 +186,11 @@ class tracking_node:
         theta: angle between l, x
         theta_hat: angle between l_hat, x1_hat
         '''
+        theta = np.arctan2(np.abs(y),x)
+        phi   = np.pi/2-alpha-theta
         l     = np.sqrt(x**2+y**2)
         l_hat = np.sqrt(d**2+l**2-2*d*l*np.cos(phi+0.2616))
         PHI   = np.arccos((l**2+l_hat**2-d**2)/(2*l*l_hat))
-        theta = np.arctan2(np.abs(y),x)
         if (id%num_tag == 0):
             theta_hat = theta-PHI
             x1_hat = l_hat*np.cos(theta_hat)
