@@ -160,7 +160,7 @@ class tracking_node:
         leader_x = 0.0
         leader_y = 0.0
         num_tag = 3
-        tag_space = 4
+        tag_space = 5
         cam_pose_offset = 0.03
         multi_tag = data.data
         for i in range(len(multi_tag)):
@@ -168,10 +168,10 @@ class tracking_node:
                 leader_x += multi_tag[i]
             if i%tag_space==1:
                 leader_y += -(multi_tag[i]-cam_pose_offset)
-        leader_x /= (len(multi_tag)/tag_space)
-        leader_y /= (len(multi_tag)/tag_space)
-        self.leader_state = np.array([leader_x, leader_y])
-        self.leader_states.append(self.leader_state)
+
+    # def transformMultitag(self, x2, y2, phi2, d=0.038):
+
+    #     return x1_hat, y1_hat
 
     def odometeryCallback(self, data):
         '''
