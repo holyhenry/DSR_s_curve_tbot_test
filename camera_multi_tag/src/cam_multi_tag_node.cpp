@@ -51,7 +51,7 @@ void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
             
             cv::Mat1d R(3,3);
 	        Rodrigues(rvec, R);
-            euler_y = atan2(-R(2,0),sqrt(pow(R(2,1),2)+pow(R(2,2),2)))*180/3.14159;
+            float euler_y = -atan2(-R(2,0),sqrt(pow(R(2,1),2)+pow(R(2,2),2)))*180/3.14159;
             // std::cout<<"x-"<<atan2(R(2,1),R(2,2))*180/3.14159<<std::endl;
             // std::cout<<"y-"<<atan2(-R(2,0),sqrt(pow(R(2,1),2)+pow(R(2,2),2)))*180/3.14159<<std::endl;
             // std::cout<<"z-"<<atan2(R(1,0),R(0,0))*180/3.14159<<std::endl;
