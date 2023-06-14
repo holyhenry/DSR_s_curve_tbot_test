@@ -188,7 +188,7 @@ class tracking_node:
         '''
         l     = np.sqrt(x**2+y**2)
         l_hat = np.sqrt(d**2+l**2-2*d*l*np.cos(phi+0.2616))
-        PHI   = np.arccos((l**2)/(2*l*l_hat))
+        PHI   = np.arccos((l**2+l_hat**2-d**2)/(2*l*l_hat))
         theta = np.arctan2(np.abs(y),x)
         if (id%num_tag == 0):
             theta_hat = theta-PHI
@@ -201,7 +201,7 @@ class tracking_node:
             y1_hat = l_hat*np.sin(theta_hat)
             return x1_hat, y1_hat
         else:
-            pass
+            return x, y
 
     def odometeryCallback(self, data):
         '''
