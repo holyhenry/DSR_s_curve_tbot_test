@@ -9,7 +9,7 @@ Cam_Node::Cam_Node(ros::NodeHandle *nh)
 
 void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
 {
-    const float markerLength = 0.04;
+    const float markerLength = 0.035;
     cv::Mat imageCopy;
     cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
     cv_ptr->image.copyTo(imageCopy);
@@ -40,46 +40,28 @@ void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
         cv::aruco::estimatePoseSingleMarkers(corners, markerLength, cameraMatrix, distCoeffs, rvecs, tvecs);
         for(int i=0; i<size; i++)
         {
-            //message.id.data.push_back(ids[i]);
-            //ms.data.push_back(ids[i]);
-            //ms.data.push_back(5.0);
             cv::aruco::drawAxis(imageCopy, cameraMatrix, distCoeffs, rvecs[i], tvecs[i], 0.2);
-            //cv::drawFrameAxes(imageCopy, cameraMatrix, distCoeffs, rvecs[i], tvecs[i], 0.3);
             cv::Vec3d tvec = tvecs[i];
             cv::Vec3d rvec = rvecs[i];
+
             float id = ids[i];
-
-            //float dist = std::sqrt(x*x + z*z);
-            //float angle = std::atan2(x, z); //check this! for robot heading
-
-            // float y = -tvec[0];  //left and right
-            // float x = tvec[2] - Zoffset;  //depth into camera .... offset is relative to coordinate frame of april tag
-            // float z = tvec[1] - Yoffset;    // .... offset is relative to coordinate frame of april tag
-
-            // float dist = sqrt(pow(x,2) + pow(y,2) + pow(z,2));
-            // float angle = std::atan2(y, x);
-
-            // vec[W*i] = id;
-            // vec[W*i + 1] = dist;
-            // vec[W*i + 2] = angle;
-
-            float x = tvec[0];  //left and right
-            float y = tvec[1];  //depth into camera .... offset is relative to coordinate frame of april tag
-            float z = tvec[2];  // .... offset is relative to coordinate frame of april tag
-
+            float x = tvec[0];  // robot frame - left(-) & right(+)
+            float y = tvec[1];  // robot frame - up(-) & down(+)
+            float z = tvec[2];  // robot frame - foreward(+) & backward(-)
             
+            cv::Mat1d R(3,3);
+	        Rodrigues(rvec, R);
+            euler_y = atan2(-R(2,0),sqrt(pow(R(2,1),2)+pow(R(2,2),2)))*180/3.14159;
+            // std::cout<<"x-"<<atan2(R(2,1),R(2,2))*180/3.14159<<std::endl;
+            // std::cout<<"y-"<<atan2(-R(2,0),sqrt(pow(R(2,1),2)+pow(R(2,2),2)))*180/3.14159<<std::endl;
+            // std::cout<<"z-"<<atan2(R(1,0),R(0,0))*180/3.14159<<std::endl;
+
             vec[W*i] = id;
             vec[W*i + 1] = x;
             vec[W*i + 2] = y;
             vec[W*i + 3] = z; 
+            vec[W*i + 4] = euler_y;
 
-	    cv::Mat1d R(3,3);
-	    Rodrigues(rvec, R);
-	    std::cout<<R<<std::endl;
-        // std::cout<<tvec<<std::endl;
-        std::cout<<"x-"<<atan2(R(2,1),R(2,2))*180/3.14159<<std::endl;
-        std::cout<<"y-"<<atan2(-R(2,0),sqrt(pow(R(2,1),2)+pow(R(2,2),2)))*180/3.14159<<std::endl;
-	    std::cout<<"z-"<<atan2(R(1,0),R(0,0))*180/3.14159<<std::endl;
         }
 
         ms.data = vec;

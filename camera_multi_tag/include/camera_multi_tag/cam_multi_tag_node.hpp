@@ -33,7 +33,7 @@ class Cam_Node {
         cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_250);
 
         // Multiarray width
-        const int W = 4;
+        const int W = 5;
 
         const std::string OPENCV_WINDOW = "Image window";
 
