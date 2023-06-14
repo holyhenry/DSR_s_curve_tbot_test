@@ -157,21 +157,46 @@ class tracking_node:
 
     def multiAprilTagCallback(self, data):
         
-        leader_x = 0.0
-        leader_y = 0.0
-        num_tag = 3
+        leader_x  = 0.0
+        leader_y  = 0.0
+        num_tag   = 3
         tag_space = 5
         cam_pose_offset = 0.03
         multi_tag = data.data
         for i in range(len(multi_tag)):
-            if i%tag_space==3:
-                leader_x += multi_tag[i]
-            if i%tag_space==1:
-                leader_y += -(multi_tag[i]-cam_pose_offset)
+            if (i%tag_space==0 and (i//tag_space)%2==1):
+                x   = multi_tag[i+3]
+                y   = multi_tag[i+1]
+                phi = multi_tag[i+4]
+                id  = multi_tag[i]
+                print('id:',multi_tag[i%tag_space])
+                print('infered pos:',self.transformTag2Middle(x,y,phi,id))
 
-    # def transformMultitag(self, x2, y2, phi2, d=0.038):
+    def transformTag2Middle(self, x, y, phi, id, num_tag=3, d=0.038):
+        '''
+        <I/O>
+        x,y: detected side tag pos
+        phi: side tag orientation
+        id: april tag id
+        d: hardware goemytry (m)
+        x1_hat,y1_hat: infered middle tag pos
+        <Other>
+        PHI: angle between l, l_hat
+        theta: angle between l, x
+        theta_hat: angle between l_hat, x1_hat
+        '''
+        l     = np.sqrt(x**2+y**2)
+        l_hat = np.sqrt(d**2+l**2-2*d*l*np.cos(phi+0.2616))
+        PHI   = np.arccos((l**2)/(2*l*l_hat))
+        theta = np.arctan2(np.abs(y),x)
+        if (id%num_tag == 0):
+            theta_hat = theta-PHI
+        if (id%num_tag == 2):
+            theta_hat = PHI-theta
+        x1_hat = l_hat*np.cos(theta_hat)
+        y1_hat = l_hat*np.sin(theta_hat)
 
-    #     return x1_hat, y1_hat
+        return x1_hat, y1_hat
 
     def odometeryCallback(self, data):
         '''
