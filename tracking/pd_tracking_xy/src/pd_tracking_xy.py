@@ -164,7 +164,7 @@ class tracking_node:
         cam_pose_offset = 0.03
         multi_tag = data.data
         for i in range(len(multi_tag)):
-            if (i%tag_space==0 and (multi_tag[i]==0 or multi_tag[i]==2)):
+            if (i%tag_space==0 and (multi_tag[i]==0 or multi_tag[i]==2 or multi_tag[i]==1)):
                 x   = multi_tag[i+3]
                 y   = -(multi_tag[i+1]-cam_pose_offset)
                 phi = multi_tag[i+4]
