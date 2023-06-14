@@ -164,13 +164,14 @@ class tracking_node:
         cam_pose_offset = 0.03
         multi_tag = data.data
         for i in range(len(multi_tag)):
-            if (i%tag_space==0 and (i//tag_space)%2==1):
+            if (i%tag_space==0 and (multi_tag[i]==0 or multi_tag[i]==2)):
                 x   = multi_tag[i+3]
-                y   = multi_tag[i+1]
+                y   = -(multi_tag[i+1]-cam_pose_offset)
                 phi = multi_tag[i+4]
                 id  = multi_tag[i]
-                print('id:',multi_tag[i%tag_space])
-                print('infered pos:',self.transformTag2Middle(x,y,phi,id))
+                print('id:',multi_tag[i])
+                print('original pos:',x, y)
+                print('infered pos :',self.transformTag2Middle(x,y,phi,id))
 
     def transformTag2Middle(self, x, y, phi, id, num_tag=3, d=0.038):
         '''
@@ -201,7 +202,6 @@ class tracking_node:
             return x1_hat, y1_hat
         else:
             pass
-
 
     def odometeryCallback(self, data):
         '''
