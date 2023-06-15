@@ -171,9 +171,9 @@ class tracking_node:
                 infered_x, infered_y = self.transformTag2Middle(x,y,phi,id)
                 leader_x += infered_x
                 leader_y += infered_y
-        print('get tag!')
+        
         if (count != 0):
-            print("save tag!")
+            
             leader_x /= count
             leader_y /= count
             self.leader_state = np.array([leader_x, leader_y])
@@ -233,9 +233,9 @@ class tracking_node:
         update leader states' ref frame
         '''
         if (len(self.states)>=2):
-            del_theta = self.state[:2] - np.array(self.states)[-2,2] # - np.array(self.states)[-2,2]
-            del_pos = self.state[:2] - np.array(self.states)[-2,:2] # - np.array(self.states)[-2,:2]
-            print('del_pos~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',del_pos)
+            del_theta = self.state[:2] - np.array(self.states)[-2,2]
+            del_pos = self.state[:2] - np.array(self.states)[-2,:2]
+
             # apply frame translation
             self.leader_states[:-1] = np.add(self.leader_states[:-1], -del_pos)
 
