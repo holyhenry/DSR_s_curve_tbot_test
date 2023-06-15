@@ -171,8 +171,9 @@ class tracking_node:
                 infered_x, infered_y = self.transformTag2Middle(x,y,phi,id)
                 leader_x += infered_x
                 leader_y += infered_y
-
+        print('get tag!')
         if (count != 0):
+            print("save tag!")
             leader_x /= count
             leader_y /= count
             self.leader_state = np.array([leader_x, leader_y])
