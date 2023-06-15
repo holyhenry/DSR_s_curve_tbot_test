@@ -244,7 +244,7 @@ class tracking_node:
                         [-np.sin(del_theta), np.cos(del_theta)]])
             
             # apply rotaiton matrix T
-            # self.leader_states[:-1] = np.einsum('ij,kj->ki', T, self.leader_states[:-1])
+            self.leader_states[:-1] = np.einsum('ij,kj->ki', T, self.leader_states[:-1])
 
     def getUnitCircleTarget(self, pub, distance):
 
@@ -326,10 +326,10 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            if (len(self.leader_states)>0):
-               print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
-               print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
-            print("self.target_status", self.target_status)
+            # if (len(self.leader_states)>0):
+            #    print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
+            #    print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
+            # print("self.target_status", self.target_status)
 
             goal = self.getUnitCircleTarget(targetPub, distance=0.35)
 
