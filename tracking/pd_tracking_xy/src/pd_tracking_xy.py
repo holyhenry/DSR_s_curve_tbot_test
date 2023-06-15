@@ -78,8 +78,6 @@ class PD:
         
         # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
         y_bar = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
-        #print('x bar cmd:',x_bar)
-        #print('y bar cmd',y_bar)
 
         # dynamic fb linearization map
         # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
@@ -130,22 +128,19 @@ class tracking_node:
 
         rospy.init_node('pd_tracking_xy')
         rate = rospy.Rate(int(freq))
-        ns = rospy.get_namespace()
+        ns   = rospy.get_namespace()
 
         rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data", Point, self.aprilTagCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
-        pub = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
-        pub_data = rospy.Publisher(ns + "data", Twist, queue_size=1)
+        pub        = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
+        pub_data   = rospy.Publisher(ns + "data", Twist, queue_size=1)
         pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
 
         return pub, pub_data, pub_target, rate
 
     def aprilTagCallback(self, data):
         '''
-        not using global frame right now!
-        global (+)x = aprilTag (+)x - 0.03m
-        global (+)y = aprilTag (+)z
         robotOdom (+)x = aprilTag (+)z
         robotOdom (+)y = aprilTag (-)(x-0.03m)
         '''
@@ -157,14 +152,15 @@ class tracking_node:
 
     def multiAprilTagCallback(self, data):
         
-        multi_tag = data.data
-        leader_x  = 0.0
-        leader_y  = 0.0
         count     = 0
         num_tag   = 3
         tag_space = 5
+        multi_tag = data.data
+        leader_x  = 0.0
+        leader_y  = 0.0
         follower_indx   = 0
         cam_pose_offset = 0.03
+
         for i in range(len(multi_tag)):
             if (i%tag_space == 0 and (multi_tag[i]//num_tag == follower_indx)):
                 count += 1
@@ -172,12 +168,10 @@ class tracking_node:
                 y   = -(multi_tag[i+1]-cam_pose_offset)
                 phi = multi_tag[i+4]
                 id  = multi_tag[i]
-                print('id:',multi_tag[i])
-                print('original pos:',x, y)
-                print('infered pos :',self.transformTag2Middle(x,y,phi,id))
                 infered_x, infered_y = self.transformTag2Middle(x,y,phi,id)
                 leader_x += infered_x
                 leader_y += infered_y
+
         if (count != 0):
             leader_x /= count
             leader_y /= count
@@ -190,10 +184,12 @@ class tracking_node:
             x1_hat = x + d*np.cos(-np.pi/2+alpha+0.2616)
             y1_hat = y + d*np.sin(-np.pi/2+alpha+0.2616)
             return x1_hat, y1_hat
+        
         if (id%num_tag == 2):
             x1_hat = x + d*np.cos(np.pi/2+alpha-0.2616)
             y1_hat = y + d*np.sin(np.pi/2+alpha-0.2616)
             return x1_hat, y1_hat
+        
         else:
             return x, y
 
@@ -233,7 +229,7 @@ class tracking_node:
 
     def updateLocalFrame(self):
         '''
-        get new readings for leader trajectory
+        update frame for leader trajectory
         '''
         if (len(self.states)>=2):
             del_theta = self.state[:2] -  np.array(self.states)[-2,2] # - np.array(self.states)[-2,2]
