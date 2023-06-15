@@ -186,8 +186,8 @@ class tracking_node:
         theta: angle between l, x
         theta_hat: angle between l_hat, x1_hat
         '''
-        theta = np.arctan2(np.abs(y),x)
-        phi   = np.pi/2-np.abs(alpha)-theta
+        theta = np.arctan2(y,x)
+        phi   = np.pi/2-np.abs(alpha)+theta
         l     = np.sqrt(x**2+y**2)
         l_hat = np.sqrt(d**2+l**2-2*d*l*np.cos(phi+0.2616))
         PHI   = np.arccos((l**2+l_hat**2-d**2)/(2*l*l_hat))
