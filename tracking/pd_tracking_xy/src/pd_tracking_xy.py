@@ -337,7 +337,7 @@ class tracking_node:
             print('leader state',self.leader_state,'goal ', goal)
             print('----------------------------------------------')
 
-            self.pubCmdVel(cmdVelPub, u[0], u[1])
+            # self.pubCmdVel(cmdVelPub, u[0], u[1])
             rate.sleep()
 
         rospy.spin()
