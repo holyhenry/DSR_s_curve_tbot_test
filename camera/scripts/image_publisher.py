@@ -5,7 +5,7 @@ import cv2
 
 pub = rospy.Publisher('/camera/color/image_raw', Image, queue_size=2)
 rospy.init_node('image_publisher')
-r = rospy.Rate(50) # 10hz
+r = rospy.Rate(10) # 10hz
 
 cap = cv2.VideoCapture(4)
 br = CvBridge()
