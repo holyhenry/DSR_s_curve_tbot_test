@@ -157,15 +157,17 @@ class tracking_node:
 
     def multiAprilTagCallback(self, data):
         
+        multi_tag = data.data
         leader_x  = 0.0
         leader_y  = 0.0
+        count     = 0
         num_tag   = 3
         tag_space = 5
-        follower_indx = 0
+        follower_indx   = 0
         cam_pose_offset = 0.03
-        multi_tag = data.data
         for i in range(len(multi_tag)):
-            if (i%tag_space==0 and (multi_tag[i]//num_tag==follower_indx)):
+            if (i%tag_space == 0 and (multi_tag[i]//num_tag == follower_indx)):
+                count += 1
                 x   = multi_tag[i+3]
                 y   = -(multi_tag[i+1]-cam_pose_offset)
                 phi = multi_tag[i+4]
@@ -173,6 +175,12 @@ class tracking_node:
                 print('id:',multi_tag[i])
                 print('original pos:',x, y)
                 print('infered pos :',self.transformTag2Middle(x,y,phi,id))
+                leader_x, leader_y += self.transformTag2Middle(x,y,phi,id)
+        if (count != 0):
+            leader_x /= count
+            leader_y /= count
+            self.leader_state = np.array([leader_x, leader_y])
+            self.leader_states.append(self.leader_state)
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
 
@@ -332,7 +340,6 @@ class tracking_node:
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             
             print('leader state',self.leader_state,'goal ', goal)
-            #print('vel cmd', u[0],'rot cmd',u[1])
             print('----------------------------------------------')
 
             #self.pubCmdVel(cmdVelPub, u[0], u[1])
