@@ -175,7 +175,9 @@ class tracking_node:
                 print('id:',multi_tag[i])
                 print('original pos:',x, y)
                 print('infered pos :',self.transformTag2Middle(x,y,phi,id))
-                leader_x, leader_y += self.transformTag2Middle(x,y,phi,id)
+                infered_x, infered_y = self.transformTag2Middle(x,y,phi,id)
+                leader_x += infered_x
+                leader_y += infered_y
         if (count != 0):
             leader_x /= count
             leader_y /= count
