@@ -161,10 +161,11 @@ class tracking_node:
         leader_y  = 0.0
         num_tag   = 3
         tag_space = 5
+        follower_indx = 0
         cam_pose_offset = 0.03
         multi_tag = data.data
         for i in range(len(multi_tag)):
-            if (i%tag_space==0 and (multi_tag[i]==0 or multi_tag[i]==2 or multi_tag[i]==1)):
+            if (i%tag_space==0 and (multi_tag[i]//num_tag==follower_indx)):
                 x   = multi_tag[i+3]
                 y   = -(multi_tag[i+1]-cam_pose_offset)
                 phi = multi_tag[i+4]
@@ -174,34 +175,12 @@ class tracking_node:
                 print('infered pos :',self.transformTag2Middle(x,y,phi,id))
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
-        '''
-        <I/O>
-        x,y: detected side tag pos
-        phi: side tag orientation
-        id: april tag id
-        d: hardware goemytry (m)
-        x1_hat,y1_hat: infered middle tag pos
-        <Other>
-        PHI: angle between l, l_hat
-        theta: angle between l, x
-        theta_hat: angle between l_hat, x1_hat
-        '''
-        # theta = np.arctan2(y,x)
-        # phi   = np.pi/2-np.abs(alpha)+theta
-        # l     = np.sqrt(x**2+y**2)
-        # l_hat = np.sqrt(d**2+l**2-2*d*l*np.cos(phi+0.2616))
-        # PHI   = np.arccos((l**2+l_hat**2-d**2)/(2*l*l_hat))
+
         if (id%num_tag == 0):
-            # theta_hat = theta-PHI
-            # x1_hat = l_hat*np.cos(theta_hat)
-            # y1_hat = l_hat*np.sin(theta_hat)
             x1_hat = x + d*np.cos(-np.pi/2+alpha+0.2616)
             y1_hat = y + d*np.sin(-np.pi/2+alpha+0.2616)
             return x1_hat, y1_hat
         if (id%num_tag == 2):
-            # theta_hat = PHI-theta
-            # x1_hat = l_hat*np.cos(theta_hat)
-            # y1_hat = l_hat*np.sin(theta_hat)
             x1_hat = x + d*np.cos(np.pi/2+alpha-0.2616)
             y1_hat = y + d*np.sin(np.pi/2+alpha-0.2616)
             return x1_hat, y1_hat
