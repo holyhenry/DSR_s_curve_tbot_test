@@ -48,6 +48,10 @@ void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
             float x = tvec[0];  // robot frame - left(-) & right(+)
             float y = tvec[1];  // robot frame - up(-) & down(+)
             float z = tvec[2];  // robot frame - foreward(+) & backward(-)
+
+            std::cout<<'id '<<id<<std::endl;
+            std::cout<<'tvec '<<tvec<<std::endl;
+            std::cout<<'rvec '<<rvec<<std::endl;
             
             cv::Mat1d R(3,3);
 	        Rodrigues(rvec, R);
