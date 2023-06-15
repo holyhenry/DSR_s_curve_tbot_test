@@ -200,19 +200,19 @@ class tracking_node:
         global (+)y = robotOdom (+)x  
         global (+)yaw = robotOdom (+)yaw + np.pi/2
         '''
+        self_x = data.pose.pose.position.x
+        self_y = data.pose.pose.position.y
         q_x = data.pose.pose.orientation.x
         q_y = data.pose.pose.orientation.y
         q_z = data.pose.pose.orientation.z
         q_w = data.pose.pose.orientation.w
         (_, _, self_yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
-        self_x = data.pose.pose.position.x
-        self_y = data.pose.pose.position.y
-        # self_x = 0.0 # local frame
-        # self_y = 0.0 # local frame
-        self.state = np.array([self_x, self_y, self_yaw])
-        self.states.append(self.state)
 
         self.velocity = data.twist.twist.linear.x
+        self.state    = np.array([self_x, self_y, self_yaw])
+        self.states.append(self.state)
+
+        self.updateLocalFrame()
         
     def pubCmdVel(self, pub, ctrl_linear_vel=0.0, ctrl_angular_vel=0.0):
         
@@ -229,10 +229,10 @@ class tracking_node:
 
     def updateLocalFrame(self):
         '''
-        update frame for leader trajectory
+        update leader states' ref frame
         '''
         if (len(self.states)>=2):
-            del_theta = self.state[:2] -  np.array(self.states)[-2,2] # - np.array(self.states)[-2,2]
+            del_theta = self.state[:2] - np.array(self.states)[-2,2] # - np.array(self.states)[-2,2]
             del_pos = self.state[:2] - np.array(self.states)[-2,:2] # - np.array(self.states)[-2,:2]
             print('del_pos~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',del_pos)
             # apply frame translation
@@ -255,7 +255,6 @@ class tracking_node:
             travel_length = leader_traj[i][:]-self.leader_state[:]
 
             if np.linalg.norm(travel_length, ord=2)>=distance:
-                #print("YES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 target = leader_traj[i][:]
                 self.target_status = 1
                 find_target = True
@@ -326,12 +325,10 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            #self.updateLocalFrame()
-
-            #if (len(self.leader_states)>0):
-            #    print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
-            #    print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
-            #print("self.target_status", self.target_status)
+            if (len(self.leader_states)>0):
+               print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
+               print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
+            print("self.target_status", self.target_status)
 
             goal = self.getUnitCircleTarget(targetPub, distance=0.35)
 
@@ -340,7 +337,7 @@ class tracking_node:
             print('leader state',self.leader_state,'goal ', goal)
             print('----------------------------------------------')
 
-            #self.pubCmdVel(cmdVelPub, u[0], u[1])
+            self.pubCmdVel(cmdVelPub, u[0], u[1])
             rate.sleep()
 
         rospy.spin()
