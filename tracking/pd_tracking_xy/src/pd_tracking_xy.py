@@ -116,6 +116,8 @@ class tracking_node:
         self.leader_states = []
         self.target_status = -1
 
+        self.cum_angle = 0
+
     def getLeaderStates(self):
 
         return np.array(self.leader_states).copy()
@@ -233,8 +235,11 @@ class tracking_node:
         update leader states' ref frame
         '''
         if (len(self.states)>=2):
-            del_theta = self.state[:2] - np.array(self.states)[-2,2]
+            del_theta = self.state[2] - np.array(self.states)[-2,2]
             del_pos = self.state[:2] - np.array(self.states)[-2,:2]
+            
+            self.cum_angle += (del_theta/np.pi*180)
+            print('cumulative rot angle:',self.cum_angle)
 
             # apply frame translation
             self.leader_states[:-1] = np.add(self.leader_states[:-1], -del_pos)
@@ -258,7 +263,7 @@ class tracking_node:
             if np.linalg.norm(travel_length, ord=2)>=distance:
                 target = leader_traj[i][:]
                 self.target_status = 1
-                find_target = True
+                find_target = False
                 break
 
         if not find_target:
@@ -317,7 +322,7 @@ class tracking_node:
 
     def run(self):
         
-        freq = 5.0
+        freq = 10.0
         cmdVelPub, dataPub, targetPub, rate = self.initNode(freq)
 
         # controller setups
@@ -326,10 +331,10 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            # if (len(self.leader_states)>0):
-            #    print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
-            #    print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
-            # print("self.target_status", self.target_status)
+            if (len(self.leader_states)>0):
+               print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
+               print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
+            print("self.target_status", self.target_status)
 
             goal = self.getUnitCircleTarget(targetPub, distance=0.35)
 
@@ -338,7 +343,7 @@ class tracking_node:
             print('leader state',self.leader_state,'goal ', goal)
             print('----------------------------------------------')
 
-            # self.pubCmdVel(cmdVelPub, u[0], u[1])
+            self.pubCmdVel(cmdVelPub, u[0], u[1])
             rate.sleep()
 
         rospy.spin()
