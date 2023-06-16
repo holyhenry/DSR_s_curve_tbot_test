@@ -138,8 +138,9 @@ class tracking_node:
         pub        = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
         pub_data   = rospy.Publisher(ns + "data", Twist, queue_size=1)
         pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
+        pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
 
-        return pub, pub_data, pub_target, rate
+        return pub, pub_data, pub_target, pub_l_traj ,rate
 
     def aprilTagCallback(self, data):
         '''
@@ -216,6 +217,12 @@ class tracking_node:
         self.states.append(self.state)
 
         self.updateLocalFrame()
+
+    def pubLeaderTraj(self, pub):
+
+        infered_leader_traj = Float32MultiArray()
+        infered_leader_traj.data = self.leader_states
+        pub.publish(infered_leader_traj)
         
     def pubCmdVel(self, pub, ctrl_linear_vel=0.0, ctrl_angular_vel=0.0):
         
@@ -323,7 +330,7 @@ class tracking_node:
     def run(self):
         
         freq = 10.0
-        cmdVelPub, dataPub, targetPub, rate = self.initNode(freq)
+        cmdVelPub, dataPub, targetPub, lTrajPub, rate = self.initNode(freq)
 
         # controller setups
         dt = 1.0/freq
@@ -335,6 +342,7 @@ class tracking_node:
                print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
                print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
             print("self.target_status", self.target_status)
+            self.pubLeaderTraj(lTrajPub)
 
             goal = self.getUnitCircleTarget(targetPub, distance=0.35)
 

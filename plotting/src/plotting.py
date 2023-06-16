@@ -75,13 +75,13 @@ class plotting_node:
             plt.grid()
             
             fig.canvas.flush_events()
-            time.sleep(0.1)
+            time.sleep(0.05)
         
             # print(np.array(self.follower_states)[:,0].shape)
 
     def run(self):
 
-        freq = 10.0
+        freq = 20.0
         self.initNode(freq)
 
         # plotting setup
