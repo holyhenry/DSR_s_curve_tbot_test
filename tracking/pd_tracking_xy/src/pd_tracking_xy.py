@@ -108,14 +108,19 @@ class tracking_node:
 
     def __init__(self) -> None:
 
-        self.state = np.zeros(3)        # self x,y,yaw
-        self.state_last = np.zeros(3)   
-        self.velocity = 0.0             
+        self.state        = np.zeros(3) # x,y,yaw
+        self.state_last   = np.zeros(3)   
+        self.velocity     = 0.0             
         self.leader_state = np.zeros(2) # leader x,y
-        self.states = []
-        self.leader_states = []
-        self.target_status = -1
 
+        # odom (global)
+        self.states = []
+        # tag info (global)
+        self.leader_states = []
+        # tag info (local)
+        self.leader_states_local = []
+
+        self.target_status = -1
         self.cum_angle = 0
 
     def getLeaderStates(self):
@@ -179,7 +184,7 @@ class tracking_node:
             
             leader_x /= count
             leader_y /= count
-            self.leader_state = np.array([leader_x, leader_y])
+            self.leader_state = self.homoTrans2Global(np.array([leader_x, leader_y]))
             self.leader_states.append(self.leader_state)
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
@@ -196,6 +201,39 @@ class tracking_node:
         
         else:
             return x, y
+
+    def homoTrans2Global(self, state):
+
+        del_theta = self.state[2]
+        del_pos   = self.state[:2]
+
+        rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
+                               [np.sin(del_theta), np.cos(del_theta)]]) 
+        trans_vec  = np.atleast_2d(del_pos).T   
+        T = np.hstack([rot_matrix, trans_vec])
+        T = np.vstack([T, np.array([0.,0.,1.])])   
+
+        homo_state = np.hstack([state, 1.])
+        new_state = (T@homo_state)[:2]
+
+        return new_state
+    
+    def homoInvTrans2Local(self, states):
+
+        del_theta = self.state[2]
+        del_pos   = self.state[:2]
+
+        rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
+                            [np.sin(del_theta), np.cos(del_theta)]])
+        trans_vec = np.atleast_2d(del_pos).T
+        T = np.hstack([rot_matrix, trans_vec])
+        T = np.vstack([T, np.array([0.,0.,1.])])
+
+        ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
+        new_states = np.hstack([states, ones])
+        new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), new_states)
+    
+        return new_states[:,:2]
 
     def odometeryCallback(self, data):
         '''
