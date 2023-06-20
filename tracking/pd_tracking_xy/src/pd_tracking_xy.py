@@ -108,6 +108,7 @@ class tracking_node:
 
     def __init__(self) -> None:
 
+        # current state (local)
         self.state        = np.zeros(3) # x,y,yaw
         self.state_last   = np.zeros(3)   
         self.velocity     = 0.0             
@@ -183,8 +184,8 @@ class tracking_node:
         if (count != 0):
             leader_x /= count
             leader_y /= count
-            self.leader_state = self.homoTrans2Global(np.array([leader_x, leader_y]))
-            self.leader_states.append(self.leader_state)
+            self.leader_state = np.array([leader_x, leader_y])
+            self.leader_states.append(self.homoTrans2Global(self.leader_state))
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
 
@@ -278,7 +279,7 @@ class tracking_node:
 
         target = np.zeros(2)
         find_target = False
-        leader_traj = np.array(self.leader_states)
+        leader_traj = np.array(self.leader_states_local)
 
         for i in range(len(leader_traj)-1, -1, -1):
             travel_length = leader_traj[i][:]-self.leader_state[:]
