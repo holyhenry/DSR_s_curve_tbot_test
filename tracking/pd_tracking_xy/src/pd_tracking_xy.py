@@ -181,7 +181,6 @@ class tracking_node:
                 leader_y += infered_y
         
         if (count != 0):
-            
             leader_x /= count
             leader_y /= count
             self.leader_state = self.homoTrans2Global(np.array([leader_x, leader_y]))
@@ -254,7 +253,7 @@ class tracking_node:
         self.state    = np.array([self_x, self_y, self_yaw])
         self.states.append(self.state)
 
-        self.updateLocalFrame()
+        self.leader_states_local = self.homoInvTrans2Local(self.leader_states)
 
     def pubLeaderTraj(self, pub):
         
@@ -274,27 +273,6 @@ class tracking_node:
         twist.angular.y = 0.0
         twist.angular.z = ctrl_angular_vel
         pub.publish(twist)
-
-    def updateLocalFrame(self):
-        '''
-        update leader states' ref frame
-        '''
-        if (len(self.states)>=2):
-            del_theta = self.state[2] - np.array(self.states)[-2,2]
-            del_pos = self.state[:2] - np.array(self.states)[-2,:2]
-            
-            self.cum_angle += (del_theta/np.pi*180)
-            print('cumulative rot angle:',self.cum_angle)
-
-            # apply frame translation
-            self.leader_states[:-1] = np.add(self.leader_states[:-1], -del_pos)
-
-            # frame rotation matrix T 
-            T = np.array([[np.cos(del_theta), np.sin(del_theta)],
-                        [-np.sin(del_theta), np.cos(del_theta)]])
-            
-            # apply rotaiton matrix T
-            self.leader_states[:-1] = np.einsum('ij,kj->ki', T, self.leader_states[:-1])
 
     def getUnitCircleTarget(self, pub, distance):
 
@@ -380,8 +358,7 @@ class tracking_node:
                print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
                print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
             print("self.target_status", self.target_status)
-            self.pubLeaderTraj(lTrajPub)
-
+            
             goal = self.getUnitCircleTarget(targetPub, distance=0.35)
 
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
@@ -389,6 +366,7 @@ class tracking_node:
             print('leader state',self.leader_state,'goal ', goal)
             print('----------------------------------------------')
 
+            self.pubLeaderTraj(lTrajPub)
             self.pubCmdVel(cmdVelPub, u[0], u[1])
             rate.sleep()
 
