@@ -112,7 +112,7 @@ class tracking_node:
         self.state        = np.zeros(3) # x,y,yaw
         self.state_last   = np.zeros(3)   
         self.velocity     = 0.0             
-        self.leader_state = np.zeros(2) # leader x,y
+        self.leader_state = np.zeros(2) # leader x,y,yaw
 
         # odom (global)
         self.states = []
@@ -161,12 +161,14 @@ class tracking_node:
 
     def multiAprilTagCallback(self, data):
         
-        count     = 0
-        num_tag   = 3
-        tag_space = 5
         multi_tag = data.data
-        leader_x  = 0.0
-        leader_y  = 0.0
+        # initialize
+        count      = 0
+        num_tag    = 3
+        tag_space  = 5
+        tag_x   = 0.0
+        tag_y   = 0.0
+        tag_phi = 0.0
         follower_indx   = 0
         cam_pose_offset = 0.03
 
@@ -177,14 +179,16 @@ class tracking_node:
                 y   = -(multi_tag[i+1]-cam_pose_offset)
                 phi = multi_tag[i+4]
                 id  = multi_tag[i]
-                infered_x, infered_y = self.transformTag2Middle(x,y,phi,id)
-                leader_x += infered_x
-                leader_y += infered_y
+                infered_x, infered_y, infered_phi = self.transformTag2Middle(x,y,phi,id)
+                tag_x   += infered_x
+                tag_y   += infered_y
+                tag_phi += infered_phi
         
         if (count != 0):
-            leader_x /= count
-            leader_y /= count
-            self.leader_state = np.array([leader_x, leader_y])
+            tag_x   /= count
+            tag_y   /= count
+            tag_phi /= count
+            self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
             self.leader_states.append(self.homoTrans2Global(self.leader_state))
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
@@ -192,15 +196,33 @@ class tracking_node:
         if (id%num_tag == 0):
             x1_hat = x + d*np.cos(-np.pi/2+alpha+0.2616)
             y1_hat = y + d*np.sin(-np.pi/2+alpha+0.2616)
-            return x1_hat, y1_hat
+            alpha  += 30/180*np.pi
+            return x1_hat, y1_hat, alpha
         
         if (id%num_tag == 2):
             x1_hat = x + d*np.cos(np.pi/2+alpha-0.2616)
             y1_hat = y + d*np.sin(np.pi/2+alpha-0.2616)
-            return x1_hat, y1_hat
+            alpha  -= 30/180*np.pi
+            return x1_hat, y1_hat, alpha
         
         else:
-            return x, y
+            return x, y, alpha
+    
+    def homoTrans2BotCenter(self, state):
+
+        del_theta = state[2]
+        del_pos   = state[:2]
+
+        rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
+                               [np.sin(del_theta), np.cos(del_theta)]]) 
+        trans_vec  = np.atleast_2d(del_pos).T   
+        T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])   
+
+        tags_2_bot_centor = np.array([0., 0.1])
+        homo_state = np.hstack([tags_2_bot_centor, 1.])
+        new_state = (T@homo_state)[:2]
+
+        return new_state       
 
     def homoTrans2Global(self, state):
 
@@ -210,8 +232,7 @@ class tracking_node:
         rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
                                [np.sin(del_theta), np.cos(del_theta)]]) 
         trans_vec  = np.atleast_2d(del_pos).T   
-        T = np.hstack([rot_matrix, trans_vec])
-        T = np.vstack([T, np.array([0.,0.,1.])])   
+        T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])   
 
         homo_state = np.hstack([state, 1.])
         new_state = (T@homo_state)[:2]
@@ -226,14 +247,13 @@ class tracking_node:
         rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
                             [np.sin(del_theta), np.cos(del_theta)]])
         trans_vec = np.atleast_2d(del_pos).T
-        T = np.hstack([rot_matrix, trans_vec])
-        T = np.vstack([T, np.array([0.,0.,1.])])
+        T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])
 
         ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
-        new_states = np.hstack([states, ones])
-        new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), new_states)
+        homo_states = np.hstack([states, ones])
+        new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), homo_states)[:,:2]
     
-        return new_states[:,:2]
+        return new_states
 
     def odometeryCallback(self, data):
         '''
