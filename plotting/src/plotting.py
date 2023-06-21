@@ -35,7 +35,8 @@ class plotting_node:
 
         rospy.Subscriber(leader_ns + "odom", Odometry, self.leaderOdomCallback, queue_size=1)
         rospy.Subscriber(follower_ns + "odom", Odometry, self.followerOdomCallback, queue_size=1)
-        rospy.Subscriber(follower_ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
+        # rospy.Subscriber(follower_ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
+        rospy.Subscriber(follower_ns + "l_traj", Float32MultiArray, self.leaderInferedTrajCallback, queue_size=1)
     
     def multiAprilTagCallback(self, data):
         
@@ -61,7 +62,6 @@ class plotting_node:
         
         if (count != 0):
             
-            print("count",count)
             leader_x /= count
             leader_y /= count
             self.leader_state_tag = self.homoTrans2Global(np.array([leader_x, leader_y]))
@@ -140,6 +140,11 @@ class plotting_node:
 
         self.follower_state = np.array([x, y, yaw])
         self.follower_states.append(self.follower_state)
+
+    def leaderInferedTrajCallback(self, data):
+        
+        self.leader_states_tag = np.reshape(list(data.data),(-1,2))
+        print(self.leader_states_tag)
         
     def plot(self, fig):
 
@@ -150,18 +155,20 @@ class plotting_node:
             f_len = len(self.follower_states)
             l_len = len(self.leader_states)
             il_len = len(self.leader_states_tag)
-            self.leader_states_local = self.homoInvTrans2Local(self.leader_states_tag)
+            # self.leader_states_local = self.homoInvTrans2Local(self.leader_states_tag)
 
             plt.cla()
             # plot odom trajectory
             plt.plot(np.array(self.follower_states)[0:f_len,0], np.array(self.follower_states)[0:f_len,1],marker='.',color='green')
             plt.plot(np.array(self.leader_states)[0:l_len,0]+distance, np.array(self.leader_states)[0:l_len,1],marker='.',color='red')
-            plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower")
-            plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader")
             # plot tag-infered trajecotry
             plt.plot(np.array(self.leader_states_tag)[0:il_len,0], np.array(self.leader_states_tag)[0:il_len,1],marker='.',color='orange')
+            #plt.plot(np.array(self.leader_states_local)[0:il_len,0], np.array(self.leader_states_local)[0:il_len,1],marker='.',color='black')
+
+            # plot current state
+            plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower")
+            plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader")
             plt.plot(np.array(self.leader_states_tag)[-1,0], np.array(self.leader_states_tag)[-1,1],marker='o',color='orange',label="infered")
-            plt.plot(np.array(self.leader_states_local)[0:il_len,0], np.array(self.leader_states_local)[0:il_len,1],marker='.',color='black')
 
             plt.axis('equal')
             plt.xlabel('x (m)')
