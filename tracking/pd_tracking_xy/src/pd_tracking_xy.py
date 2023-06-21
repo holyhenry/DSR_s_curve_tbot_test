@@ -250,7 +250,12 @@ class tracking_node:
         T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])
 
         ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
-        homo_states = np.hstack([states, ones])
+        try:
+            homo_states = np.hstack([states, ones])
+        except:
+            print('size mismatch!!')
+            ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
+            homo_states = np.hstack([states, ones])
         new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), homo_states)[:,:2]
     
         return new_states
@@ -306,6 +311,7 @@ class tracking_node:
 
             if np.linalg.norm(travel_length, ord=2)>=distance:
                 target = leader_traj[i][:]
+                print('get target at',len(leader_traj)-i)
                 self.target_status = 1
                 find_target = True
                 break
