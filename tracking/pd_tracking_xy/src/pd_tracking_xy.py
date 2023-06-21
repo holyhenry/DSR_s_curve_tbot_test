@@ -218,7 +218,7 @@ class tracking_node:
         trans_vec  = np.atleast_2d(del_pos).T   
         T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])   
 
-        tags_2_bot_centor = np.array([0., 0.1])
+        tags_2_bot_centor = np.array([0.14, 0.])
         homo_state = np.hstack([tags_2_bot_centor, 1.])
         new_state = (T@homo_state)[:2]
 
@@ -307,7 +307,7 @@ class tracking_node:
             if np.linalg.norm(travel_length, ord=2)>=distance:
                 target = leader_traj[i][:]
                 self.target_status = 1
-                find_target = False
+                find_target = True
                 break
 
         if not find_target:
