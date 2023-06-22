@@ -147,6 +147,12 @@ class tracking_node:
         pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
 
         return pub, pub_data, pub_target, pub_l_traj ,rate
+    
+    def checkInputs(self):
+
+        while not (len(self.states)>0 and len(self.leader_states)>0):
+
+            rospy.logwarn("waiting for data")
 
     def aprilTagCallback(self, data):
         '''
@@ -394,6 +400,7 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         ctrl  = PD(dt=dt, kp = 0.3, kd = 1.0, alpha=0.6)
+        self.checkInputs()
 
         while not rospy.is_shutdown():
 
