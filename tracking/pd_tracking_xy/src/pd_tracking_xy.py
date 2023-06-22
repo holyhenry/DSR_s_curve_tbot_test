@@ -285,8 +285,6 @@ class tracking_node:
         self.state    = np.array([self_x, self_y, self_yaw])
         self.states.append(self.state)
 
-        self.leader_states_local = self.homoInvTrans2Local(self.leader_states)
-
     def pubLeaderTraj(self, pub):
         
         infered_leader_traj = Float32MultiArray()
@@ -404,15 +402,16 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            print("self.target_status", self.target_status)
-            
-            # goal, getTarget = self.getBezierTarget(targetPub, distance=0.40)
+            self.leader_states_local = self.homoInvTrans2Local(self.leader_states)
 
-            #if not getTarget:
+            # goal, getTarget = self.getBezierTarget(targetPub, distance=0.40)
+            # if not getTarget:
             #    goal = self.getUnitCircleTarget(targetPub, distance=0.40)
             goal = self.getUnitCircleTarget(targetPub, distance=0.40)
+            
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             
+            print("self.target_status", self.target_status)
             print('leader state',self.leader_state,'goal ', goal)
             print('----------------------------------------------')
 
