@@ -347,7 +347,7 @@ class tracking_node:
         check_length = 150 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states_local)
 
-        while(indx<check_length):
+        while(indx<check_length and len(leader_traj)!=0):
             # dist = np.linalg.norm(self.state[:2]-leader_traj[-indx,:2], ord=2)
             dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
             
@@ -393,17 +393,17 @@ class tracking_node:
 
         # controller setups
         dt = 1.0/freq
-        ctrl  = PD(dt=dt, kp = 0.3, kd = 1.0, alpha=0.5)
+        ctrl  = PD(dt=dt, kp = 0.3, kd = 1.0, alpha=0.6)
 
         while not rospy.is_shutdown():
 
             print("self.target_status", self.target_status)
             
-            goal, getTarget = self.getBezierTarget(targetPub, distance=0.35)
+            # goal, getTarget = self.getBezierTarget(targetPub, distance=0.40)
 
-            if not getTarget:
-                goal = self.getUnitCircleTarget(targetPub, distance=0.35)
-
+            #if not getTarget:
+            #    goal = self.getUnitCircleTarget(targetPub, distance=0.40)
+            goal = self.getUnitCircleTarget(targetPub, distance=0.40)
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             
             print('leader state',self.leader_state,'goal ', goal)
