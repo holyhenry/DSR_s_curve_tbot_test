@@ -300,7 +300,7 @@ class tracking_node:
         twist.angular.z = ctrl_angular_vel
         pub.publish(twist)
 
-    def getUnitCircleTarget(self, pub, distance):
+    def getUnitCircleTarget(self, targetPub, distance):
 
         target = np.zeros(2)
         find_target = False
@@ -311,7 +311,6 @@ class tracking_node:
 
             if np.linalg.norm(travel_length, ord=2)>=distance:
                 target = leader_traj[i][:]
-                print('get target at',len(leader_traj)-i)
                 self.target_status = 1
                 find_target = True
                 break
@@ -328,41 +327,58 @@ class tracking_node:
             target[1] = self.leader_state[1] - distance*np.sin(theta)
             self.target_status = 0
 
-        # record topic 
-        target_point = Point()
-        target_point.x = target[0]
-        target_point.y = target[1]
-        pub.publish(target_point)
+        # record
+        target_global  = self.homoTrans2Global(target)
+        target_point   = Point()
+        target_point.x = target_global[0]
+        target_point.y = target_global[1]
+        target_point.z = self.target_status
+        targetPub.publish(target_point)
 
         return target
 
-    def getBezierTarget(self, distance):
+    def getBezierTarget(self, targetPub, distance):
         '''
         return: s_l(t)-s_f(t) and desired heading
         '''
-        indx = 1
+        indx   = 1
         target = np.zeros(2)
-        threshold = 5*1e-2
-        check_length = 300 # Use larger number if interbot_distance is longer
+        threshold    = 0.01
+        check_length = 150 # Might need a larger number if interbot distance is longer
+        leader_traj  = np.array(self.leader_states_local)
 
         while(indx<check_length):
-            dist = np.linalg.norm(self.state[:2]-self.leader_states[-indx,:2], ord=2)
+            # dist = np.linalg.norm(self.state[:2]-leader_traj[-indx,:2], ord=2)
+            dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
             
-            if (dist<=threshold or indx==len(self.leader_states)):
-                bezier_states = np.asfortranarray([np.append(self.state[0], self.leader_states[-indx:,0]),
-                                                   np.append(self.state[1], self.leader_states[-indx:,1])])
+            if (dist<=threshold or indx==len(leader_traj)):
+                # bezier_states = np.asfortranarray([np.append(self.state[0], leader_traj[-indx:,0]),
+                #                                    np.append(self.state[1], leader_traj[-indx:,1])])
+                bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
+                                                   np.append(0., leader_traj[-indx:,1])])
                 curve = bezier.Curve(bezier_states, degree=indx)
 
                 # evaluate a desired heading angle
-                x = (curve.evaluate(0.05).reshape(2)-self.state[:2])[0]
-                y = (curve.evaluate(0.05).reshape(2)-self.state[:2])[1]
+                # x = (curve.evaluate(0.05).reshape(2)-self.state[:2])[0]
+                # y = (curve.evaluate(0.05).reshape(2)-self.state[:2])[1]
+                x = (curve.evaluate(0.05).reshape(2))[0]
+                y = (curve.evaluate(0.05).reshape(2))[1]
                 theta_s = np.arctan2(y, x)
 
                 e_s = curve.length - distance
                 target[0] = e_s*np.cos(theta_s)
                 target[1] = e_s*np.sin(theta_s)
                 
-                self.ctrl_status = 2 if dist<=threshold else 3
+                self.target_status = 2 if dist<=threshold else 3
+
+                # record
+                target_global  = self.homoTrans2Global(target)
+                target_point   = Point()
+                target_point.x = target_global[0]
+                target_point.y = target_global[1]
+                target_point.z = self.target_status
+                targetPub.publish(target_point)
+
                 return target, True
             
             indx += 1
@@ -381,12 +397,12 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            if (len(self.leader_states)>0):
-               print('----------------------------------transformed leader start state :) index -1',self.leader_states[-1])
-               print('----------------------------------transformed leader start state :) index 0',self.leader_states[0])
             print("self.target_status", self.target_status)
             
-            goal = self.getUnitCircleTarget(targetPub, distance=0.35)
+            goal, getTarget = self.getBezierTarget(targetPub, distance=0.35)
+
+            if not getTarget:
+                goal = self.getUnitCircleTarget(targetPub, distance=0.35)
 
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             
