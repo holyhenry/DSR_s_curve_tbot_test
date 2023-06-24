@@ -347,7 +347,7 @@ class tracking_node:
         '''
         indx   = 1
         target = np.zeros(2)
-        threshold    = 0.01
+        threshold    = 0.03
         check_length = 150 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states_local)
 
@@ -404,16 +404,17 @@ class tracking_node:
 
             self.leader_states_local = self.homoInvTrans2Local(self.leader_states)
 
-            # goal, getTarget = self.getBezierTarget(targetPub, distance=0.40)
-            # if not getTarget:
-            #    goal = self.getUnitCircleTarget(targetPub, distance=0.40)
-            goal = self.getUnitCircleTarget(targetPub, distance=0.40)
+            goal, getTarget = self.getBezierTarget(targetPub, distance=0.40)
+            if not getTarget:
+               print('bezier fail')
+               goal = self.getUnitCircleTarget(targetPub, distance=0.40)
+            # goal = self.getUnitCircleTarget(targetPub, distance=0.40)
             
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             
-            print("self.target_status", self.target_status)
-            print('leader state',self.leader_state,'goal ', goal)
-            print('----------------------------------------------')
+            # print("self.target_status", self.target_status)
+            # print('leader state',self.leader_state,'goal ', goal)
+            # print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)
             self.pubCmdVel(cmdVelPub, u[0], u[1])

@@ -1,4 +1,5 @@
 import time
+import bezier
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,18 +16,22 @@ class plotting_node:
         self.cum_angle = 0.0
         self.leader_state = np.zeros(3)
         self.follower_state = np.zeros(3)
-        self.leader_state_tag = np.zeros(3)
+        self.leader_state_tag = np.zeros(2)
 
         # odom (global)
         self.leader_states = []
         self.follower_states = []
         # tag info global
         self.leader_states_tag = []
+        self.leader_states_tag_frombag = []
         # tag info local
         self.leader_states_local = []
 
+        # from rosbag
         self.tracking_target = np.zeros(2)
         self.tracking_target_type = -1
+
+        self.target_status = -1
 
     def initNode(self, freq):
 
@@ -37,18 +42,20 @@ class plotting_node:
 
         rospy.Subscriber(leader_ns + "odom", Odometry, self.leaderOdomCallback, queue_size=1)
         rospy.Subscriber(follower_ns + "odom", Odometry, self.followerOdomCallback, queue_size=1)
-        # rospy.Subscriber(follower_ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
+        rospy.Subscriber(follower_ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
         rospy.Subscriber(follower_ns + "l_traj", Float32MultiArray, self.leaderInferedTrajCallback, queue_size=1)
         rospy.Subscriber(follower_ns + "target", Point, self.trackingTargetCallback,queue_size=1)
-    
+
     def multiAprilTagCallback(self, data):
         
-        count     = 0
-        num_tag   = 3
-        tag_space = 5
         multi_tag = data.data
-        leader_x  = 0.0
-        leader_y  = 0.0
+        # initialize
+        count      = 0
+        num_tag    = 3
+        tag_space  = 5
+        tag_x   = 0.0
+        tag_y   = 0.0
+        tag_phi = 0.0
         follower_indx   = 0
         cam_pose_offset = 0.03
 
@@ -59,16 +66,50 @@ class plotting_node:
                 y   = -(multi_tag[i+1]-cam_pose_offset)
                 phi = multi_tag[i+4]
                 id  = multi_tag[i]
-                infered_x, infered_y = self.transformTag2Middle(x,y,phi,id)
-                leader_x += infered_x
-                leader_y += infered_y
+                infered_x, infered_y, infered_phi = self.transformTag2Middle(x,y,phi,id)
+                tag_x   += infered_x
+                tag_y   += infered_y
+                tag_phi += infered_phi
         
         if (count != 0):
-            
-            leader_x /= count
-            leader_y /= count
-            self.leader_state_tag = self.homoTrans2Global(np.array([leader_x, leader_y]))
-            self.leader_states_tag.append(self.leader_state_tag)
+            tag_x   /= count
+            tag_y   /= count
+            tag_phi /= count
+            self.leader_state_tag = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
+            self.leader_states_tag.append(self.homoTrans2Global(self.leader_state_tag))
+    
+    def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
+
+        if (id%num_tag == 0):
+            x1_hat = x + d*np.cos(-np.pi/2+alpha+0.2616)
+            y1_hat = y + d*np.sin(-np.pi/2+alpha+0.2616)
+            alpha  += 30/180*np.pi
+            return x1_hat, y1_hat, alpha
+        
+        if (id%num_tag == 2):
+            x1_hat = x + d*np.cos(np.pi/2+alpha-0.2616)
+            y1_hat = y + d*np.sin(np.pi/2+alpha-0.2616)
+            alpha  -= 30/180*np.pi
+            return x1_hat, y1_hat, alpha
+        
+        else:
+            return x, y, alpha
+           
+    def homoTrans2BotCenter(self, state):
+
+        del_theta = state[2]
+        del_pos   = state[:2]
+
+        rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
+                               [np.sin(del_theta), np.cos(del_theta)]]) 
+        trans_vec  = np.atleast_2d(del_pos).T   
+        T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])   
+
+        tags_2_bot_centor = np.array([0.14, 0.])
+        homo_state = np.hstack([tags_2_bot_centor, 1.])
+        new_state = (T@homo_state)[:2]
+
+        return new_state  
 
     def homoTrans2Global(self, state):
 
@@ -94,29 +135,18 @@ class plotting_node:
         rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
                             [np.sin(del_theta), np.cos(del_theta)]])
         trans_vec = np.atleast_2d(del_pos).T
-        T = np.hstack([rot_matrix, trans_vec])
-        T = np.vstack([T, np.array([0.,0.,1.])])
+        T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])
 
         ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
-        new_states = np.hstack([states, ones])
-        new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), new_states)
+        try:
+            homo_states = np.hstack([states, ones])
+        except:
+            print('size mismatch!!')
+            ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
+            homo_states = np.hstack([states, ones])
+        new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), homo_states)[:,:2]
     
-        return new_states[:,:2]
-
-    def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
-
-        if (id%num_tag == 0):
-            x1_hat = x + d*np.cos(-np.pi/2+alpha+0.2616)
-            y1_hat = y + d*np.sin(-np.pi/2+alpha+0.2616)
-            return x1_hat, y1_hat
-        
-        if (id%num_tag == 2):
-            x1_hat = x + d*np.cos(np.pi/2+alpha-0.2616)
-            y1_hat = y + d*np.sin(np.pi/2+alpha-0.2616)
-            return x1_hat, y1_hat
-        
-        else:
-            return x, y
+        return new_states
 
     def leaderOdomCallback(self, data):
 
@@ -146,43 +176,112 @@ class plotting_node:
 
     def leaderInferedTrajCallback(self, data):
         
-        self.leader_states_tag = np.reshape(list(data.data),(-1,2))
-        print('self.leader_states_tag.shape',self.leader_states_tag.shape)
+        self.leader_states_tag_frombag = np.reshape(list(data.data),(-1,2))
 
     def trackingTargetCallback(self, data):
 
         self.tracking_target[0] = data.x
         self.tracking_target[1] = data.y
         self.tracking_target_type = data.z
-        print('target type: ',self.tracking_target_type)
+
+    def getUnitCircleTarget(self, distance):
+
+        target = np.zeros(2)
+        find_target = False
+        leader_traj = np.array(self.leader_states_local)
+
+        for i in range(len(leader_traj)-1, -1, -1):
+            travel_length = leader_traj[i][:]-self.leader_state_tag[:]
+
+            if np.linalg.norm(travel_length, ord=2)>=distance:
+                target = leader_traj[i][:]
+                self.target_status = 1
+                find_target = True
+                break
+
+        if not find_target:
+            dx = self.leader_state_tag[0]
+            dy = self.leader_state_tag[1]
+            theta = np.arctan2(dy, dx)
+            target[0] = self.leader_state_tag[0] - distance*np.cos(theta)
+            target[1] = self.leader_state_tag[1] - distance*np.sin(theta)
+            self.target_status = 0
+
+        return target
+    
+    def getBezierTarget(self, distance):
+        '''
+        return: s_l(t)-s_f(t) and desired heading
+        '''
+        indx   = 1
+        target = np.zeros(2)
+        threshold    = 0.03
+        check_length = 150 # Might need a larger number if interbot distance is longer
+        leader_traj  = np.array(self.leader_states_local)
+
+        while(indx<check_length and len(leader_traj)!=0):
+            # dist = np.linalg.norm(self.state[:2]-leader_traj[-indx,:2], ord=2)
+            dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
+            
+            if (dist<=threshold or indx==len(leader_traj)):
+                print('match indx:',indx)
+                # bezier_states = np.asfortranarray([np.append(self.state[0], leader_traj[-indx:,0]),
+                #                                    np.append(self.state[1], leader_traj[-indx:,1])])
+                bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
+                                                   np.append(0., leader_traj[-indx:,1])])
+                curve = bezier.Curve(bezier_states, degree=indx)
+
+                # evaluate a desired heading angle
+                # x = (curve.evaluate(0.05).reshape(2)-self.state[:2])[0]
+                # y = (curve.evaluate(0.05).reshape(2)-self.state[:2])[1]
+                x = (curve.evaluate(0.05).reshape(2))[0]
+                y = (curve.evaluate(0.05).reshape(2))[1]
+                theta_s = np.arctan2(y, x)
+
+                e_s = curve.length - distance
+                target[0] = e_s*np.cos(theta_s)
+                target[1] = e_s*np.sin(theta_s)
+                
+                self.target_status = 2 if dist<=threshold else 3
+
+                return target, True
+            
+            indx += 1
+
+        # no feasible fitting point within the 'check_length'
+        return None, False
         
     def plot(self, fig):
 
-        distance = 0.35
+        distance = 0.40
+        
+        if (len(self.follower_states)>0 and len(self.leader_states)>0 and len(self.leader_states_tag)>0):
 
-        if len(self.follower_states) != 0 and len(self.leader_states) != 0:
+            f_len  = len(self.follower_states)
+            l_len  = len(self.leader_states)
+            il_len = len(self.leader_states_tag_frombag)
 
-            f_len = len(self.follower_states)
-            l_len = len(self.leader_states)
-            il_len = len(self.leader_states_tag)
-            # self.leader_states_local = self.homoInvTrans2Local(self.leader_states_tag)
+            self.leader_states_local = self.homoInvTrans2Local(self.leader_states_tag)
+            goal, getGoal = self.getBezierTarget(distance=distance)
+            if not getGoal:
+                print("bezier fail!!")
+                goal = self.getUnitCircleTarget(distance=distance)
+            goal_global = self.homoTrans2Global(goal)
+            print('target_status: ',self.target_status)
 
             plt.cla()
-
             # plot odom trajectory
             plt.plot(np.array(self.follower_states)[0:f_len,0], np.array(self.follower_states)[0:f_len,1],marker='.',color='green')
             plt.plot(np.array(self.leader_states)[0:l_len,0]+distance, np.array(self.leader_states)[0:l_len,1],marker='.',color='red')
-
             # plot tag-infered trajecotry
-            plt.plot(np.array(self.leader_states_tag)[0:il_len,0], np.array(self.leader_states_tag)[0:il_len,1],marker='.',color='orange')
-
+            plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='orange')
             # plot current state
-            plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower")
-            plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader")
-            plt.plot(np.array(self.leader_states_tag)[-1,0], np.array(self.leader_states_tag)[-1,1],marker='o',color='orange',label="infered")
-
+            plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower odom")
+            plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
+            plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="tag infered")
             # plot tracking target
-            plt.plot(self.tracking_target[0],self.tracking_target[1],marker='x',color='black',label='target') 
+            plt.plot(self.tracking_target[0],self.tracking_target[1],marker='x',color='black',label='recorded target') 
+            plt.plot(goal_global[0],goal_global[1],marker='x',color='red',label='computed target')
 
             plt.axis('equal')
             plt.xlabel('x (m)')
@@ -197,7 +296,7 @@ class plotting_node:
 
     def run(self):
 
-        freq = 20.0
+        freq = 10.0
         self.initNode(freq)
 
         # plotting setup
