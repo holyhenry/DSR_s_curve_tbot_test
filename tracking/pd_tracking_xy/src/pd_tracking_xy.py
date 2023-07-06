@@ -97,12 +97,66 @@ class PD:
         self.w = np.clip(self.w,-w_max,w_max)
         
         data.linear.z = self.w
-        dataPub.publish(data)
+        # dataPub.publish(data)
 
         self.ex_last = ex
         self.ey_last = ey
         self.w_last = self.w
         return np.array([self.v, self.w])
+    
+class Bezier:
+    
+    def __init__(self, x, y):
+        
+        self.x = x
+        self.y = y
+
+        self.CELLS = 100 # Total number of divisions for Bezier curve
+        self.t = np.linspace(0,1,self.CELLS) # Parametric variables
+
+        self.nCPTS = np.size(self.x,0) # Total number of control points
+        self.n = self.nCPTS - 1        # Total number of segments
+        self.i = 0                     # Control point counter
+        self.b = []                    # Collect Bernstein Basis Polynomial
+
+        self.BezierCurve = np.zeros((self.CELLS,2))
+        self.curveLength = 0.0
+        
+    def Ni(self): 
+        '''
+        Binomial Coefficients
+        '''
+        n = self.n
+        i = self.i
+        return np.math.factorial(n) / (np.math.factorial(i) * np.math.factorial(n-i))
+    
+    def basisFunction(self):
+        '''
+        Bernstein Basis Polynomial
+        '''
+        t = self.t
+        n = self.n
+        i = self.i
+        J = np.array(self.Ni() * (t**i) * ((1-t)**(n-i)))
+        return J
+    
+    def getBezier(self):
+        
+        for CPTS in range(0,self.nCPTS):
+            
+            self.b.append(self.basisFunction())
+            # Bezier curve calculation
+            self.BezierCurve[:,0] = self.basisFunction()*self.x[CPTS] + self.BezierCurve[:,0] # x
+            self.BezierCurve[:,1] = self.basisFunction()*self.y[CPTS] + self.BezierCurve[:,1] # y
+            self.i += 1
+            
+        return self.BezierCurve
+            
+    def getLength(self):
+        
+        self.curveLength = np.sum(np.sqrt(np.sum((self.BezierCurve[1:]-self.BezierCurve[:-1])**2,axis=1)))
+        
+        return self.curveLength
 
 class tracking_node:
 
@@ -139,7 +193,7 @@ class tracking_node:
         ns   = rospy.get_namespace()
 
         rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
-        rospy.Subscriber(ns + "april_data", Point, self.aprilTagCallback, queue_size=1)
+        # rospy.Subscriber(ns + "april_data", Point, self.aprilTagCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
         pub        = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
         pub_data   = rospy.Publisher(ns + "data", Twist, queue_size=1)
@@ -154,16 +208,16 @@ class tracking_node:
 
             rospy.logwarn("waiting for data")
 
-    def aprilTagCallback(self, data):
-        '''
-        robotOdom (+)x = aprilTag (+)z
-        robotOdom (+)y = aprilTag (-)(x-0.03m)
-        '''
-        cam_pose_offset = 0.03
-        leader_x = data.z
-        leader_y = -(data.x-cam_pose_offset)
-        self.leader_state = np.array([leader_x, leader_y])
-        self.leader_states.append(self.leader_state)
+    # def aprilTagCallback(self, data):
+    #     '''
+    #     robotOdom (+)x = aprilTag (+)z
+    #     robotOdom (+)y = aprilTag (-)(x-0.03m)
+    #     '''
+    #     cam_pose_offset = 0.03
+    #     leader_x = data.z
+    #     leader_y = -(data.x-cam_pose_offset)
+    #     self.leader_state = np.array([leader_x, leader_y])
+    #     self.leader_states.append(self.leader_state)
 
     def multiAprilTagCallback(self, data):
         
@@ -358,18 +412,24 @@ class tracking_node:
             if (dist<=threshold or indx==len(leader_traj)):
                 # bezier_states = np.asfortranarray([np.append(self.state[0], leader_traj[-indx:,0]),
                 #                                    np.append(self.state[1], leader_traj[-indx:,1])])
-                bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
-                                                   np.append(0., leader_traj[-indx:,1])])
-                curve = bezier.Curve(bezier_states, degree=indx)
+                # bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
+                #                                    np.append(0., leader_traj[-indx:,1])])
+                # curve = bezier.Curve(bezier_states, degree=indx)
+                bezier = Bezier(np.append(0., leader_traj[-indx:,0]),
+                                np.append(0., leader_traj[-indx:,1]))
+                curve = bezier.getBezier()
 
                 # evaluate a desired heading angle
                 # x = (curve.evaluate(0.05).reshape(2)-self.state[:2])[0]
                 # y = (curve.evaluate(0.05).reshape(2)-self.state[:2])[1]
-                x = (curve.evaluate(0.05).reshape(2))[0]
-                y = (curve.evaluate(0.05).reshape(2))[1]
+                # x = (curve.evaluate(0.05).reshape(2))[0]
+                # y = (curve.evaluate(0.05).reshape(2))[1]
+                x = curve[20,0]
+                y = curve[20,1]
                 theta_s = np.arctan2(y, x)
 
-                e_s = curve.length - distance
+                # e_s = curve.length - distance
+                e_s = bezier.getLength() - distance
                 target[0] = e_s*np.cos(theta_s)
                 target[1] = e_s*np.sin(theta_s)
                 

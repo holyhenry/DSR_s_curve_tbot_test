@@ -9,6 +9,60 @@ from geometry_msgs.msg import Twist, Point
 from std_msgs.msg import Float32, Float32MultiArray
 from nav_msgs.msg import Odometry
 
+class Bezier:
+    
+    def __init__(self, x, y):
+        
+        self.x = x
+        self.y = y
+
+        self.CELLS = 100 # Total number of divisions for Bezier curve
+        self.t = np.linspace(0,1,self.CELLS) # Parametric variables
+
+        self.nCPTS = np.size(self.x,0) # Total number of control points
+        self.n = self.nCPTS - 1        # Total number of segments
+        self.i = 0                     # Control point counter
+        self.b = []                    # Collect Bernstein Basis Polynomial
+
+        self.BezierCurve = np.zeros((self.CELLS,2))
+        self.curveLength = 0.0
+        
+    def Ni(self): 
+        '''
+        Binomial Coefficients
+        '''
+        n = self.n
+        i = self.i
+        return np.math.factorial(n) / (np.math.factorial(i) * np.math.factorial(n-i))
+    
+    def basisFunction(self):
+        '''
+        Bernstein Basis Polynomial
+        '''
+        t = self.t
+        n = self.n
+        i = self.i
+        J = np.array(self.Ni() * (t**i) * ((1-t)**(n-i)))
+        return J
+    
+    def getBezier(self):
+        
+        for CPTS in range(0,self.nCPTS):
+            
+            self.b.append(self.basisFunction())
+            # Bezier curve calculation
+            self.BezierCurve[:,0] = self.basisFunction()*self.x[CPTS] + self.BezierCurve[:,0] # x
+            self.BezierCurve[:,1] = self.basisFunction()*self.y[CPTS] + self.BezierCurve[:,1] # y
+            self.i += 1
+            
+        return self.BezierCurve
+            
+    def getLength(self):
+        
+        self.curveLength = np.sum(np.sqrt(np.sum((self.BezierCurve[1:]-self.BezierCurve[:-1])**2,axis=1)))
+        
+        return self.curveLength
+
 class plotting_node:
 
     def __init__(self) -> None:
@@ -231,6 +285,7 @@ class plotting_node:
                                                    np.append(0., leader_traj[-indx:,1])])
                 curve = bezier.Curve(bezier_states, degree=indx)
 
+
                 # evaluate a desired heading angle
                 # x = (curve.evaluate(0.05).reshape(2)-self.state[:2])[0]
                 # y = (curve.evaluate(0.05).reshape(2)-self.state[:2])[1]
@@ -250,7 +305,51 @@ class plotting_node:
 
         # no feasible fitting point within the 'check_length'
         return None, False
-        
+
+    def getBezierTarget_new(self, distance):
+        '''
+        return: s_l(t)-s_f(t) and desired heading
+        '''
+        indx   = 1
+        target = np.zeros(2)
+        threshold    = 0.03
+        check_length = 150 # Might need a larger number if interbot distance is longer
+        leader_traj  = np.array(self.leader_states_local)
+
+        while(indx<check_length and len(leader_traj)!=0):
+            # dist = np.linalg.norm(self.state[:2]-leader_traj[-indx,:2], ord=2)
+            dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
+            
+            if (dist<=threshold or indx==len(leader_traj)):
+                print('new bezier :), match indx:',indx)
+                # bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
+                #                                    np.append(0., leader_traj[-indx:,1])])
+                # curve = bezier.Curve(bezier_states, degree=indx)
+                bezier = Bezier(np.append(0., leader_traj[-indx:,0]),
+                                np.append(0., leader_traj[-indx:,1]))
+                curve = bezier.getBezier()
+
+                # evaluate a desired heading angle
+                # x = (curve.evaluate(0.05).reshape(2))[0]
+                # y = (curve.evaluate(0.05).reshape(2))[1]
+                x = curve[20,0]
+                y = curve[20,1]
+                theta_s = np.arctan2(y, x)
+
+                # e_s = curve.length - distance
+                e_s = bezier.getLength() - distance
+                target[0] = e_s*np.cos(theta_s)
+                target[1] = e_s*np.sin(theta_s)
+                
+                self.target_status = 2 if dist<=threshold else 3
+
+                return target, True
+            
+            indx += 1
+
+        # no feasible fitting point within the 'check_length'
+        return None, False
+
     def plot(self, fig):
 
         distance = 0.40
@@ -262,7 +361,7 @@ class plotting_node:
             il_len = len(self.leader_states_tag_frombag)
 
             self.leader_states_local = self.homoInvTrans2Local(self.leader_states_tag)
-            goal, getGoal = self.getBezierTarget(distance=distance)
+            goal, getGoal = self.getBezierTarget_new(distance=distance)
             if not getGoal:
                 print("bezier fail!!")
                 goal = self.getUnitCircleTarget(distance=distance)
