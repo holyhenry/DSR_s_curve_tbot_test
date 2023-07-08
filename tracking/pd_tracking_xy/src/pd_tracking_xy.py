@@ -175,6 +175,7 @@ class tracking_node:
         # tag info (local)
         self.leader_states_local = []
 
+        self.tag_read_last = np.zeros(2) # for filtering
         self.target_status = -1
         self.cum_angle = 0
 
@@ -208,6 +209,13 @@ class tracking_node:
 
             rospy.logwarn("waiting for data")
 
+    def lowPass(self,u,y_last):
+
+        lowPassGain = 0.95
+        y = lowPassGain*y_last + (1-lowPassGain)*u
+
+        return y
+
     # def aprilTagCallback(self, data):
     #     '''
     #     robotOdom (+)x = aprilTag (+)z
@@ -221,11 +229,11 @@ class tracking_node:
 
     def multiAprilTagCallback(self, data):
         
-        multi_tag = data.data
+        multi_tag  = data.data
         # initialize
-        count      = 0
-        num_tag    = 3
-        tag_space  = 5
+        count     = 0
+        num_tag   = 3
+        tag_space = 5
         tag_x   = 0.0
         tag_y   = 0.0
         tag_phi = 0.0
@@ -249,7 +257,10 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
+            # self.leader_state = self.lowPass(self.leader_state, self.tag_read_last)
             self.leader_states.append(self.homoTrans2Global(self.leader_state))
+
+            self.tag_read_last = self.leader_state
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
 

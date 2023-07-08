@@ -84,7 +84,8 @@ class plotting_node:
         # from rosbag
         self.tracking_target = np.zeros(2)
         self.tracking_target_type = -1
-
+        
+        self.tag_read_last = np.zeros(2) # for filtering
         self.target_status = -1
 
     def initNode(self, freq):
@@ -99,6 +100,14 @@ class plotting_node:
         rospy.Subscriber(follower_ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
         rospy.Subscriber(follower_ns + "l_traj", Float32MultiArray, self.leaderInferedTrajCallback, queue_size=1)
         rospy.Subscriber(follower_ns + "target", Point, self.trackingTargetCallback,queue_size=1)
+
+    def lowPass(self,u,y_last):
+
+        lowPassGain = 0.9
+        y = lowPassGain*y_last + (1-lowPassGain)*u
+        print('0.95')
+
+        return y
 
     def multiAprilTagCallback(self, data):
         
@@ -130,7 +139,10 @@ class plotting_node:
             tag_y   /= count
             tag_phi /= count
             self.leader_state_tag = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
+            # self.leader_state_tag = self.lowPass(self.leader_state_tag, self.tag_read_last)
             self.leader_states_tag.append(self.homoTrans2Global(self.leader_state_tag))
+
+            self.tag_read_last = self.leader_state_tag
     
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
 
@@ -359,6 +371,7 @@ class plotting_node:
             f_len  = len(self.follower_states)
             l_len  = len(self.leader_states)
             il_len = len(self.leader_states_tag_frombag)
+            ill_len = len(self.leader_states_tag)
 
             self.leader_states_local = self.homoInvTrans2Local(self.leader_states_tag)
             goal, getGoal = self.getBezierTarget_new(distance=distance)
@@ -374,6 +387,7 @@ class plotting_node:
             plt.plot(np.array(self.leader_states)[0:l_len,0]+distance, np.array(self.leader_states)[0:l_len,1],marker='.',color='red')
             # plot tag-infered trajecotry
             plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='orange')
+            plt.plot(np.array(self.leader_states_tag)[0:ill_len,0], np.array(self.leader_states_tag)[0:ill_len,1],marker='.',color='purple')
             # plot current state
             plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower odom")
             plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
