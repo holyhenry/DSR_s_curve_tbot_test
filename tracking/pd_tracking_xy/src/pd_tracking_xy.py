@@ -435,8 +435,8 @@ class tracking_node:
                 # y = (curve.evaluate(0.05).reshape(2)-self.state[:2])[1]
                 # x = (curve.evaluate(0.05).reshape(2))[0]
                 # y = (curve.evaluate(0.05).reshape(2))[1]
-                x = curve[20,0]
-                y = curve[20,1]
+                x = curve[10,0]
+                y = curve[10,1]
                 theta_s = np.arctan2(y, x)
 
                 # e_s = curve.length - distance
@@ -444,6 +444,8 @@ class tracking_node:
                 target[0] = e_s*np.cos(theta_s)
                 target[1] = e_s*np.sin(theta_s)
                 
+                print('match indx',indx)
+
                 self.target_status = 2 if dist<=threshold else 3
 
                 # record
@@ -483,7 +485,7 @@ class tracking_node:
             
             u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             
-            # print("self.target_status", self.target_status)
+            print("self.target_status", self.target_status)
             # print('leader state',self.leader_state,'goal ', goal)
             # print('----------------------------------------------')
 

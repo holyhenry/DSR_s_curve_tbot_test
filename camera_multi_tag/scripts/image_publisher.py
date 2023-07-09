@@ -16,7 +16,7 @@ cap = cv2.VideoCapture(4)
 br = CvBridge()
 
 while not rospy.is_shutdown():
-    print('rs~ ',rs.stream.accel)
+    #print('rs~ ',rs.stream.accel)
     ret, frame = cap.read()
     if ret == True:
         # Publish the image.
