@@ -550,8 +550,8 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         spacing = 0.4
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.6)
-        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.6, beta=0.5, dist=spacing)
+        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4)
+        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=0.5, dist=spacing)
 
         self.checkInputs()
 
@@ -560,16 +560,13 @@ class tracking_node:
             self.leader_states_local = self.homoInvTrans2Local(self.leader_states)
 
             goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=spacing)
-
+            #getTarget = False
             if not getTarget:
                 rospy.logwarn('bezier fail')
                 goal = self.getUnitCircleTarget(targetPub, distance=spacing)
                 u = ctrl_1.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             else:
-                # dsr(self, curve_length_s, theta_s, velocity, theta, leader_velocity):
                 u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state[:2])
-            # goal = self.getUnitCircleTarget(targetPub, distance=0.40)
-            # u = ctrl_1.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
 
             print("self.target_status", self.target_status)
             # print('leader state',self.leader_state,'goal ', goal)
