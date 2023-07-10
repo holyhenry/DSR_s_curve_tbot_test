@@ -1,16 +1,16 @@
 import numpy as np
-import bezier
+# import bezier
 
 # ros library
 import rospy
 from tf import transformations
 from geometry_msgs.msg import Twist, Point
-from std_msgs.msg import Float32, Float32MultiArray
+from std_msgs.msg import Float32MultiArray
 from nav_msgs.msg import Odometry
 
 class PD:
 
-    def __init__(self, dt, kp = 4.0, kd = 1.0, alpha=5.0):
+    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0):
 
         self.dt = dt
         self.alpha = alpha
@@ -28,12 +28,14 @@ class PD:
         self.v = 0.0
         self.w = 0.0
     
-    def lowPass(self,u,y_last):
+    def lowPass(self, y_current, y_last):
+
         lowPassGain = 0.95
-        y = lowPassGain*y_last + (1 - lowPassGain)*u
+        y = lowPassGain*y_last + (1 - lowPassGain)*y_current
         return y
 
-    def invMapGain(self,v,thre,a):
+    def invMapGain(self, v, thre, a):
+
         k = (1/thre)**a/thre
         if np.abs(v) >= thre:
             y = 1/v
@@ -48,6 +50,7 @@ class PD:
         return y
 
     def omegaLim(self, v):
+
         w_max = min(4*np.abs(v),1.58)
         return w_max
     
@@ -66,44 +69,128 @@ class PD:
 
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
-
-        data = Twist()
-        data.linear.x = ey
-        data.linear.y = ey_dot
         
         x_dot = self.v
         y_dot = 0
-        #self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
-        x_bar = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
-        
+        # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
         # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
+        x_bar = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
         y_bar = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
 
         # dynamic fb linearization map
         # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
                            # [np.sin(theta), tmp_vel*np.cos(theta)]])
                            
-        #self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
-        #self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
-
+        # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
+        # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
         self.v += (x_bar)*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
         self.w = self.invMapGain(velocity,0.05,1)*y_bar
-        w_max = self.omegaLim(velocity)
-        data.angular.x = w_max
-        data.angular.y = velocity
-
+        w_max  = self.omegaLim(velocity)
         self.w = np.clip(self.w,-w_max,w_max)
         
-        data.linear.z = self.w
+        # record
+        data = Twist()
+        data.linear.x  = ey
+        data.linear.y  = ey_dot
+        data.angular.x = w_max
+        data.angular.y = velocity
+        data.linear.z  = self.w
         # dataPub.publish(data)
 
         self.ex_last = ex
         self.ey_last = ey
-        self.w_last = self.w
+        self.w_last  = self.w
         return np.array([self.v, self.w])
     
+class DSR:
+
+    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, beta=0.5, dist=0.4):
+
+        self.dt    = dt
+        self.alpha = alpha
+        self.beta  = beta
+
+        self.kp = kp
+        self.kd = kd
+
+        self.x_dot_last = 0.0
+        self.y_dot_last = 0.0
+        
+        self.e_s_last = 0.0
+        self.e_x_last = 0.0
+        self.e_y_last = 0.0
+
+        self.v = 0.0
+        self.w = 0.0
+        
+        self.ctrl_status = 0
+        self.dist = dist # inter-robot distance
+        self.leader_state_last = np.zeros(2)
+
+    def lowPass(self, y_current, y_last, lowPassGain=0.5):
+
+        return lowPassGain*y_last + (1 - lowPassGain)*y_current
+    
+    def invMapGain(self, v, thre, a):
+
+        k = (1/thre)**a/thre
+        if np.abs(v) >= thre:
+            y = 1/v
+        else:
+            y = 1/thre
+        """ 
+        if v < 0:
+            y = -((-k*v)**(1/a))
+        else:
+            y = (k*v)**(1/a)
+        """
+        return y
+
+    def omegaLim(self, v):
+
+        w_max = min(4*np.abs(v),1.58)
+        return w_max
+    
+    def dsr(self, curve_length_s, theta_s, velocity, theta, leader_state):
+
+        leader_state = self.lowPass(leader_state, self.leader_state_last, lowPassGain=0.5)
+        leader_velocity = np.linalg.norm(leader_state - self.leader_state_last, ord=2)/self.dt
+
+        # equation (2)
+        e_s = curve_length_s - self.dist
+        e_s = self.lowPass(e_s, self.e_s_last)
+        sf_dot = self.beta*velocity + (1-self.beta)*leader_velocity + self.alpha*self.beta*e_s 
+
+        # equation (3)
+        x_dot = sf_dot*np.cos(theta_s)
+        y_dot = sf_dot*np.sin(theta_s)
+        # x_ddot = ((x_dot-self.x_dot_past)/self.dt + self.kp*x_dot) - self.kp*velocity*np.cos(theta)
+        # y_ddot = ((y_dot-self.y_dot_past)/self.dt + self.kp*y_dot) - self.kp*velocity*np.sin(theta)
+        x_bar = ((x_dot-self.x_dot_last)/self.dt + self.kp*x_dot) - self.kp*velocity*np.cos(theta)
+        y_bar = ((y_dot-self.y_dot_last)/self.dt + self.kp*y_dot) - self.kp*velocity*np.sin(theta)
+        
+        # # equation (4)
+        # aw_2_xy = np.array([[np.cos(theta), -velocity*np.sin(theta)],
+        #                     [np.sin(theta), velocity*np.cos(theta)]])
+        
+        # # equation (5)
+        # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.x_ddot, self.y_ddot]))[0]*self.dt
+        # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.x_ddot, self.y_ddot]))[1]
+        self.v += (x_bar)*self.dt
+        self.v = np.clip(self.v,-0.2,0.2)
+
+        self.w = self.invMapGain(velocity,0.05,1)*y_bar
+        w_max  = self.omegaLim(velocity)
+        self.w = np.clip(self.w,-w_max,w_max)
+        
+        self.e_s_last   = e_s
+        self.x_dot_last = x_dot
+        self.y_dot_last = y_dot
+        self.leader_state_last = leader_state
+        return np.array([self.v, self.w])
+
 class Bezier:
     
     def __init__(self, x, y):
@@ -193,8 +280,8 @@ class tracking_node:
         rate = rospy.Rate(int(freq))
         ns   = rospy.get_namespace()
 
-        rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
         # rospy.Subscriber(ns + "april_data", Point, self.aprilTagCallback, queue_size=1)
+        rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
         pub        = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
         pub_data   = rospy.Publisher(ns + "data", Twist, queue_size=1)
@@ -360,10 +447,11 @@ class tracking_node:
         
         ctrl_linear_vel  = np.clip(ctrl_linear_vel, -0.20, 0.20)
         ctrl_angular_vel = np.clip(ctrl_angular_vel, -1.58, 1.58)
+
         twist = Twist()
-        twist.linear.x = ctrl_linear_vel
-        twist.linear.y = 0.0
-        twist.linear.z = 0.0
+        twist.linear.x  = ctrl_linear_vel
+        twist.linear.y  = 0.0
+        twist.linear.z  = 0.0
         twist.angular.x = 0.0
         twist.angular.y = 0.0
         twist.angular.z = ctrl_angular_vel
@@ -385,13 +473,10 @@ class tracking_node:
                 break
 
         if not find_target:
-            #dx = self.state[0]-self.leader_state[0]
-            #dy = self.state[1]-self.leader_state[1]
-            dx = self.leader_state[0]
-            dy = self.leader_state[1]
+            dx    = self.leader_state[0]
+            dy    = self.leader_state[1]
             theta = np.arctan2(dy, dx)
-            #target[0] = self.leader_state[0] + distance*np.cos(theta)
-            #target[1] = self.leader_state[1] + distance*np.sin(theta)
+
             target[0] = self.leader_state[0] - distance*np.cos(theta)
             target[1] = self.leader_state[1] - distance*np.sin(theta)
             self.target_status = 0
@@ -417,12 +502,9 @@ class tracking_node:
         leader_traj  = np.array(self.leader_states_local)
 
         while(indx<check_length and len(leader_traj)!=0):
-            # dist = np.linalg.norm(self.state[:2]-leader_traj[-indx,:2], ord=2)
             dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
             
             if (dist<=threshold or indx==len(leader_traj)):
-                # bezier_states = np.asfortranarray([np.append(self.state[0], leader_traj[-indx:,0]),
-                #                                    np.append(self.state[1], leader_traj[-indx:,1])])
                 # bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
                 #                                    np.append(0., leader_traj[-indx:,1])])
                 # curve = bezier.Curve(bezier_states, degree=indx)
@@ -431,8 +513,6 @@ class tracking_node:
                 curve = bezier.getBezier()
 
                 # evaluate a desired heading angle
-                # x = (curve.evaluate(0.05).reshape(2)-self.state[:2])[0]
-                # y = (curve.evaluate(0.05).reshape(2)-self.state[:2])[1]
                 # x = (curve.evaluate(0.05).reshape(2))[0]
                 # y = (curve.evaluate(0.05).reshape(2))[1]
                 x = curve[10,0]
@@ -443,10 +523,9 @@ class tracking_node:
                 e_s = bezier.getLength() - distance
                 target[0] = e_s*np.cos(theta_s)
                 target[1] = e_s*np.sin(theta_s)
-                
-                print('match indx',indx)
-
+        
                 self.target_status = 2 if dist<=threshold else 3
+                print('bezier match indx',indx)
 
                 # record
                 target_global  = self.homoTrans2Global(target)
@@ -456,12 +535,12 @@ class tracking_node:
                 target_point.z = self.target_status
                 targetPub.publish(target_point)
 
-                return target, True
+                return target, theta_s, bezier.getLength(), True
             
             indx += 1
 
-        # no feasible fitting point within the 'check_length'
-        return None, False
+        # if no feasible fitting points within the 'check_length'
+        return None, None, None, False
 
     def run(self):
         
@@ -470,21 +549,28 @@ class tracking_node:
 
         # controller setups
         dt = 1.0/freq
-        ctrl  = PD(dt=dt, kp = 0.3, kd = 1.0, alpha=0.6)
+        spacing = 0.4
+        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.6)
+        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.6, beta=0.5, dist=spacing)
+
         self.checkInputs()
 
         while not rospy.is_shutdown():
 
             self.leader_states_local = self.homoInvTrans2Local(self.leader_states)
 
-            goal, getTarget = self.getBezierTarget(targetPub, distance=0.40)
+            goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=spacing)
+
             if not getTarget:
-               print('bezier fail')
-               goal = self.getUnitCircleTarget(targetPub, distance=0.40)
+                rospy.logwarn('bezier fail')
+                goal = self.getUnitCircleTarget(targetPub, distance=spacing)
+                u = ctrl_1.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
+            else:
+                # dsr(self, curve_length_s, theta_s, velocity, theta, leader_velocity):
+                u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state[:2])
             # goal = self.getUnitCircleTarget(targetPub, distance=0.40)
-            
-            u = ctrl.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
-            
+            # u = ctrl_1.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
+
             print("self.target_status", self.target_status)
             # print('leader state',self.leader_state,'goal ', goal)
             # print('----------------------------------------------')

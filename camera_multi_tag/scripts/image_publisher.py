@@ -1,8 +1,8 @@
 import rospy
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 import cv2
 import pyrealsense2 as rs
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 pub = rospy.Publisher('/camera/color/image_raw', Image, queue_size=2)
 rospy.init_node('image_publisher')
