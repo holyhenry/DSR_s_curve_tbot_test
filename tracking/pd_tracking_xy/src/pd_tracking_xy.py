@@ -168,8 +168,8 @@ class DSR:
         y_dot = sf_dot*np.sin(theta_s)
         # x_ddot = ((x_dot-self.x_dot_past)/self.dt + self.kp*x_dot) - self.kp*velocity*np.cos(theta)
         # y_ddot = ((y_dot-self.y_dot_past)/self.dt + self.kp*y_dot) - self.kp*velocity*np.sin(theta)
-        x_bar = ((x_dot-self.x_dot_last)/self.dt + self.kp*x_dot) - self.kp*velocity*np.cos(theta)
-        y_bar = ((y_dot-self.y_dot_last)/self.dt + self.kp*y_dot) - self.kp*velocity*np.sin(theta)
+        x_bar = ((x_dot-self.x_dot_last)/self.dt + self.kp*x_dot) - self.kp*velocity
+        y_bar = ((y_dot-self.y_dot_last)/self.dt + self.kp*y_dot)
         
         # # equation (4)
         # aw_2_xy = np.array([[np.cos(theta), -velocity*np.sin(theta)],
