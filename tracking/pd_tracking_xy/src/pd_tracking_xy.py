@@ -104,6 +104,57 @@ class PD:
         self.w_last  = self.w
         return np.array([self.v, self.w])
     
+    def pd_s(self, velocity, curve_length_s, theta_s):
+        '''
+        states are represented in follower local frame
+        '''
+        e_s = curve_length_s - 0.4
+        # p_actual  = state[:2]
+        # p_desired = goal[:2]
+        # theta     = state[2]
+        ex = e_s*np.cos(theta_s)
+        ey = e_s*np.sin(theta_s)
+
+        ex = self.lowPass(ex,self.ex_last, lowPassGain=0.95)
+        ey = self.lowPass(ey,self.ey_last, lowPassGain=0.95)
+
+        ex_dot = (ex - self.ex_last)/self.dt
+        ey_dot = (ey - self.ey_last)/self.dt
+        
+        x_dot = self.v
+        y_dot = 0
+        # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
+        # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
+        x_bar = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
+        y_bar = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
+
+        # dynamic fb linearization map
+        # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
+                           # [np.sin(theta), tmp_vel*np.cos(theta)]])
+                           
+        # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
+        # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
+        self.v += (x_bar)*self.dt
+        self.v = np.clip(self.v,-0.2,0.2)
+
+        self.w = self.invMapGain(velocity,0.05,1)*y_bar
+        w_max  = self.omegaLim(velocity)
+        self.w = np.clip(self.w,-w_max,w_max)
+        
+        # record
+        data = Twist()
+        data.linear.x  = ey
+        data.linear.y  = ey_dot
+        data.angular.x = w_max
+        data.angular.y = velocity
+        data.linear.z  = self.w
+        # dataPub.publish(data)
+
+        self.ex_last = ex
+        self.ey_last = ey
+        self.w_last  = self.w
+        return np.array([self.v, self.w])
+    
 class DSR:
 
     def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, beta=0.5, dist=0.4):
@@ -567,7 +618,7 @@ class tracking_node:
                 goal = self.getUnitCircleTarget(targetPub, distance=spacing)
                 u = ctrl_1.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             else:
-                u = ctrl_1.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
+                u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s)
                 #u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)
 
             print("self.target_status", self.target_status)
