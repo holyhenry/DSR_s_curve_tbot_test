@@ -71,6 +71,7 @@ class plotting_node:
         self.leader_state = np.zeros(3)
         self.follower_state = np.zeros(3)
         self.leader_state_tag = np.zeros(2)
+        self.leader_state_tag_global_last = np.zeros(2)
 
         # odom (global)
         self.leader_states = []
@@ -88,6 +89,8 @@ class plotting_node:
         self.tag_read_last = np.zeros(2) # for filtering
         self.target_status = -1
 
+        self.time_last = time.time()
+
     def initNode(self, freq):
 
         rospy.init_node('plotting_node')
@@ -101,13 +104,9 @@ class plotting_node:
         rospy.Subscriber(follower_ns + "l_traj", Float32MultiArray, self.leaderInferedTrajCallback, queue_size=1)
         rospy.Subscriber(follower_ns + "target", Point, self.trackingTargetCallback,queue_size=1)
 
-    def lowPass(self,u,y_last):
+    def lowPass(self, y_current, y_last, lowPassGain=0.5):
 
-        lowPassGain = 0.9
-        y = lowPassGain*y_last + (1-lowPassGain)*u
-        print('0.95')
-
-        return y
+        return lowPassGain*y_last + (1 - lowPassGain)*y_current
 
     def multiAprilTagCallback(self, data):
         
@@ -139,10 +138,19 @@ class plotting_node:
             tag_y   /= count
             tag_phi /= count
             self.leader_state_tag = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            # self.leader_state_tag = self.lowPass(self.leader_state_tag, self.tag_read_last)
-            self.leader_states_tag.append(self.homoTrans2Global(self.leader_state_tag))
-
+            self.leader_state_tag = self.lowPass(self.leader_state_tag, self.tag_read_last, lowPassGain=0.0)
             self.tag_read_last = self.leader_state_tag
+
+            now = time.time()
+            # rospy.loginfo(now-self.time_last)
+            leader_state_tag_global = self.homoTrans2Global(self.leader_state_tag)
+            infer_velocity = np.linalg.norm(leader_state_tag_global-self.leader_state_tag_global_last, ord=2)/(now-self.time_last)
+            rospy.loginfo(infer_velocity)
+
+            self.time_last = now
+            self.leader_state_tag_global_last = leader_state_tag_global
+
+            self.leader_states_tag.append(self.homoTrans2Global(self.leader_state_tag))
     
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
 
@@ -290,7 +298,7 @@ class plotting_node:
             dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
             
             if (dist<=threshold or indx==len(leader_traj)):
-                print('match indx:',indx)
+                
                 # bezier_states = np.asfortranarray([np.append(self.state[0], leader_traj[-indx:,0]),
                 #                                    np.append(self.state[1], leader_traj[-indx:,1])])
                 bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
@@ -333,7 +341,7 @@ class plotting_node:
             dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
             
             if (dist<=threshold or indx==len(leader_traj)):
-                print('new bezier :), match indx:',indx)
+                # print('new bezier :), match indx:',indx)
                 # bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
                 #                                    np.append(0., leader_traj[-indx:,1])])
                 # curve = bezier.Curve(bezier_states, degree=indx)
@@ -379,7 +387,7 @@ class plotting_node:
                 print("bezier fail!!")
                 goal = self.getUnitCircleTarget(distance=distance)
             goal_global = self.homoTrans2Global(goal)
-            print('target_status: ',self.target_status)
+            # print('target_status: ',self.target_status)
 
             plt.cla()
             # plot odom trajectory

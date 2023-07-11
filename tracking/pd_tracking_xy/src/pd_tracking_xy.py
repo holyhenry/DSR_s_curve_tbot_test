@@ -1,5 +1,5 @@
 import numpy as np
-# import bezier
+import time
 
 # ros library
 import rospy
@@ -28,10 +28,10 @@ class PD:
         self.v = 0.0
         self.w = 0.0
     
-    def lowPass(self, y_current, y_last):
-
-        lowPassGain = 0.95
+    def lowPass(self, y_current, y_last, lowPassGain = 0.95):
+        
         y = lowPassGain*y_last + (1 - lowPassGain)*y_current
+
         return y
 
     def invMapGain(self, v, thre, a):
@@ -160,8 +160,9 @@ class DSR:
 
         # equation (2)
         e_s = curve_length_s - self.dist
-        e_s = self.lowPass(e_s, self.e_s_last)
-        sf_dot = self.beta*velocity + (1-self.beta)*leader_velocity + self.alpha*self.beta*e_s 
+        e_s = self.lowPass(e_s, self.e_s_last, lowPassGain=0.0)
+        # sf_dot = self.beta*velocity + (1-self.beta)*leader_velocity + self.alpha*self.beta*e_s 
+        sf_dot = self.alpha*self.beta*e_s #+ velocity + self.beta*(e_s-self.e_s_last)/self.dt 
 
         # equation (3)
         x_dot = sf_dot*np.cos(theta_s)
@@ -170,7 +171,7 @@ class DSR:
         # y_ddot = ((y_dot-self.y_dot_past)/self.dt + self.kp*y_dot) - self.kp*velocity*np.sin(theta)
         x_bar = ((x_dot-self.x_dot_last)/self.dt + self.kp*x_dot) - self.kp*velocity
         y_bar = ((y_dot-self.y_dot_last)/self.dt + self.kp*y_dot)
-        
+
         # # equation (4)
         # aw_2_xy = np.array([[np.cos(theta), -velocity*np.sin(theta)],
         #                     [np.sin(theta), velocity*np.cos(theta)]])
@@ -551,7 +552,7 @@ class tracking_node:
         dt = 1.0/freq
         spacing = 0.4
         ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4)
-        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=0.5, dist=spacing)
+        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
         self.checkInputs()
 
@@ -566,7 +567,7 @@ class tracking_node:
                 goal = self.getUnitCircleTarget(targetPub, distance=spacing)
                 u = ctrl_1.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             else:
-                u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state[:2])
+                u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)
 
             print("self.target_status", self.target_status)
             # print('leader state',self.leader_state,'goal ', goal)
