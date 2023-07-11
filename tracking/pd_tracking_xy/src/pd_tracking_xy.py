@@ -14,12 +14,14 @@ class PD:
 
         self.dt = dt
         self.alpha = alpha
+        self.beta = 1.0 #TEST
         
         self.kp = kp
         self.kd = kd
 
         self.ex_last = 0.0
         self.ey_last = 0.0
+        self.es_last = 0.0
 
         self.ux_ddot = 0.0
         self.uy_ddot = 0.0
@@ -109,14 +111,13 @@ class PD:
         states are represented in follower local frame
         '''
         e_s = curve_length_s - 0.4
+        e_s = self.lowPass(e_s, self.es_last, lowPassGain=0.95)
+        e_s = self.alpha*e_s
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
         ex = e_s*np.cos(theta_s)
         ey = e_s*np.sin(theta_s)
-
-        ex = self.lowPass(ex,self.ex_last, lowPassGain=0.95)
-        ey = self.lowPass(ey,self.ey_last, lowPassGain=0.95)
 
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
@@ -125,8 +126,8 @@ class PD:
         y_dot = 0
         # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
         # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
-        x_bar = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
-        y_bar = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
+        x_bar = (ex_dot + self.kp*ex) - self.kp*x_dot
+        y_bar = (ey_dot + self.kp*ey) - self.kp*y_dot
 
         # dynamic fb linearization map
         # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
