@@ -111,14 +111,15 @@ class PD:
         states are represented in follower local frame
         '''
         e_s = curve_length_s - 0.4
-        e_s = self.lowPass(e_s, self.es_last, lowPassGain=0.95)
-        e_s = self.alpha*e_s
+        e_s = self.lowPass(e_s, self.es_last, lowPassGain=0.2)
+        e_s = self.alpha*e_s*self.beta + 0.4*(velocity + self.beta*(e_s - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
         ex = e_s*np.cos(theta_s)
         ey = e_s*np.sin(theta_s)
-
+        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.95)
+        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.95)
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
@@ -603,7 +604,7 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         spacing = 0.4
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4)
+        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.1)
         ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
         self.checkInputs()
