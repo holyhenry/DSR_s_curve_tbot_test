@@ -71,7 +71,6 @@ class plotting_node:
         self.leader_state = np.zeros(3)
         self.follower_state = np.zeros(3)
         self.leader_state_tag = np.zeros(2)
-        self.leader_state_tag_global_last = np.zeros(2)
 
         # odom (global)
         self.leader_states = []
@@ -89,7 +88,9 @@ class plotting_node:
         self.tag_read_last = np.zeros(2) # for filtering
         self.target_status = -1
 
-        self.time_last = time.time()
+        # Bezier curve
+        self.bezier_curve = np.zeros((1,2))
+
 
     def initNode(self, freq):
 
@@ -141,15 +142,6 @@ class plotting_node:
             self.leader_state_tag = self.lowPass(self.leader_state_tag, self.tag_read_last, lowPassGain=0.0)
             self.tag_read_last = self.leader_state_tag
 
-            now = time.time()
-            # rospy.loginfo(now-self.time_last)
-            leader_state_tag_global = self.homoTrans2Global(self.leader_state_tag)
-            infer_velocity = np.linalg.norm(leader_state_tag_global-self.leader_state_tag_global_last, ord=2)/(now-self.time_last)
-            rospy.loginfo(infer_velocity)
-
-            self.time_last = now
-            self.leader_state_tag_global_last = leader_state_tag_global
-
             self.leader_states_tag.append(self.homoTrans2Global(self.leader_state_tag))
     
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
@@ -200,8 +192,29 @@ class plotting_node:
         new_state = (T@homo_state)[:2]
 
         return new_state
+
+    def homoTransMulti2Global(self, states):
+
+        del_theta = self.follower_state[2]
+        del_pos   = self.follower_state[:2]
+
+        rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
+                               [np.sin(del_theta), np.cos(del_theta)]]) 
+        trans_vec  = np.atleast_2d(del_pos).T   
+        T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])   
+
+        ones   = np.atleast_2d(np.ones(np.array(states).shape[0])).T
+        try:
+            homo_states = np.hstack([states, ones])
+        except:
+            print('2Global: size mismatch!')
+            ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
+            homo_states = np.hstack([states, ones])
+        new_states = np.einsum('ij,kj->ki', T, homo_states)[:,:2]
+
+        return new_states
     
-    def homoInvTrans2Local(self, states):
+    def homoInvTransMulti2Local(self, states):
 
         del_theta = self.follower_state[2]
         del_pos   = self.follower_state[:2]
@@ -215,7 +228,7 @@ class plotting_node:
         try:
             homo_states = np.hstack([states, ones])
         except:
-            print('size mismatch!!')
+            print('2Local: size mismatch!')
             ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
             homo_states = np.hstack([states, ones])
         new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), homo_states)[:,:2]
@@ -363,12 +376,12 @@ class plotting_node:
                 
                 self.target_status = 2 if dist<=threshold else 3
 
-                return target, True
+                return target, curve, True
             
             indx += 1
 
         # no feasible fitting point within the 'check_length'
-        return None, False
+        return None, None, False
 
     def plot(self, fig):
 
@@ -376,31 +389,35 @@ class plotting_node:
         
         if (len(self.follower_states)>0 and len(self.leader_states)>0 and len(self.leader_states_tag)>0):
 
-            f_len  = len(self.follower_states)
-            l_len  = len(self.leader_states)
-            il_len = len(self.leader_states_tag_frombag)
+            f_len   = len(self.follower_states)
+            l_len   = len(self.leader_states)
+            il_len  = len(self.leader_states_tag_frombag)
             ill_len = len(self.leader_states_tag)
+            b_len   = len(self.bezier_curve)
 
-            self.leader_states_local = self.homoInvTrans2Local(self.leader_states_tag)
-            goal, getGoal = self.getBezierTarget_new(distance=distance)
+            self.leader_states_local = self.homoInvTransMulti2Local(self.leader_states_tag)
+            goal, self.bezier_curve, getGoal = self.getBezierTarget_new(distance=distance)
+            self.bezier_curve = self.homoTransMulti2Global(self.bezier_curve) # just for view
             if not getGoal:
-                print("bezier fail!!")
+                rospy.logwarn("bezier fail!!")
                 goal = self.getUnitCircleTarget(distance=distance)
             goal_global = self.homoTrans2Global(goal)
-            # print('target_status: ',self.target_status)
+            print('target_status: ',self.target_status)
 
             plt.cla()
-            # plot odom trajectory
+            '''plot odom trajectory'''
             plt.plot(np.array(self.follower_states)[0:f_len,0], np.array(self.follower_states)[0:f_len,1],marker='.',color='green')
             plt.plot(np.array(self.leader_states)[0:l_len,0]+distance, np.array(self.leader_states)[0:l_len,1],marker='.',color='red')
-            # plot tag-infered trajecotry
+            '''plot tag-infered trajecotry''' 
             plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='orange')
-            plt.plot(np.array(self.leader_states_tag)[0:ill_len,0], np.array(self.leader_states_tag)[0:ill_len,1],marker='.',color='purple')
-            # plot current state
+            # plt.plot(np.array(self.leader_states_tag)[0:ill_len,0], np.array(self.leader_states_tag)[0:ill_len,1],marker='.',color='purple',label="filtered tag infered")
+            '''plot current state'''
             plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower odom")
             plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
             plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="tag infered")
-            # plot tracking target
+            '''plot bezier curve'''
+            plt.plot(self.bezier_curve[0:b_len,0],self.bezier_curve[0:b_len,1],marker='.',color='lightcoral',label='computed bezier curve') 
+            '''plot tracking target'''
             plt.plot(self.tracking_target[0],self.tracking_target[1],marker='x',color='black',label='recorded target') 
             plt.plot(goal_global[0],goal_global[1],marker='x',color='red',label='computed target')
 
@@ -411,7 +428,7 @@ class plotting_node:
             plt.ylim(-3,1)
             plt.legend()
             plt.grid()
-            
+        
             fig.canvas.flush_events()
             time.sleep(0.05)
 

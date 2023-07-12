@@ -1,5 +1,4 @@
 import numpy as np
-import time
 
 # ros library
 import rospy
@@ -110,14 +109,14 @@ class PD:
         '''
         states are represented in follower local frame
         '''
-        e_s = curve_length_s - 0.4
-        e_s = self.lowPass(e_s, self.es_last, lowPassGain=0.2)
-        e_s = self.alpha*e_s*self.beta + 0.4*(velocity + self.beta*(e_s - self.es_last)/self.dt)
+        es = curve_length_s - 0.4
+        es = self.lowPass(es, self.es_last, lowPassGain=0.2)
+        es = self.alpha*es*self.beta + 0.0*(velocity + self.beta*(es - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
-        ex = e_s*np.cos(theta_s)
-        ey = e_s*np.sin(theta_s)
+        ex = es*np.cos(theta_s)
+        ey = es*np.sin(theta_s)
         ex = self.lowPass(ex, self.ex_last, lowPassGain=0.95)
         ey = self.lowPass(ey, self.ey_last, lowPassGain=0.95)
         ex_dot = (ex - self.ex_last)/self.dt
@@ -152,6 +151,7 @@ class PD:
         data.linear.z  = self.w
         # dataPub.publish(data)
 
+        self.es_last = es
         self.ex_last = ex
         self.ey_last = ey
         self.w_last  = self.w
@@ -451,7 +451,7 @@ class tracking_node:
 
         return new_state
     
-    def homoInvTrans2Local(self, states):
+    def homoInvTransMulti2Local(self, states):
 
         del_theta = self.state[2]
         del_pos   = self.state[:2]
@@ -569,8 +569,8 @@ class tracking_node:
                 # evaluate a desired heading angle
                 # x = (curve.evaluate(0.05).reshape(2))[0]
                 # y = (curve.evaluate(0.05).reshape(2))[1]
-                x = curve[10,0]
-                y = curve[10,1]
+                x = curve[20,0]
+                y = curve[20,1]
                 theta_s = np.arctan2(y, x)
 
                 # e_s = curve.length - distance
@@ -611,10 +611,10 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            self.leader_states_local = self.homoInvTrans2Local(self.leader_states)
-
+            self.leader_states_local = self.homoInvTransMulti2Local(self.leader_states)
             goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=spacing)
             #getTarget = False
+
             if not getTarget:
                 rospy.logwarn('bezier fail')
                 goal = self.getUnitCircleTarget(targetPub, distance=spacing)
