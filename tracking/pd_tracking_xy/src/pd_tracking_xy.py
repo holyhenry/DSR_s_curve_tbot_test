@@ -65,8 +65,8 @@ class PD:
 
         ex = p_desired[0]
         ey = p_desired[1]
-        ex = self.lowPass(ex,self.ex_last)
-        ey = self.lowPass(ey,self.ey_last)
+        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.5)
+        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.5)
 
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
@@ -117,8 +117,8 @@ class PD:
         # theta     = state[2]
         ex = es*np.cos(theta_s)
         ey = es*np.sin(theta_s)
-        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.95)
-        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.95)
+        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.3)
+        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.3)
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
@@ -138,7 +138,7 @@ class PD:
         self.v += (x_bar)*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
-        self.w = self.invMapGain(velocity,0.05,1)*y_bar
+        self.w = self.invMapGain(velocity,0.04,1)*y_bar
         w_max  = self.omegaLim(velocity)
         self.w = np.clip(self.w,-w_max,w_max)
         
@@ -232,7 +232,7 @@ class DSR:
         self.v += (x_bar)*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
-        self.w = self.invMapGain(velocity,0.05,1)*y_bar
+        self.w = self.invMapGain(velocity,0.04,1)*y_bar
         w_max  = self.omegaLim(velocity)
         self.w = np.clip(self.w,-w_max,w_max)
         
@@ -548,7 +548,7 @@ class tracking_node:
         '''
         indx   = 1
         target = np.zeros(2)
-        threshold    = 0.04
+        threshold    = 0.10
         check_length = 150 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states_local)
 
@@ -601,8 +601,8 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         spacing = 0.4
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4)
-        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
+        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.5)
+        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.5, beta=1.0, dist=spacing)
 
         self.checkInputs()
 
