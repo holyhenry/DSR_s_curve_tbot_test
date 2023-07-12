@@ -551,7 +551,7 @@ class tracking_node:
         '''
         indx   = 1
         target = np.zeros(2)
-        threshold    = 0.03
+        threshold    = 0.04
         check_length = 150 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states_local)
 
@@ -604,7 +604,7 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         spacing = 0.4
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.1)
+        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4)
         ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
         self.checkInputs()
