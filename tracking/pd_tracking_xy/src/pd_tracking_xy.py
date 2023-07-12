@@ -35,18 +35,18 @@ class PD:
 
         return y
 
-    def invMapGain(self, v, thre, a):
+    def invMapGain(self, vel, thre, a):
 
-        k = (1/thre)**a/thre
-        if np.abs(v) >= thre:
-            y = 1/v
+        if np.abs(vel) >= thre:
+            y = 1/vel
         else:
             y = 1/thre
         """ 
-        if v < 0:
-            y = -((-k*v)**(1/a))
+        k = (1/thre)**a/thre
+        if vel < 0:
+            y = -((-k*vel)**(1/a))
         else:
-            y = (k*v)**(1/a)
+            y = (k*vel)**(1/a)
         """
         return y
 
@@ -87,7 +87,7 @@ class PD:
         self.v += (x_bar)*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
-        self.w = self.invMapGain(velocity,0.05,1)*y_bar
+        self.w = self.invMapGain(velocity,0.04,1)*y_bar
         w_max  = self.omegaLim(velocity)
         self.w = np.clip(self.w,-w_max,w_max)
         
@@ -186,18 +186,18 @@ class DSR:
 
         return lowPassGain*y_last + (1 - lowPassGain)*y_current
     
-    def invMapGain(self, v, thre, a):
+    def invMapGain(self, vel, thre, a):
 
-        k = (1/thre)**a/thre
-        if np.abs(v) >= thre:
-            y = 1/v
+        if np.abs(vel) >= thre:
+            y = 1/vel
         else:
             y = 1/thre
         """ 
-        if v < 0:
-            y = -((-k*v)**(1/a))
+        k = (1/thre)**a/thre
+        if vel < 0:
+            y = -((-k*vel)**(1/a))
         else:
-            y = (k*v)**(1/a)
+            y = (k*vel)**(1/a)
         """
         return y
 
@@ -207,9 +207,6 @@ class DSR:
         return w_max
     
     def dsr(self, curve_length_s, theta_s, velocity, theta, leader_state):
-
-        leader_state = self.lowPass(leader_state, self.leader_state_last, lowPassGain=0.5)
-        leader_velocity = np.linalg.norm(leader_state - self.leader_state_last, ord=2)/self.dt
 
         # equation (2)
         e_s = curve_length_s - self.dist

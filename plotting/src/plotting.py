@@ -393,16 +393,18 @@ class plotting_node:
             l_len   = len(self.leader_states)
             il_len  = len(self.leader_states_tag_frombag)
             ill_len = len(self.leader_states_tag)
-            b_len   = len(self.bezier_curve)
 
             self.leader_states_local = self.homoInvTransMulti2Local(self.leader_states_tag)
             goal, self.bezier_curve, getGoal = self.getBezierTarget_new(distance=distance)
-            self.bezier_curve = self.homoTransMulti2Global(self.bezier_curve) # just for view
             if not getGoal:
                 rospy.logwarn("bezier fail!!")
                 goal = self.getUnitCircleTarget(distance=distance)
             goal_global = self.homoTrans2Global(goal)
             print('target_status: ',self.target_status)
+
+            if self.bezier_curve is not None:
+                self.bezier_curve = self.homoTransMulti2Global(self.bezier_curve) # just for view
+                b_len = len(self.bezier_curve)
 
             plt.cla()
             '''plot odom trajectory'''
@@ -416,7 +418,8 @@ class plotting_node:
             plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
             plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="tag infered")
             '''plot bezier curve'''
-            plt.plot(self.bezier_curve[0:b_len,0],self.bezier_curve[0:b_len,1],marker='.',color='lightcoral',label='computed bezier curve') 
+            if self.bezier_curve is not None:
+                plt.plot(self.bezier_curve[0:b_len,0],self.bezier_curve[0:b_len,1],marker='.',color='lightcoral',label='computed bezier curve')
             '''plot tracking target'''
             plt.plot(self.tracking_target[0],self.tracking_target[1],marker='x',color='black',label='recorded target') 
             plt.plot(goal_global[0],goal_global[1],marker='x',color='red',label='computed target')
