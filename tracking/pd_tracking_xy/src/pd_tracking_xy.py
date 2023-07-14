@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 
 class PD:
 
-    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0):
+    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, dist=0.4):
 
         self.dt = dt
         self.alpha = alpha
@@ -28,8 +28,10 @@ class PD:
 
         self.v = 0.0
         self.w = 0.0
+
+        self.dist = dist # inter-robot distance
     
-    def lowPass(self, y_current, y_last, lowPassGain = 0.95):
+    def lowPass(self, y_current, y_last, lowPassGain = 0.2):
         
         y = lowPassGain*y_last + (1 - lowPassGain)*y_current
 
@@ -55,7 +57,7 @@ class PD:
         w_max = min(4*np.abs(v),1.58)
         return w_max
     
-    def pd(self, states, velocity, goal, dataPub, leader_states):
+    def pd(self, velocity, goal, dataPub):
         '''
         states are represented in follower local frame
         '''
@@ -75,8 +77,8 @@ class PD:
         y_dot = 0
         # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
         # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
-        x_bar = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
-        y_bar = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
+        ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
+        uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
 
         # dynamic fb linearization map
         # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
@@ -84,10 +86,10 @@ class PD:
                            
         # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
         # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
-        self.v += (x_bar)*self.dt
+        self.v += (ux_ddot)*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
-        self.w = self.invMapGain(velocity,0.04,1)*y_bar
+        self.w = self.invMapGain(velocity,0.04,1)*uy_ddot
         w_max  = self.omegaLim(velocity)
         self.w = np.clip(self.w,-w_max,w_max)
         
@@ -109,14 +111,15 @@ class PD:
         '''
         states are represented in follower local frame
         '''
-        es = curve_length_s - 0.4
+        es = curve_length_s - self.dist
         es = self.lowPass(es, self.es_last, lowPassGain=0.2)
-        es = self.alpha*es*self.beta + 0.0*(velocity + self.beta*(es - self.es_last)/self.dt)
+        us_dot = self.alpha*es*self.beta + 0.1*(velocity + self.beta*(es - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
-        ex = es*np.cos(theta_s)
-        ey = es*np.sin(theta_s)
+
+        ex = us_dot*np.cos(theta_s)
+        ey = us_dot*np.sin(theta_s)
         ex = self.lowPass(ex, self.ex_last, lowPassGain=0.3)
         ey = self.lowPass(ey, self.ey_last, lowPassGain=0.3)
         ex_dot = (ex - self.ex_last)/self.dt
@@ -178,7 +181,6 @@ class DSR:
         self.v = 0.0
         self.w = 0.0
         
-        self.ctrl_status = 0
         self.dist = dist # inter-robot distance
         self.leader_state_last = np.zeros(2)
 
@@ -597,14 +599,14 @@ class tracking_node:
         
         freq = 10.0
         cmdVelPub, dataPub, targetPub, lTrajPub, rate = self.initNode(freq)
+        self.checkInputs()
 
         # controller setups
         dt = 1.0/freq
         spacing = 0.4
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4)
+        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=spacing)
         ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
-        self.checkInputs()
 
         while not rospy.is_shutdown():
 
@@ -615,7 +617,7 @@ class tracking_node:
             if not getTarget:
                 rospy.logwarn('bezier fail')
                 goal = self.getUnitCircleTarget(targetPub, distance=spacing)
-                u = ctrl_1.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
+                u = ctrl_1.pd(self.velocity, goal, dataPub)
             else:
                 u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, dataPub)
                 #u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)

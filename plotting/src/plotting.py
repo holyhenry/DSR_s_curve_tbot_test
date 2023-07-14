@@ -427,8 +427,8 @@ class plotting_node:
             plt.axis('equal')
             plt.xlabel('x (m)')
             plt.ylabel('y (m)')
-            # plt.xlim(-1,3)
-            # plt.ylim(-3,1)
+            plt.xlim(-1,3)
+            plt.ylim(-3,1)
             plt.legend()
             plt.grid()
         
