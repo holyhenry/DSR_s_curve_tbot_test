@@ -567,8 +567,8 @@ class tracking_node:
                 # evaluate a desired heading angle
                 # x = (curve.evaluate(0.05).reshape(2))[0]
                 # y = (curve.evaluate(0.05).reshape(2))[1]
-                x = curve[20,0]
-                y = curve[20,1]
+                x = curve[35,0]
+                y = curve[35,1]
                 theta_s = np.arctan2(y, x)
 
                 # e_s = curve.length - distance
