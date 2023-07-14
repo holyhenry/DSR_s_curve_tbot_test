@@ -113,7 +113,7 @@ class PD:
         '''
         es = curve_length_s - self.dist
         es = self.lowPass(es, self.es_last, lowPassGain=0.2)
-        us_dot = self.alpha*es*self.beta + 0.1*(velocity + self.beta*(es - self.es_last)/self.dt)
+        us_dot = self.alpha*es*self.beta + 0.0*(velocity + self.beta*(es - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
@@ -184,7 +184,7 @@ class DSR:
         self.dist = dist # inter-robot distance
         self.leader_state_last = np.zeros(2)
 
-    def lowPass(self, y_current, y_last, lowPassGain=0.5):
+    def lowPass(self, y_current, y_last, lowPassGain=0.2):
 
         return lowPassGain*y_last + (1 - lowPassGain)*y_current
     
@@ -349,10 +349,9 @@ class tracking_node:
 
             rospy.logwarn("waiting for data")
 
-    def lowPass(self,u,y_last):
-
-        lowPassGain = 0.95
-        y = lowPassGain*y_last + (1-lowPassGain)*u
+    def lowPass(self, y_current, y_last, lowPassGain = 0.2):
+        
+        y = lowPassGain*y_last + (1 - lowPassGain)*y_current
 
         return y
 
@@ -397,7 +396,7 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            # self.leader_state = self.lowPass(self.leader_state, self.tag_read_last)
+            self.leader_state = self.lowPass(self.leader_state, self.tag_read_last, lowPassGain=0.2)
             self.leader_states.append(self.homoTrans2Global(self.leader_state))
 
             self.tag_read_last = self.leader_state
