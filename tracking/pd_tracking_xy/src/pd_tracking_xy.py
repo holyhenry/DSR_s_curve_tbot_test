@@ -122,7 +122,7 @@ class PD:
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
-        x_dot = velocity
+        x_dot = self.v
         y_dot = 0
         # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
         # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
@@ -601,8 +601,8 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         spacing = 0.4
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.5)
-        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.5, beta=1.0, dist=spacing)
+        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4)
+        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
         self.checkInputs()
 
