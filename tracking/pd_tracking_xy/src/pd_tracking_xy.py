@@ -105,7 +105,7 @@ class PD:
         self.w_last  = self.w
         return np.array([self.v, self.w])
     
-    def pd_s(self, velocity, curve_length_s, theta_s):
+    def pd_s(self, velocity, curve_length_s, theta_s, dataPub):
         '''
         states are represented in follower local frame
         '''
@@ -122,7 +122,7 @@ class PD:
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
-        x_dot = self.v
+        x_dot = velocity
         y_dot = 0
         # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
         # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
@@ -144,12 +144,12 @@ class PD:
         
         # record
         data = Twist()
-        data.linear.x  = ey
-        data.linear.y  = ey_dot
-        data.angular.x = w_max
-        data.angular.y = velocity
-        data.linear.z  = self.w
-        # dataPub.publish(data)
+        data.linear.x  = es
+        data.linear.y  = self.es_last
+        data.linear.z  = 0.0
+        data.angular.x = 0.0
+        data.angular.y = 0.0
+        dataPub.publish(data)
 
         self.es_last = es
         self.ex_last = ex
@@ -617,7 +617,7 @@ class tracking_node:
                 goal = self.getUnitCircleTarget(targetPub, distance=spacing)
                 u = ctrl_1.pd(self.getStates(), self.velocity, goal, dataPub, self.getLeaderStates())
             else:
-                u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s)
+                u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, dataPub)
                 #u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)
 
             print("self.target_status", self.target_status)

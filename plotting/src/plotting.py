@@ -345,7 +345,7 @@ class plotting_node:
         '''
         indx   = 1
         target = np.zeros(2)
-        threshold    = 0.03
+        threshold    = 0.10
         check_length = 150 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states_local)
 
@@ -410,13 +410,13 @@ class plotting_node:
             '''plot odom trajectory'''
             plt.plot(np.array(self.follower_states)[0:f_len,0], np.array(self.follower_states)[0:f_len,1],marker='.',color='green')
             plt.plot(np.array(self.leader_states)[0:l_len,0]+distance, np.array(self.leader_states)[0:l_len,1],marker='.',color='red')
+            '''plot current state'''
+            plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
+            plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower odom")
+            plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="tag infered")
             '''plot tag-infered trajecotry''' 
             plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='orange')
             # plt.plot(np.array(self.leader_states_tag)[0:ill_len,0], np.array(self.leader_states_tag)[0:ill_len,1],marker='.',color='purple',label="filtered tag infered")
-            '''plot current state'''
-            plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower odom")
-            plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
-            plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="tag infered")
             '''plot bezier curve'''
             if self.bezier_curve is not None:
                 plt.plot(self.bezier_curve[0:b_len,0],self.bezier_curve[0:b_len,1],marker='.',color='lightcoral',label='computed bezier curve')
@@ -427,8 +427,8 @@ class plotting_node:
             plt.axis('equal')
             plt.xlabel('x (m)')
             plt.ylabel('y (m)')
-            plt.xlim(-1,3)
-            plt.ylim(-3,1)
+            # plt.xlim(-1,3)
+            # plt.ylim(-3,1)
             plt.legend()
             plt.grid()
         
