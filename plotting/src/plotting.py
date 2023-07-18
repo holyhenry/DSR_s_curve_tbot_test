@@ -162,7 +162,9 @@ class plotting_node:
             return x, y, alpha
            
     def homoTrans2BotCenter(self, state):
-
+        '''
+        single transform from tag pos to leader's geometric center
+        '''
         del_theta = state[2]
         del_pos   = state[:2]
 
@@ -178,7 +180,9 @@ class plotting_node:
         return new_state  
 
     def homoTrans2Global(self, state):
-
+        '''
+        single transform from local to global
+        '''
         del_theta = self.follower_state[2]
         del_pos   = self.follower_state[:2]
 
@@ -194,7 +198,9 @@ class plotting_node:
         return new_state
 
     def homoTransMulti2Global(self, states):
-
+        '''
+        multi transform from local to global
+        '''
         del_theta = self.follower_state[2]
         del_pos   = self.follower_state[:2]
 
@@ -215,7 +221,9 @@ class plotting_node:
         return new_states
     
     def homoInvTransMulti2Local(self, states):
-
+        '''
+        inverse multi transform from global to local
+        '''
         del_theta = self.follower_state[2]
         del_pos   = self.follower_state[:2]
 
@@ -352,6 +360,7 @@ class plotting_node:
         while(indx<check_length and len(leader_traj)!=0):
             # dist = np.linalg.norm(self.state[:2]-leader_traj[-indx,:2], ord=2)
             dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
+            print('indx:',indx,' dist:',dist)
             
             if (dist<=threshold or indx==len(leader_traj)):
                 # print('new bezier :), match indx:',indx)
@@ -413,10 +422,11 @@ class plotting_node:
             '''plot current state'''
             plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
             plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower odom")
-            plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="tag infered")
+            # plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="tag infered")
+            # plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='orange')
             '''plot tag-infered trajecotry''' 
-            plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='orange')
-            # plt.plot(np.array(self.leader_states_tag)[0:ill_len,0], np.array(self.leader_states_tag)[0:ill_len,1],marker='.',color='purple',label="filtered tag infered")
+            plt.plot(np.array(self.leader_states_tag)[-1,0], np.array(self.leader_states_tag)[-1,1],marker='o',color='orange')
+            plt.plot(np.array(self.leader_states_tag)[0:ill_len,0], np.array(self.leader_states_tag)[0:ill_len,1],marker='.',color='orange',label="tag infered (g=0)")
             '''plot bezier curve'''
             if self.bezier_curve is not None:
                 plt.plot(self.bezier_curve[0:b_len,0],self.bezier_curve[0:b_len,1],marker='.',color='lightcoral',label='computed bezier curve')

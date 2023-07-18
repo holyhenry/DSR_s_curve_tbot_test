@@ -305,15 +305,17 @@ class tracking_node:
         # current state (local)
         self.state        = np.zeros(3) # x,y,yaw
         self.state_last   = np.zeros(3)   
-        self.velocity     = 0.0             
-        self.leader_state = np.zeros(2) # leader x,y,yaw
+        self.velocity     = 0.0      
+
+        # leader stste (local)       
+        self.leader_state      = np.zeros(2) # leader x,y
+        self.leader_state_last = np.zeros(2) 
 
         # odom (global)
         self.states = []
         # tag info (local)
         self.leader_states = []
 
-        self.tag_read_last = np.zeros(2) # for filtering
         self.target_status = -1
         self.cum_angle = 0
 
@@ -394,10 +396,10 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            self.leader_state = self.lowPass(self.leader_state, self.tag_read_last, lowPassGain=0.2)
+            self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.2)
             self.leader_states.append(self.leader_state)
 
-            self.tag_read_last = self.leader_state
+            self.leader_state_last = self.leader_state
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
 
@@ -417,7 +419,9 @@ class tracking_node:
             return x, y, alpha
     
     def homoTrans2BotCenter(self, state):
-
+        '''
+        single transform from tag pos to leader's geometric center
+        '''
         del_theta = state[2]
         del_pos   = state[:2]
 
@@ -433,7 +437,9 @@ class tracking_node:
         return new_state       
 
     def homoTrans2Global(self, state):
-
+        '''
+        single transform from local to global
+        '''
         del_theta = self.state[2]
         del_pos   = self.state[:2]
 
@@ -448,7 +454,9 @@ class tracking_node:
         return new_state
     
     def homoInvTransMulti2Local(self, states):
-
+        '''
+        inverse multi transform from global to local
+        '''
         del_theta = self.state[2]
         del_pos   = self.state[:2]
 
@@ -462,6 +470,29 @@ class tracking_node:
             homo_states = np.hstack([states, ones])
         except:
             print('size mismatch!!')
+            ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
+            homo_states = np.hstack([states, ones])
+        new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), homo_states)[:,:2]
+    
+        return new_states
+    
+    def homoInvTransMultiUpdateLocal(self, states):
+        '''
+        inverse multi transform from last local to current local
+        '''
+        del_theta = self.state[2] - self.state_last[2]
+        del_pos   = self.state[:2] - self.state_last[:2]
+
+        rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
+                            [np.sin(del_theta), np.cos(del_theta)]])
+        trans_vec = np.atleast_2d(del_pos).T
+        T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])
+
+        ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
+        try:
+            homo_states = np.hstack([states, ones])
+        except:
+            print('UpdateLocal size mismatch!!')
             ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
             homo_states = np.hstack([states, ones])
         new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), homo_states)[:,:2]
@@ -485,7 +516,10 @@ class tracking_node:
 
         self.velocity = data.twist.twist.linear.x
         self.state    = np.array([self_x, self_y, self_yaw])
+        self.state    = self.lowPass(self.state, self.state_last, lowPassGain=0.0)
         self.states.append(self.state)
+
+        self.state_last = self.state
 
     def pubLeaderTraj(self, pub):
         
