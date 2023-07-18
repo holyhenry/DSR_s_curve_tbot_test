@@ -315,6 +315,8 @@ class tracking_node:
         self.states = []
         # tag info (local)
         self.leader_states = []
+        # tag info (global)
+        self.leader_states_global = []
 
         self.target_status = -1
         self.cum_angle = 0
@@ -345,7 +347,7 @@ class tracking_node:
     
     def checkInputs(self):
 
-        while not (len(self.states)>0 and len(self.leader_states)>0):
+        while not (len(self.states)>0 and len(self.leader_states_global)>0):
 
             rospy.logwarn("waiting for data")
 
@@ -397,7 +399,7 @@ class tracking_node:
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
             self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.2)
-            self.leader_states.append(self.leader_state)
+            self.leader_states_global.append(self.homoTrans2Global(self.leader_state))
 
             self.leader_state_last = self.leader_state
 
@@ -519,7 +521,7 @@ class tracking_node:
         self.state    = self.lowPass(self.state, self.state_last, lowPassGain=0.0)
         self.states.append(self.state)
     
-        self.leader_states = self.homoInvTransMultiUpdateLocal(self.leader_states).tolist()
+        # self.leader_states = self.homoInvTransMultiUpdateLocal(self.leader_states).tolist()
         
         self.state_last = self.state
 
@@ -644,6 +646,7 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
+            self.leader_states = self.homoInvTransMulti2Local(self.leader_states_global)
             goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=spacing)
             #getTarget = False
 
