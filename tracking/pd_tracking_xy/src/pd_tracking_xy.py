@@ -397,7 +397,8 @@ class tracking_node:
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
             self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.2)
-            self.leader_states.append(self.leader_state)
+            # self.leader_states.append(self.leader_state)
+            np.append(self.leader_states, self.leader_state)
 
             self.leader_state_last = self.leader_state
 
