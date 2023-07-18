@@ -113,7 +113,7 @@ class PD:
         '''
         es = curve_length_s - self.dist
         es = self.lowPass(es, self.es_last, lowPassGain=0.5)
-        us_dot = self.alpha*es*self.beta + 0.4*(self.v + self.beta*(es - self.es_last)/self.dt)
+        us_dot = self.alpha*es*self.beta + 0.0*(self.v + self.beta*(es - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
@@ -148,8 +148,8 @@ class PD:
         # record
         data = Twist()
         data.linear.x  = es
-        data.linear.y  = self.es_last
-        data.linear.z  = 0.0
+        data.linear.y  = ex
+        data.linear.z  = ey
         data.angular.x = 0.0
         data.angular.y = 0.0
         dataPub.publish(data)
@@ -553,7 +553,7 @@ class tracking_node:
 
         while(indx<check_length and len(leader_traj)!=0):
             dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
-            
+            print('indx dist',indx, dist)
             if (dist<=threshold or indx==len(leader_traj)):
                 # bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
                 #                                    np.append(0., leader_traj[-indx:,1])])
@@ -565,8 +565,8 @@ class tracking_node:
                 # evaluate a desired heading angle
                 # x = (curve.evaluate(0.05).reshape(2))[0]
                 # y = (curve.evaluate(0.05).reshape(2))[1]
-                x = curve[40,0]
-                y = curve[40,1]
+                x = curve[35,0]
+                y = curve[35,1]
                 theta_s = np.arctan2(y, x)
 
                 # e_s = curve.length - distance
@@ -608,7 +608,7 @@ class tracking_node:
         while not rospy.is_shutdown():
 
             goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=spacing)
-            getTarget = False
+            #getTarget = False
 
             if not getTarget:
                 rospy.logwarn('bezier fail')
