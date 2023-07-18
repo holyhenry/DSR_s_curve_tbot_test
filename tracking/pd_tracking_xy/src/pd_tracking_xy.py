@@ -310,10 +310,8 @@ class tracking_node:
 
         # odom (global)
         self.states = []
-        # tag info (global)
-        self.leader_states = []
         # tag info (local)
-        self.leader_states_local = []
+        self.leader_states = []
 
         self.tag_read_last = np.zeros(2) # for filtering
         self.target_status = -1
@@ -397,7 +395,7 @@ class tracking_node:
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
             self.leader_state = self.lowPass(self.leader_state, self.tag_read_last, lowPassGain=0.2)
-            self.leader_states.append(self.homoTrans2Global(self.leader_state))
+            self.leader_states.append(self.leader_state)
 
             self.tag_read_last = self.leader_state
 
@@ -513,7 +511,7 @@ class tracking_node:
 
         target = np.zeros(2)
         find_target = False
-        leader_traj = np.array(self.leader_states_local)
+        leader_traj = np.array(self.leader_states)
 
         for i in range(len(leader_traj)-1, -1, -1):
             travel_length = leader_traj[i][:]-self.leader_state[:]
@@ -551,7 +549,7 @@ class tracking_node:
         target = np.zeros(2)
         threshold    = 0.10
         check_length = 150 # Might need a larger number if interbot distance is longer
-        leader_traj  = np.array(self.leader_states_local)
+        leader_traj  = np.array(self.leader_states)
 
         while(indx<check_length and len(leader_traj)!=0):
             dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
@@ -609,7 +607,6 @@ class tracking_node:
 
         while not rospy.is_shutdown():
 
-            self.leader_states_local = self.homoInvTransMulti2Local(self.leader_states)
             goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=spacing)
             getTarget = False
 
