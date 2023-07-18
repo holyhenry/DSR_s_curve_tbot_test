@@ -519,7 +519,9 @@ class tracking_node:
         self.state    = self.lowPass(self.state, self.state_last, lowPassGain=0.0)
         self.states.append(self.state)
 
+        self.leader_states = self.homoInvTransMultiUpdateLocal(self.leader_states)
         self.state_last = self.state
+
 
     def pubLeaderTraj(self, pub):
         
