@@ -96,11 +96,11 @@ class PD:
         # record
         data = Twist()
         data.linear.x  = ey
-        data.linear.y  = ey_dot
-        data.angular.x = w_max
-        data.angular.y = velocity
-        data.linear.z  = self.w
-        # dataPub.publish(data)
+        data.linear.y  = ex
+        data.angular.x = ey_dot
+        data.angular.y = ex_dot
+        data.linear.z  = 0.0
+        dataPub.publish(data)
 
         self.ex_last = ex
         self.ey_last = ey
@@ -112,8 +112,8 @@ class PD:
         states are represented in follower local frame
         '''
         es = curve_length_s - self.dist
-        es = self.lowPass(es, self.es_last, lowPassGain=0.2)
-        us_dot = self.alpha*es*self.beta + 0.0*(velocity + self.beta*(es - self.es_last)/self.dt)
+        es = self.lowPass(es, self.es_last, lowPassGain=0.5)
+        us_dot = self.alpha*es*self.beta + 0.4*(self.v + self.beta*(es - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
@@ -567,8 +567,8 @@ class tracking_node:
                 # evaluate a desired heading angle
                 # x = (curve.evaluate(0.05).reshape(2))[0]
                 # y = (curve.evaluate(0.05).reshape(2))[1]
-                x = curve[35,0]
-                y = curve[35,1]
+                x = curve[40,0]
+                y = curve[40,1]
                 theta_s = np.arctan2(y, x)
 
                 # e_s = curve.length - distance
@@ -611,7 +611,7 @@ class tracking_node:
 
             self.leader_states_local = self.homoInvTransMulti2Local(self.leader_states)
             goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=spacing)
-            #getTarget = False
+            getTarget = False
 
             if not getTarget:
                 rospy.logwarn('bezier fail')
