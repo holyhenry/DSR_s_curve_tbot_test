@@ -519,8 +519,10 @@ class tracking_node:
         self.state    = np.array([self_x, self_y, self_yaw])
         self.state    = self.lowPass(self.state, self.state_last, lowPassGain=0.0)
         self.states.append(self.state)
-
+        
+        print("self.leader_states",self.leader_states,type(self.leader_states))
         self.leader_states = self.homoInvTransMultiUpdateLocal(self.leader_states)
+        
         self.state_last = self.state
 
 
