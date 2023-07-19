@@ -67,8 +67,8 @@ class PD:
 
         ex = p_desired[0]
         ey = p_desired[1]
-        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.5)
-        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.5)
+        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.2)
+        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.2)
 
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
@@ -400,10 +400,9 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            #self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=1.0)
-            
+            # self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=1.0)
             self.leader_states_global.append(self.homoTrans2Global(self.leader_state))
-            
+
             self.leader_state_last = self.leader_state
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):

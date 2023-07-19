@@ -395,7 +395,7 @@ class plotting_node:
 
     def plot(self, fig):
 
-        distance = 0.40
+        distance = 0.50
         
         if (len(self.follower_states)>0 and len(self.leader_states)>0 and len(self.leader_states_tag)>0):
 
@@ -406,15 +406,16 @@ class plotting_node:
 
             self.leader_states_local = self.homoInvTransMulti2Local(self.leader_states_tag)
             goal, self.bezier_curve, getGoal = self.getBezierTarget_new(distance=distance)
-            if not getGoal:
-                rospy.logwarn("bezier fail!!")
-                goal = self.getUnitCircleTarget(distance=distance)
-            goal_global = self.homoTrans2Global(goal)
-            print('target_status: ',self.target_status)
+            # if not getGoal:
+            #     rospy.logwarn("bezier fail!!")
+            #     goal = self.getUnitCircleTarget(distance=distance)
 
             if self.bezier_curve is not None:
                 self.bezier_curve = self.homoTransMulti2Global(self.bezier_curve) # just for view
                 b_len = len(self.bezier_curve)
+            # print('target_status:', self.target_status)
+
+            print('target_status from bag: ',self.tracking_target_type)
 
             plt.cla()
             '''plot odom trajectory'''
@@ -433,7 +434,7 @@ class plotting_node:
                 plt.plot(self.bezier_curve[0:b_len,0],self.bezier_curve[0:b_len,1],marker='.',color='lightcoral',label='computed bezier curve')
             '''plot tracking target'''
             plt.plot(self.tracking_target[0],self.tracking_target[1],marker='x',color='black',label='recorded target') 
-            plt.plot(goal_global[0],goal_global[1],marker='x',color='red',label='computed target')
+            # plt.plot(goal_global[0],goal_global[1],marker='x',color='red',label='computed target')
 
             plt.axis('equal')
             plt.xlabel('x (m)')
