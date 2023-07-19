@@ -112,16 +112,16 @@ class PD:
         states are represented in follower local frame
         '''
         es = curve_length_s - self.dist
-        es = self.lowPass(es, self.es_last, lowPassGain=0.5)
-        us_dot = self.alpha*es*self.beta + 0.0*(self.v + self.beta*(es - self.es_last)/self.dt)
+        es = self.lowPass(es, self.es_last, lowPassGain=0.8)
+        us_dot = self.alpha*es*self.beta + 0.8*(self.v + self.beta*(es - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
 
         ex = us_dot*np.cos(theta_s)
         ey = us_dot*np.sin(theta_s)
-        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.3)
-        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.3)
+        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.8)
+        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.8)
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
@@ -518,7 +518,7 @@ class tracking_node:
 
         self.velocity = data.twist.twist.linear.x
         self.state    = np.array([self_x, self_y, self_yaw])
-        self.state    = self.lowPass(self.state, self.state_last, lowPassGain=0.0)
+        #self.state    = self.lowPass(self.state, self.state_last, lowPassGain=0.0)
         self.states.append(self.state)
     
         # self.leader_states = self.homoInvTransMultiUpdateLocal(self.leader_states).tolist()
@@ -586,13 +586,13 @@ class tracking_node:
         '''
         indx   = 1
         target = np.zeros(2)
-        threshold    = 0.10
+        threshold    = 0.08
         check_length = 150 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states)
 
         while(indx<check_length and len(leader_traj)!=0):
             dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
-            print('indx dist',indx, dist)
+
             if (dist<=threshold or indx==len(leader_traj)):
                 # bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
                 #                                    np.append(0., leader_traj[-indx:,1])])
@@ -604,8 +604,8 @@ class tracking_node:
                 # evaluate a desired heading angle
                 # x = (curve.evaluate(0.05).reshape(2))[0]
                 # y = (curve.evaluate(0.05).reshape(2))[1]
-                x = curve[35,0]
-                y = curve[35,1]
+                x = curve[25,0]
+                y = curve[25,1]
                 theta_s = np.arctan2(y, x)
 
                 # e_s = curve.length - distance
@@ -614,7 +614,6 @@ class tracking_node:
                 target[1] = e_s*np.sin(theta_s)
         
                 self.target_status = 2 if dist<=threshold else 3
-                print('bezier match indx',indx)
 
                 # record
                 target_global  = self.homoTrans2Global(target)
@@ -640,7 +639,7 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         spacing = 0.4
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=spacing)
+        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.1, dist=spacing)
         ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
 
