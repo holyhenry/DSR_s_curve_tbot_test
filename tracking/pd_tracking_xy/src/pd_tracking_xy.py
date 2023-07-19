@@ -31,9 +31,9 @@ class PD:
 
         self.dist = dist # inter-robot distance
     
-    def lowPass(self, y_current, y_last, lowPassGain = 0.2):
+    def lowPass(self, u, y_last, lowPassGain = 0.2):
         
-        y = lowPassGain*y_last + (1 - lowPassGain)*y_current
+        y = lowPassGain*u + (1-lowPassGain)*y_last 
 
         return y
 
@@ -67,8 +67,8 @@ class PD:
 
         ex = p_desired[0]
         ey = p_desired[1]
-        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.5)
-        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.5)
+        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.2)
+        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.2)
 
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
@@ -112,7 +112,7 @@ class PD:
         states are represented in follower local frame
         '''
         es = curve_length_s - self.dist
-        es = self.lowPass(es, self.es_last, lowPassGain=0.8)
+        es = self.lowPass(es, self.es_last, lowPassGain=0.2)
         us_dot = self.alpha*es*self.beta + 0.8*(self.v + self.beta*(es - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
@@ -120,8 +120,8 @@ class PD:
 
         ex = us_dot*np.cos(theta_s)
         ey = us_dot*np.sin(theta_s)
-        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.8)
-        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.8)
+        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
+        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
@@ -184,9 +184,11 @@ class DSR:
         self.dist = dist # inter-robot distance
         self.leader_state_last = np.zeros(2)
 
-    def lowPass(self, y_current, y_last, lowPassGain=0.2):
+    def lowPass(self, u, y_last, lowPassGain = 0.2):
+        
+        y = lowPassGain*u + (1-lowPassGain)*y_last 
 
-        return lowPassGain*y_last + (1 - lowPassGain)*y_current
+        return y
     
     def invMapGain(self, vel, thre, a):
 
@@ -212,7 +214,7 @@ class DSR:
 
         # equation (2)
         e_s = curve_length_s - self.dist
-        e_s = self.lowPass(e_s, self.e_s_last, lowPassGain=0.0)
+        e_s = self.lowPass(e_s, self.e_s_last, lowPassGain=0.2)
         # sf_dot = self.beta*velocity + (1-self.beta)*leader_velocity + self.alpha*self.beta*e_s 
         sf_dot = self.alpha*self.beta*e_s #+ velocity + self.beta*(e_s-self.e_s_last)/self.dt 
 
@@ -351,9 +353,9 @@ class tracking_node:
 
             rospy.logwarn("waiting for data")
 
-    def lowPass(self, y_current, y_last, lowPassGain = 0.2):
+    def lowPass(self, u, y_last, lowPassGain = 0.2):
         
-        y = lowPassGain*y_last + (1 - lowPassGain)*y_current
+        y = lowPassGain*u + (1-lowPassGain)*y_last 
 
         return y
 
@@ -477,29 +479,6 @@ class tracking_node:
         new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), homo_states)[:,:2]
     
         return new_states
-    
-    def homoInvTransMultiUpdateLocal(self, states):
-        '''
-        inverse multi transform from last local to current local
-        '''
-        del_theta = self.state[2] - self.state_last[2]
-        del_pos   = self.state[:2] - self.state_last[:2]
-
-        rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
-                            [np.sin(del_theta), np.cos(del_theta)]])
-        trans_vec = np.atleast_2d(del_pos).T
-        T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])
-
-        ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
-        try:
-            homo_states = np.hstack([states, ones])
-        except:
-            print('UpdateLocal size mismatch!!')
-            ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
-            homo_states = np.hstack([states, ones])
-        new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), homo_states)[:,:2]
-    
-        return new_states
 
     def odometeryCallback(self, data):
         '''
@@ -520,11 +499,8 @@ class tracking_node:
         self.state    = np.array([self_x, self_y, self_yaw])
         #self.state    = self.lowPass(self.state, self.state_last, lowPassGain=0.0)
         self.states.append(self.state)
-    
-        # self.leader_states = self.homoInvTransMultiUpdateLocal(self.leader_states).tolist()
         
         self.state_last = self.state
-
 
     def pubLeaderTraj(self, pub):
         
@@ -658,7 +634,6 @@ class tracking_node:
                 #u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)
 
             print("self.target_status", self.target_status)
-            # print('leader state',self.leader_state,'goal ', goal)
             # print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)

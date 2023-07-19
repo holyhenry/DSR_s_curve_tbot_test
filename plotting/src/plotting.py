@@ -272,6 +272,7 @@ class plotting_node:
     def leaderInferedTrajCallback(self, data):
         
         self.leader_states_tag_frombag = np.reshape(list(data.data),(-1,2))
+        self.leader_states_tag_frombag = self.homoTransMulti2Global(self.leader_states_tag_frombag)
 
     def trackingTargetCallback(self, data):
 
@@ -422,8 +423,8 @@ class plotting_node:
             '''plot current state'''
             plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
             plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower odom")
-            # plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="tag infered")
-            # plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='orange')
+            # plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='purple',label="local infered")
+            # plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='purple')
             '''plot tag-infered trajecotry''' 
             plt.plot(np.array(self.leader_states_tag)[-1,0], np.array(self.leader_states_tag)[-1,1],marker='o',color='orange')
             plt.plot(np.array(self.leader_states_tag)[0:ill_len,0], np.array(self.leader_states_tag)[0:ill_len,1],marker='.',color='orange',label="tag infered (g=0)")
