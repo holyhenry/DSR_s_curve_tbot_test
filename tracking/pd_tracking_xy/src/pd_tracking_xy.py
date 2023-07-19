@@ -113,7 +113,7 @@ class PD:
         '''
         es = curve_length_s - self.dist
         es = self.lowPass(es, self.es_last, lowPassGain=0.2)
-        us_dot = self.alpha*es*self.beta + 0.8*(self.v + self.beta*(es - self.es_last)/self.dt)
+        us_dot = self.alpha*es*self.beta + 0.0*(self.v + self.beta*(es - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
@@ -615,7 +615,7 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         spacing = 0.4
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.1, dist=spacing)
+        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=spacing)
         ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
 
