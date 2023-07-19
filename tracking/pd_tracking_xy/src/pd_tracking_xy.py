@@ -67,8 +67,8 @@ class PD:
 
         ex = p_desired[0]
         ey = p_desired[1]
-        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.2)
-        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.2)
+        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.5)
+        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.5)
 
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
@@ -400,11 +400,9 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.2)
+            #self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=1.0)
             
-            if np.linalg.norm(self.leader_state-self.leader_state_last,ord=2)>=0.01:
-                self.leader_states_global.append(self.homoTrans2Global(self.leader_state))
-            print("leader states:",len(self.leader_states_global))
+            self.leader_states_global.append(self.homoTrans2Global(self.leader_state))
             
             self.leader_state_last = self.leader_state
 
@@ -500,7 +498,7 @@ class tracking_node:
 
         self.velocity = data.twist.twist.linear.x
         self.state    = np.array([self_x, self_y, self_yaw])
-        #self.state    = self.lowPass(self.state, self.state_last, lowPassGain=0.0)
+        #self.state    = self.lowPass(self.state, self.state_last, lowPassGain=1.0)
         self.states.append(self.state)
         
         self.state_last = self.state
@@ -617,7 +615,7 @@ class tracking_node:
 
         # controller setups
         dt = 1.0/freq
-        spacing = 0.4
+        spacing = 0.5
         ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=spacing)
         ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
