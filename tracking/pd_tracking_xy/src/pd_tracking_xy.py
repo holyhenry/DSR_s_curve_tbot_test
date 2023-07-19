@@ -401,8 +401,11 @@ class tracking_node:
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
             self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.2)
-            self.leader_states_global.append(self.homoTrans2Global(self.leader_state))
-
+            
+            if np.linalg.norm(self.leader_state-self.leader_state_last,ord=2)>=0.01:
+                self.leader_states_global.append(self.homoTrans2Global(self.leader_state))
+            print("leader states:",len(self.leader_states_global))
+            
             self.leader_state_last = self.leader_state
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
