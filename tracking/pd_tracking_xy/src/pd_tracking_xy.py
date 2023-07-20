@@ -493,8 +493,8 @@ class tracking_node:
         '''
         multi transform from local to global
         '''
-        del_theta = self.follower_state[2]
-        del_pos   = self.follower_state[:2]
+        del_theta = self.state[2]
+        del_pos   = self.state[:2]
 
         rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
                                [np.sin(del_theta), np.cos(del_theta)]]) 
