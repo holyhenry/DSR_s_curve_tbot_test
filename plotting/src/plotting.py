@@ -306,49 +306,6 @@ class plotting_node:
             self.target_status = 0
 
         return target
-    
-    def getBezierTarget(self, distance):
-        '''
-        return: s_l(t)-s_f(t) and desired heading
-        '''
-        indx   = 1
-        target = np.zeros(2)
-        threshold    = 0.03
-        check_length = 150 # Might need a larger number if interbot distance is longer
-        leader_traj  = np.array(self.leader_states_local)
-
-        while(indx<check_length and len(leader_traj)!=0):
-            # dist = np.linalg.norm(self.state[:2]-leader_traj[-indx,:2], ord=2)
-            dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
-            
-            if (dist<=threshold or indx==len(leader_traj)):
-                
-                # bezier_states = np.asfortranarray([np.append(self.state[0], leader_traj[-indx:,0]),
-                #                                    np.append(self.state[1], leader_traj[-indx:,1])])
-                bezier_states = np.asfortranarray([np.append(0., leader_traj[-indx:,0]),
-                                                   np.append(0., leader_traj[-indx:,1])])
-                curve = bezier.Curve(bezier_states, degree=indx)
-
-
-                # evaluate a desired heading angle
-                # x = (curve.evaluate(0.05).reshape(2)-self.state[:2])[0]
-                # y = (curve.evaluate(0.05).reshape(2)-self.state[:2])[1]
-                x = (curve.evaluate(0.05).reshape(2))[0]
-                y = (curve.evaluate(0.05).reshape(2))[1]
-                theta_s = np.arctan2(y, x)
-
-                e_s = curve.length - distance
-                target[0] = e_s*np.cos(theta_s)
-                target[1] = e_s*np.sin(theta_s)
-                
-                self.target_status = 2 if dist<=threshold else 3
-
-                return target, True
-            
-            indx += 1
-
-        # no feasible fitting point within the 'check_length'
-        return None, False
 
     def getBezierTarget_new(self, distance):
         '''
@@ -357,13 +314,12 @@ class plotting_node:
         indx   = 1
         target = np.zeros(2)
         threshold    = 0.10
-        check_length = 150 # Might need a larger number if interbot distance is longer
+        check_length = 200 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states_local)
 
         while(indx<check_length and len(leader_traj)!=0):
             # dist = np.linalg.norm(self.state[:2]-leader_traj[-indx,:2], ord=2)
             dist = np.linalg.norm(leader_traj[-indx,:2], ord=2)
-            print('indx:',indx,' dist:',dist)
             
             if (dist<=threshold or indx==len(leader_traj)):
                 # print('new bezier :), match indx:',indx)

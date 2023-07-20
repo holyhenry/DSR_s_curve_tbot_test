@@ -120,8 +120,8 @@ class PD:
 
         ex = us_dot*np.cos(theta_s)
         ey = us_dot*np.sin(theta_s)
-        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
-        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
+        # ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
+        # ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
@@ -595,7 +595,7 @@ class tracking_node:
         indx   = 1
         target = np.zeros(2)
         threshold    = 0.08
-        check_length = 150 # Might need a larger number if interbot distance is longer
+        check_length = 200 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states)
 
         while(indx<check_length and len(leader_traj)!=0):
