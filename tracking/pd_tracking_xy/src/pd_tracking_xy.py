@@ -327,10 +327,6 @@ class tracking_node:
 
         return np.array(self.leader_states).copy()
 
-    def getStates(self):
-
-        return np.array(self.states).copy()
-
     def initNode(self, freq):
 
         rospy.init_node('pd_tracking_xy')
@@ -346,12 +342,25 @@ class tracking_node:
         pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
 
         return pub, pub_data, pub_target, pub_l_traj ,rate
-    
+
     def checkInputs(self):
 
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
-
             rospy.logwarn("waiting for data")
+        
+        self.leader_states_global = self.interpInitLeaderStates(N=50)
+
+    def interpInitLeaderStates(self, N=50):
+        '''
+        linear interpolate leader's global trajectory at start
+        '''
+        start = np.zeros(2)
+        goal  = self.leader_state
+        xInterp = np.linspace(start[0], goal[0], N)
+        yInterp = np.interp(xInterp, [start[0],goal[0]], [start[1],goal[1]])
+        leader_states = self.homoTransMulti2Global(np.array([xInterp, yInterp]).T)
+
+        return leader_states.tolist()
 
     def lowPass(self, u, y_last, lowPassGain = 0.2):
         
@@ -478,6 +487,29 @@ class tracking_node:
             homo_states = np.hstack([states, ones])
         new_states = np.einsum('ij,kj->ki', np.linalg.inv(T), homo_states)[:,:2]
     
+        return new_states
+    
+    def homoTransMulti2Global(self, states):
+        '''
+        multi transform from local to global
+        '''
+        del_theta = self.follower_state[2]
+        del_pos   = self.follower_state[:2]
+
+        rot_matrix = np.array([[np.cos(del_theta), -np.sin(del_theta)],
+                               [np.sin(del_theta), np.cos(del_theta)]]) 
+        trans_vec  = np.atleast_2d(del_pos).T   
+        T = np.vstack([np.hstack([rot_matrix, trans_vec]), np.array([0.,0.,1.])])   
+
+        ones   = np.atleast_2d(np.ones(np.array(states).shape[0])).T
+        try:
+            homo_states = np.hstack([states, ones])
+        except:
+            print('2Global: size mismatch!')
+            ones = np.atleast_2d(np.ones(np.array(states).shape[0])).T
+            homo_states = np.hstack([states, ones])
+        new_states = np.einsum('ij,kj->ki', T, homo_states)[:,:2]
+
         return new_states
 
     def odometeryCallback(self, data):
