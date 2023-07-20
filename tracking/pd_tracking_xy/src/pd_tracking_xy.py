@@ -537,7 +537,7 @@ class tracking_node:
     def pubLeaderTraj(self, pub):
         
         infered_leader_traj = Float32MultiArray()
-        infered_leader_traj.data = self.getLeaderStates().flatten()
+        infered_leader_traj.data = self.getLeaderGlobalStates().flatten()
         pub.publish(infered_leader_traj)
         
     def pubCmdVel(self, pub, ctrl_linear_vel=0.0, ctrl_angular_vel=0.0):
