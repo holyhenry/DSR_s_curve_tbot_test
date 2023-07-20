@@ -323,9 +323,9 @@ class tracking_node:
         self.target_status = -1
         self.cum_angle = 0
 
-    def getLeaderStates(self):
+    def getLeaderGlobalStates(self):
 
-        return np.array(self.leader_states).copy()
+        return np.array(self.leader_states_global).copy()
 
     def initNode(self, freq):
 
@@ -348,7 +348,7 @@ class tracking_node:
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
             rospy.logwarn("waiting for data")
         
-        self.leader_states_global = self.interpInitLeaderStates(N=50)
+        self.leader_states_global = self.interpInitLeaderStates(N=70)
 
     def interpInitLeaderStates(self, N=50):
         '''
