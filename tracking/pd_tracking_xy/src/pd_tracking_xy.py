@@ -120,8 +120,8 @@ class PD:
 
         ex = us_dot*np.cos(theta_s)
         ey = us_dot*np.sin(theta_s)
-        # ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
-        # ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
+        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
+        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
@@ -182,7 +182,6 @@ class DSR:
         self.w = 0.0
         
         self.dist = dist # inter-robot distance
-        self.leader_state_last = np.zeros(2)
 
     def lowPass(self, u, y_last, lowPassGain = 0.2):
         
@@ -210,7 +209,7 @@ class DSR:
         w_max = min(4*np.abs(v),1.58)
         return w_max
     
-    def dsr(self, curve_length_s, theta_s, velocity, theta, leader_state):
+    def dsr(self, curve_length_s, theta_s, velocity, theta):
 
         # equation (2)
         e_s = curve_length_s - self.dist
@@ -243,7 +242,6 @@ class DSR:
         self.e_s_last   = e_s
         self.x_dot_last = x_dot
         self.y_dot_last = y_dot
-        self.leader_state_last = leader_state
         return np.array([self.v, self.w])
 
 class Bezier:
@@ -304,14 +302,14 @@ class tracking_node:
 
     def __init__(self) -> None:
 
-        # current state (local)
-        self.state        = np.zeros(3) # x,y,yaw
+        # current state (local x,y,yaw)
+        self.state        = np.zeros(3) 
         self.state_last   = np.zeros(3)   
         self.velocity     = 0.0      
 
-        # leader stste (local)       
-        self.leader_state      = np.zeros(2) # leader x,y
-        self.leader_state_last = np.zeros(2) 
+        # leader stste (local x,y)       
+        self.leader_state             = np.zeros(2) 
+        self.leader_state_global_last = np.zeros(2) 
 
         # odom (global)
         self.states = []
@@ -408,11 +406,13 @@ class tracking_node:
             tag_x   /= count
             tag_y   /= count
             tag_phi /= count
-            self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            # self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=1.0)
-            self.leader_states_global.append(self.homoTrans2Global(self.leader_state))
+            self.leader_state   = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
+            leader_state_global = self.homoTrans2Global(self.leader_state)
 
-            self.leader_state_last = self.leader_state
+            if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.002:
+                self.leader_states_global.append(leader_state_global)
+
+            self.leader_state_global_last = leader_state_global
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
 
@@ -641,7 +641,7 @@ class tracking_node:
     def run(self):
         
         freq = 10.0
-        cmdVelPub, dataPub, targetPub, lTrajPub, rate = self.initNode(freq)
+        cmdVelPub, ctrlDataPub, targetPub, lTrajPub, rate = self.initNode(freq)
         self.checkInputs()
 
         # controller setups
@@ -660,9 +660,9 @@ class tracking_node:
             if not getTarget:
                 rospy.logwarn('bezier fail')
                 goal = self.getUnitCircleTarget(targetPub, distance=spacing)
-                u = ctrl_1.pd(self.velocity, goal, dataPub)
+                u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
             else:
-                u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, dataPub)
+                u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
                 #u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)
 
             print("self.target_status", self.target_status)
