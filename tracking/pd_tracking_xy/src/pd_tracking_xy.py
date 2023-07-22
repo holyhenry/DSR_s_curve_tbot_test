@@ -120,8 +120,8 @@ class PD:
 
         ex = us_dot*np.cos(theta_s)
         ey = us_dot*np.sin(theta_s)
-        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
-        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
+        #ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
+        #ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
@@ -388,7 +388,7 @@ class tracking_node:
         tag_y   = 0.0
         tag_phi = 0.0
         follower_indx   = 0
-        cam_pose_offset = 0.03
+        cam_pose_offset = 0.025
 
         for i in range(len(multi_tag)):
             if (i%tag_space == 0 and (multi_tag[i]//num_tag == follower_indx)):
@@ -408,8 +408,8 @@ class tracking_node:
             tag_phi /= count
             self.leader_state   = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
             leader_state_global = self.homoTrans2Global(self.leader_state)
-
-            if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.002:
+            
+            if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
                 self.leader_states_global.append(leader_state_global)
 
             self.leader_state_global_last = leader_state_global
@@ -665,8 +665,9 @@ class tracking_node:
                 u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
                 #u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)
 
-            print("self.target_status", self.target_status)
-            print('--------------------------leader states len',len(self.leader_states_global))
+            #print("self.target_status", self.target_status)
+            print('self.leader_state-------------',self.leader_state)
+
             # print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)
