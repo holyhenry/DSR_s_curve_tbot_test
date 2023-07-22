@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 
 class PD:
 
-    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, dist=0.4):
+    def __init__(self, dt, disterr, kp=4.0, kd=1.0, alpha=1.0, dist=0.4):
 
         self.dt = dt
         self.alpha = alpha
@@ -18,9 +18,9 @@ class PD:
         self.kp = kp
         self.kd = kd
 
-        self.ex_last = 0.0
+        self.es_last = disterr
+        self.ex_last = disterr
         self.ey_last = 0.0
-        self.es_last = 0.0
 
         self.ux_ddot = 0.0
         self.uy_ddot = 0.0
@@ -120,8 +120,8 @@ class PD:
 
         ex = us_dot*np.cos(theta_s)
         ey = us_dot*np.sin(theta_s)
-        #ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
-        #ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
+        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
+        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
@@ -162,7 +162,7 @@ class PD:
     
 class DSR:
 
-    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, beta=0.5, dist=0.4):
+    def __init__(self, dt, disterr, kp=4.0, kd=1.0, alpha=1.0, beta=0.5, dist=0.4):
 
         self.dt    = dt
         self.alpha = alpha
@@ -174,8 +174,8 @@ class DSR:
         self.x_dot_last = 0.0
         self.y_dot_last = 0.0
         
-        self.e_s_last = 0.0
-        self.e_x_last = 0.0
+        self.e_s_last = disterr
+        self.e_x_last = disterr
         self.e_y_last = 0.0
 
         self.v = 0.0
@@ -647,9 +647,10 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         spacing = 0.5
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=spacing)
-        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
+        init_e  = np.linalg.norm(self.leader_state, ord=2) - spacing
 
+        ctrl_1  = PD(dt=dt, disterr=init_e, kp=0.3, kd=1.0, alpha=0.4, dist=spacing)
+        ctrl_2  = DSR(dt=dt, disterr=init_e, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
         while not rospy.is_shutdown():
 
