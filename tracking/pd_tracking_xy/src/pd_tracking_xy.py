@@ -150,7 +150,7 @@ class PD:
         data.linear.x  = es
         data.linear.y  = ex
         data.linear.z  = ey
-        data.angular.x = 0.0
+        data.angular.x = self.v + self.beta*(es - self.es_last)/self.dt
         data.angular.y = 0.0
         dataPub.publish(data)
 
