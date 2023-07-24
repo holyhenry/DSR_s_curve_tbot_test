@@ -300,7 +300,7 @@ class Bezier:
 
 class tracking_node:
 
-    def __init__(self) -> None:
+    def __init__(self, dist) -> None:
 
         # current state (local x,y,yaw)
         self.state        = np.zeros(3) 
@@ -309,7 +309,7 @@ class tracking_node:
 
         # leader stste (local x,y)       
         self.leader_state             = np.zeros(2) 
-        self.leader_state_last        = np.zeros(2)
+        self.leader_state_last        = np.array([dist, 0.0])
         self.leader_state_global_last = np.zeros(2) 
 
         # odom (global)
@@ -319,9 +319,8 @@ class tracking_node:
         # tag info (global)
         self.leader_states_global = []
 
+        self.spacing = dist
         self.target_status = -1
-        self.cum_angle = 0
-        self.use_filer = False
 
     def getLeaderGlobalStates(self):
 
@@ -347,8 +346,6 @@ class tracking_node:
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
             rospy.logwarn("waiting for data")
 
-        self.use_filer = True
-        self.leader_state_last    = self.leader_state
         self.leader_states_global = self.interpInitLeaderStates(N=70)
 
     def interpInitLeaderStates(self, N=50):
@@ -422,10 +419,9 @@ class tracking_node:
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
 
-            if self.use_filer:
-                self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.167)
+            self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.167)
             leader_state_global = self.homoTrans2Global(self.leader_state)
-            
+
             if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
                 self.leader_states_global.append(leader_state_global)
 
@@ -634,29 +630,25 @@ class tracking_node:
         # if no feasible fitting points within the 'check_length'
         return None, None, None, False
 
-    def run(self):
+    def run(self, freq):
         
-        freq = 10.0
         cmdVelPub, ctrlDataPub, targetPub, lTrajPub, rate = self.initNode(freq)
         self.checkInputs()
 
         # controller setups
         dt = 1.0/freq
-        spacing = 0.5
-        #init_e  = np.linalg.norm(self.leader_state, ord=2) - spacing
-
-        ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=spacing)
-        ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
+        ctrl_1 = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=self.spacing)
+        ctrl_2 = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=self.spacing)
 
         while not rospy.is_shutdown():
 
             self.leader_states = self.homoInvTransMulti2Local(self.leader_states_global)
-            goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=spacing)
+            goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=self.spacing)
             #getTarget = False
 
             if not getTarget:
                 rospy.logwarn('bezier fail')
-                goal = self.getUnitCircleTarget(targetPub, distance=spacing)
+                goal = self.getUnitCircleTarget(targetPub, distance=self.spacing)
                 u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
             else:
                 u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
@@ -676,7 +668,9 @@ class tracking_node:
 
 if __name__ == '__main__':
 
-    Tracking_node = tracking_node()
-    Tracking_node.run()
+    spacing = 0.5
+
+    Tracking_node = tracking_node(dist=spacing)
+    Tracking_node.run(freq=10)
 
 
