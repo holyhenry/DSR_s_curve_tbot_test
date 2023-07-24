@@ -13,7 +13,7 @@ class PD:
 
         self.dt = dt
         self.alpha = alpha
-        self.beta = 1.0 #TEST
+        self.beta = 0.5 #TEST
         
         self.kp = kp
         self.kd = kd
@@ -117,7 +117,7 @@ class PD:
 
         reinforce = self.v + self.beta*(es - self.es_last)/self.dt
         reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.8)
-        us_dot = self.alpha*es*self.beta + 0.0*(reinforce)
+        us_dot = self.alpha*es*self.beta + 1.0*(reinforce)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
@@ -422,7 +422,7 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             leader_state_raw    = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            self.leader_state   = self.lowPass(leader_state_raw, self.leader_state_last, lowPassGain=0.8)
+            self.leader_state   = self.lowPass(leader_state_raw, self.leader_state_last, lowPassGain=1.0)
             leader_state_global = self.homoTrans2Global(self.leader_state)
 
             if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
