@@ -362,7 +362,7 @@ class tracking_node:
 
     def lowPass(self, u, y_last, lowPassGain = 0.2):
         
-        if y_last == np.zeros(2):
+        if np.linalg.norm(y_last) == 0.0:
             rospy.loginfo("filter initialized!")
             y_last = u
 
