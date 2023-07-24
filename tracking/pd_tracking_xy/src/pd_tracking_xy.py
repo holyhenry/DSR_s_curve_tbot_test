@@ -321,6 +321,7 @@ class tracking_node:
 
         self.target_status = -1
         self.cum_angle = 0
+        self.use_filer = False
 
     def getLeaderGlobalStates(self):
 
@@ -345,7 +346,9 @@ class tracking_node:
 
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
             rospy.logwarn("waiting for data")
-        
+
+        self.use_filer = True
+        self.leader_state_last    = self.leader_state
         self.leader_states_global = self.interpInitLeaderStates(N=70)
 
     def interpInitLeaderStates(self, N=50):
@@ -417,13 +420,10 @@ class tracking_node:
             tag_x   /= count
             tag_y   /= count
             tag_phi /= count
-            self.leader_state   = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
+            self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
 
-            if np.linalg.norm(self.leader_state_last) == 0.0:
-                rospy.loginfo("filter initialized!")
-                self.leader_state_last = self.leader_state
-
-            self.leader_state   = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.167)
+            if self.use_filer:
+                self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.167)
             leader_state_global = self.homoTrans2Global(self.leader_state)
             
             if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
