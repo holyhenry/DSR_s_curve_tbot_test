@@ -419,6 +419,7 @@ class tracking_node:
             tag_phi /= count
             self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
 
+            print('lowpass last-now ',self.leader_state_last, self.leader_state)
             self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.167)
             leader_state_global = self.homoTrans2Global(self.leader_state)
 
@@ -587,7 +588,7 @@ class tracking_node:
         indx   = 1
         target = np.zeros(2)
         threshold    = 0.08
-        check_length = 200 # Might need a larger number if interbot distance is longer
+        check_length = 120 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states)
 
         while(indx<check_length and len(leader_traj)!=0):
@@ -655,9 +656,9 @@ class tracking_node:
                 #u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)
 
             #print("self.target_status", self.target_status)
-            print('self.leader_state-------------',self.leader_state)
+            # print('self.leader_state-------------',self.leader_state)
 
-            # print('----------------------------------------------')
+            print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)
             self.pubCmdVel(cmdVelPub, u[0], u[1])
