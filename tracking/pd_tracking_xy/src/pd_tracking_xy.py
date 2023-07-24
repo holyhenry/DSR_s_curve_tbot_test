@@ -309,6 +309,7 @@ class tracking_node:
 
         # leader stste (local x,y)       
         self.leader_state             = np.zeros(2) 
+        self.leader_state_last        = np.zeros(2)
         self.leader_state_global_last = np.zeros(2) 
 
         # odom (global)
@@ -331,7 +332,6 @@ class tracking_node:
         rate = rospy.Rate(int(freq))
         ns   = rospy.get_namespace()
 
-        # rospy.Subscriber(ns + "april_data", Point, self.aprilTagCallback, queue_size=1)
         rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
         pub        = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
@@ -365,17 +365,28 @@ class tracking_node:
         y = lowPassGain*u + (1-lowPassGain)*y_last 
 
         return y
+    
+    def odometeryCallback(self, data):
+        '''
+        not using global frame right now!
+        global (+)x = robotOdom (-)y
+        global (+)y = robotOdom (+)x  
+        global (+)yaw = robotOdom (+)yaw + np.pi/2
+        '''
+        self_x = data.pose.pose.position.x
+        self_y = data.pose.pose.position.y
+        q_x = data.pose.pose.orientation.x
+        q_y = data.pose.pose.orientation.y
+        q_z = data.pose.pose.orientation.z
+        q_w = data.pose.pose.orientation.w
+        (_, _, self_yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
 
-    # def aprilTagCallback(self, data):
-    #     '''
-    #     robotOdom (+)x = aprilTag (+)z
-    #     robotOdom (+)y = aprilTag (-)(x-0.03m)
-    #     '''
-    #     cam_pose_offset = 0.03
-    #     leader_x = data.z
-    #     leader_y = -(data.x-cam_pose_offset)
-    #     self.leader_state = np.array([leader_x, leader_y])
-    #     self.leader_states.append(self.leader_state)
+        self.velocity = data.twist.twist.linear.x
+        self.state    = np.array([self_x, self_y, self_yaw])
+        #self.state    = self.lowPass(self.state, self.state_last, lowPassGain=1.0)
+        self.states.append(self.state)
+        
+        self.state_last = self.state
 
     def multiAprilTagCallback(self, data):
         
@@ -407,11 +418,13 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             self.leader_state   = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
+            self.leader_state   = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.2)
             leader_state_global = self.homoTrans2Global(self.leader_state)
             
             if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
                 self.leader_states_global.append(leader_state_global)
 
+            self.leader_state_last = self.leader_state
             self.leader_state_global_last = leader_state_global
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
@@ -511,28 +524,6 @@ class tracking_node:
         new_states = np.einsum('ij,kj->ki', T, homo_states)[:,:2]
 
         return new_states
-
-    def odometeryCallback(self, data):
-        '''
-        not using global frame right now!
-        global (+)x = robotOdom (-)y
-        global (+)y = robotOdom (+)x  
-        global (+)yaw = robotOdom (+)yaw + np.pi/2
-        '''
-        self_x = data.pose.pose.position.x
-        self_y = data.pose.pose.position.y
-        q_x = data.pose.pose.orientation.x
-        q_y = data.pose.pose.orientation.y
-        q_z = data.pose.pose.orientation.z
-        q_w = data.pose.pose.orientation.w
-        (_, _, self_yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
-
-        self.velocity = data.twist.twist.linear.x
-        self.state    = np.array([self_x, self_y, self_yaw])
-        #self.state    = self.lowPass(self.state, self.state_last, lowPassGain=1.0)
-        self.states.append(self.state)
-        
-        self.state_last = self.state
 
     def pubLeaderTraj(self, pub):
         
