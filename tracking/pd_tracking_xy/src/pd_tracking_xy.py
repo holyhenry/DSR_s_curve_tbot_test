@@ -112,7 +112,7 @@ class PD:
         states are represented in follower local frame
         '''
         es = curve_length_s - self.dist
-        es = self.lowPass(es, self.es_last, lowPassGain=0.2)
+        es = self.lowPass(es, self.es_last, lowPassGain=0.167)
         us_dot = self.alpha*es*self.beta + 0.0*(self.v + self.beta*(es - self.es_last)/self.dt)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
@@ -120,8 +120,8 @@ class PD:
 
         ex = us_dot*np.cos(theta_s)
         ey = us_dot*np.sin(theta_s)
-        #ex = self.lowPass(ex, self.ex_last, lowPassGain=0.2)
-        #ey = self.lowPass(ey, self.ey_last, lowPassGain=0.2)
+        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.167)
+        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.167)
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
