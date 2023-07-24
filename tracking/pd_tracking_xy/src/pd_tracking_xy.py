@@ -643,6 +643,8 @@ class tracking_node:
         ctrl_1  = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=spacing)
         ctrl_2  = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=spacing)
 
+        self.leader_state_last = self.leader_state
+
         while not rospy.is_shutdown():
 
             self.leader_states = self.homoInvTransMulti2Local(self.leader_states_global)
