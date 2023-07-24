@@ -361,10 +361,6 @@ class tracking_node:
         return leader_states.tolist()
 
     def lowPass(self, u, y_last, lowPassGain = 0.2):
-        
-        if np.linalg.norm(y_last) == 0.0:
-            rospy.loginfo("filter initialized!")
-            y_last = u
 
         y = lowPassGain*u + (1-lowPassGain)*y_last 
 
@@ -422,6 +418,11 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             self.leader_state   = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
+
+            if np.linalg.norm(self.leader_state_last) == 0.0:
+                rospy.loginfo("filter initialized!")
+                self.leader_state_last = self.leader_state
+
             self.leader_state   = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.167)
             leader_state_global = self.homoTrans2Global(self.leader_state)
             
