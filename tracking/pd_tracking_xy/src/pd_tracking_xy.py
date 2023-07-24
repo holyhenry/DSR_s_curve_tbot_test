@@ -417,10 +417,10 @@ class tracking_node:
             tag_x   /= count
             tag_y   /= count
             tag_phi /= count
-            self.leader_state = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
+            leader_state_raw = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
 
-            print('lowpass last-now ',self.leader_state_last, self.leader_state)
-            self.leader_state = self.lowPass(self.leader_state, self.leader_state_last, lowPassGain=0.167)
+            print('lowpass last-raw ',self.leader_state_last, leader_state_raw)
+            self.leader_state = self.lowPass(leader_state_raw, self.leader_state_last, lowPassGain=0.167)
             leader_state_global = self.homoTrans2Global(self.leader_state)
 
             if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
