@@ -6,5 +6,5 @@
 	<!--include file="$(find camera)/launch/camera.launch" /-->
 	<include file="$(find camera_multi_tag)/launch/camera_multi_tag.launch" />
 	
-	<!--include file="$(find pd_tracking_xy)/launch/pd_tracking_xy.launch" /-->
+	<include file="$(find pd_tracking_xy)/launch/pd_tracking_xy.launch" />
 </launch>
