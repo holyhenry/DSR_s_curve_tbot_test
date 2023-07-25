@@ -355,7 +355,8 @@ class plotting_node:
 
         distance = 0.50
         
-        if (len(self.follower_states)>0 and len(self.leader_states)>0 and len(self.leader_states_tag)>0):
+        # if (len(self.follower_states)>0 and len(self.leader_states)>0 and len(self.leader_states_tag)>0):
+        if (len(self.follower_states)>0):
 
             f_len   = len(self.follower_states)
             l_len   = len(self.leader_states)
@@ -363,7 +364,6 @@ class plotting_node:
             ill_len = len(self.leader_states_tag)
 
             # self.leader_states_local = self.homoInvTransMulti2Local(self.leader_states_tag)
-            self.leader_states_local = self.homoInvTransMulti2Local(self.leader_states_tag_frombag)
             goal, self.bezier_curve, getGoal = self.getBezierTarget_new(distance=distance)
             # if not getGoal:
             #     rospy.logwarn("bezier fail!!")
@@ -379,9 +379,9 @@ class plotting_node:
             plt.cla()
             '''plot odom trajectory'''
             plt.plot(np.array(self.follower_states)[0:f_len,0], np.array(self.follower_states)[0:f_len,1],marker='.',color='green')
-            plt.plot(np.array(self.leader_states)[0:l_len,0]+distance, np.array(self.leader_states)[0:l_len,1],marker='.',color='red')
+            # plt.plot(np.array(self.leader_states)[0:l_len,0]+distance, np.array(self.leader_states)[0:l_len,1],marker='.',color='red')
             '''plot current state'''
-            plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
+            # plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
             plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower odom")
             plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="global infered from bag")
             plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='orange')
