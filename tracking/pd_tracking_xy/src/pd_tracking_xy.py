@@ -24,7 +24,6 @@ class PD:
 
         self.ux_ddot = 0.0
         self.uy_ddot = 0.0
-        self.w_last = 0.0
 
         self.v = 0.0
         self.w = 0.0
@@ -105,7 +104,6 @@ class PD:
 
         self.ex_last = ex
         self.ey_last = ey
-        self.w_last  = self.w
         return np.array([self.v, self.w])
     
     def pd_s(self, velocity, curve_length_s, theta_s, dataPub):
@@ -161,7 +159,7 @@ class PD:
         self.es_last = es
         self.ex_last = ex
         self.ey_last = ey
-        self.w_last  = self.w
+        self.reinforce_last = reinforce
         return np.array([self.v, self.w])
     
 class DSR:
