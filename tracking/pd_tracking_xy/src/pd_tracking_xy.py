@@ -61,32 +61,23 @@ class PD:
         '''
         states are represented in follower local frame
         '''
-        # p_actual  = state[:2]
-        p_desired = goal[:2]
-        # theta     = state[2]
+        # -----------------------------------------------------------------------------
+        ex = goal[0]
+        ey = goal[1]
+        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.167)
+        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.167)
 
-        ex = p_desired[0]
-        ey = p_desired[1]
-        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.2)
-        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.2)
-
+        # -----------------------------------------------------------------------------
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
         x_dot = self.v
         y_dot = 0
-        # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
-        # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
         ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
         uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
 
-        # dynamic fb linearization map
-        # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
-                           # [np.sin(theta), tmp_vel*np.cos(theta)]])
-                           
-        # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
-        # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
-        self.v += (ux_ddot)*self.dt
+        # -----------------------------------------------------------------------------
+        self.v += ux_ddot*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
         self.w = self.invMapGain(velocity,0.04,1)*uy_ddot
@@ -95,11 +86,11 @@ class PD:
         
         # record
         data = Twist()
-        data.linear.x  = ey
-        data.linear.y  = ex
+        data.linear.x  = ex
+        data.linear.y  = ey
+        data.linear.z  = 0.0
         data.angular.x = ey_dot
         data.angular.y = ex_dot
-        data.linear.z  = 0.0
         dataPub.publish(data)
 
         self.ex_last = ex
@@ -110,16 +101,15 @@ class PD:
         '''
         states are represented in follower local frame
         '''
+        # -----------------------------------------------------------------------------
         es = curve_length_s - self.dist
         es = self.lowPass(es, self.es_last, lowPassGain=0.167)
 
         reinforce = self.v + self.beta*(es - self.es_last)/self.dt
         reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
         us_dot = self.alpha*es*self.beta + 1.0*(reinforce)
-        # p_actual  = state[:2]
-        # p_desired = goal[:2]
-        # theta     = state[2]
 
+        # -----------------------------------------------------------------------------
         ex = us_dot*np.cos(theta_s)
         ey = us_dot*np.sin(theta_s)
         ex = self.lowPass(ex, self.ex_last, lowPassGain=0.167)
@@ -129,21 +119,14 @@ class PD:
         
         x_dot = self.v
         y_dot = 0
-        # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
-        # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
-        x_bar = (ex_dot + self.kp*ex) - self.kp*x_dot
-        y_bar = (ey_dot + self.kp*ey) - self.kp*y_dot
+        ux_ddot = (ex_dot + self.kp*ex) - self.kp*x_dot
+        uy_ddot = (ey_dot + self.kp*ey) - self.kp*y_dot
 
-        # dynamic fb linearization map
-        # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
-                           # [np.sin(theta), tmp_vel*np.cos(theta)]])
-                           
-        # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
-        # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
-        self.v += (x_bar)*self.dt
+        # -----------------------------------------------------------------------------
+        self.v += ux_ddot*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
-        self.w = self.invMapGain(velocity,0.04,1)*y_bar
+        self.w = self.invMapGain(velocity,0.04,1)*uy_ddot
         w_max  = self.omegaLim(velocity)
         self.w = np.clip(self.w,-w_max,w_max)
         
@@ -152,7 +135,7 @@ class PD:
         data.linear.x  = es
         data.linear.y  = ex
         data.linear.z  = ey
-        data.angular.x = 0.0
+        data.angular.x = reinforce
         data.angular.y = 0.0
         dataPub.publish(data)
 
@@ -173,12 +156,12 @@ class DSR:
         self.kp = kp
         self.kd = kd
 
-        self.x_dot_last = 0.0
-        self.y_dot_last = 0.0
+        self.ux_dot_last = 0.0
+        self.uy_dot_last = 0.0
         
-        self.e_s_last = 0.0
-        self.e_x_last = 0.0
-        self.e_y_last = 0.0
+        self.es_last = 0.0
+        self.ex_last = 0.0
+        self.ey_last = 0.0
 
         self.v = 0.0
         self.w = 0.0
@@ -188,7 +171,6 @@ class DSR:
     def lowPass(self, u, y_last, lowPassGain = 0.2):
         
         y = lowPassGain*u + (1-lowPassGain)*y_last 
-
         return y
     
     def invMapGain(self, vel, thre, a):
@@ -197,13 +179,6 @@ class DSR:
             y = 1/vel
         else:
             y = 1/thre
-        """ 
-        k = (1/thre)**a/thre
-        if vel < 0:
-            y = -((-k*vel)**(1/a))
-        else:
-            y = (k*vel)**(1/a)
-        """
         return y
 
     def omegaLim(self, v):
@@ -211,39 +186,51 @@ class DSR:
         w_max = min(4*np.abs(v),1.58)
         return w_max
     
-    def dsr(self, curve_length_s, theta_s, velocity, theta):
+    def dsr(self, velocity, curve_length_s, theta_s, dataPub):
 
-        # equation (2)
-        e_s = curve_length_s - self.dist
-        e_s = self.lowPass(e_s, self.e_s_last, lowPassGain=0.2)
-        # sf_dot = self.beta*velocity + (1-self.beta)*leader_velocity + self.alpha*self.beta*e_s 
-        sf_dot = self.alpha*self.beta*e_s #+ velocity + self.beta*(e_s-self.e_s_last)/self.dt 
+        # equation (2) ----------------------------------------------------------------
+        es = curve_length_s - self.dist
+        es = self.lowPass(es, self.es_last, lowPassGain=0.167)
+        
+        reinforce = self.v + self.beta*(es - self.es_last)/self.dt
+        reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
+        us_dot    = self.alpha*es*self.beta + reinforce
 
-        # equation (3)
-        x_dot = sf_dot*np.cos(theta_s)
-        y_dot = sf_dot*np.sin(theta_s)
-        # x_ddot = ((x_dot-self.x_dot_past)/self.dt + self.kp*x_dot) - self.kp*velocity*np.cos(theta)
-        # y_ddot = ((y_dot-self.y_dot_past)/self.dt + self.kp*y_dot) - self.kp*velocity*np.sin(theta)
-        x_bar = ((x_dot-self.x_dot_last)/self.dt + self.kp*x_dot) - self.kp*velocity
-        y_bar = ((y_dot-self.y_dot_last)/self.dt + self.kp*y_dot)
+        # equation (3) ----------------------------------------------------------------
+        ux_dot = us_dot*np.cos(theta_s)
+        uy_dot = us_dot*np.sin(theta_s)
+        ux_dot = self.lowPass(ux_dot, self.ux_dot_last, lowPassGain=0.167)
+        uy_dot = self.lowPass(uy_dot, self.uy_dot_last, lowPassGain=0.167)
 
-        # # equation (4)
+        x_dot  = self.v
+        y_dot  = 0
+        ux_ddot = ((ux_dot-self.ux_dot_last)/self.dt + self.kp*ux_dot) - self.kp*x_dot
+        uy_ddot = ((uy_dot-self.uy_dot_last)/self.dt + self.kp*uy_dot) - self.kp*y_dot
+
+        # # equation (4) ----------------------------------------------------------------
         # aw_2_xy = np.array([[np.cos(theta), -velocity*np.sin(theta)],
         #                     [np.sin(theta), velocity*np.cos(theta)]])
         
-        # # equation (5)
-        # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.x_ddot, self.y_ddot]))[0]*self.dt
-        # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.x_ddot, self.y_ddot]))[1]
-        self.v += (x_bar)*self.dt
+        # # equation (5) ----------------------------------------------------------------
+        self.v += ux_ddot*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
-        self.w = self.invMapGain(velocity,0.04,1)*y_bar
+        self.w = self.invMapGain(velocity,0.04,1)*uy_ddot
         w_max  = self.omegaLim(velocity)
         self.w = np.clip(self.w,-w_max,w_max)
         
-        self.e_s_last   = e_s
-        self.x_dot_last = x_dot
-        self.y_dot_last = y_dot
+        # record
+        data = Twist()
+        data.linear.x  = es
+        data.linear.y  = ux_dot
+        data.linear.z  = uy_dot
+        data.angular.x = reinforce
+        data.angular.y = 0.0
+        dataPub.publish(data)
+
+        self.es_last   = es
+        self.ux_dot_last = ux_dot
+        self.uy_dot_last = uy_dot
         return np.array([self.v, self.w])
 
 class Bezier:
@@ -297,7 +284,6 @@ class Bezier:
     def getLength(self):
         
         self.curveLength = np.sum(np.sqrt(np.sum((self.BezierCurve[1:]-self.BezierCurve[:-1])**2,axis=1)))
-        
         return self.curveLength
 
 class tracking_node:
@@ -653,7 +639,7 @@ class tracking_node:
                 u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
             else:
                 u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
-                #u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)
+                # u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
 
             #print("self.target_status", self.target_status)
             # print('self.leader_state-------------',self.leader_state)
