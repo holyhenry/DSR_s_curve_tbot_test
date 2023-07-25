@@ -115,9 +115,9 @@ class PD:
         es = curve_length_s - self.dist
         es = self.lowPass(es, self.es_last, lowPassGain=0.167)
 
-        reinforce = self.v + self.beta*(es - self.es_last)/self.dt
+        reinforce = self.beta*(es - self.es_last)/self.dt
         reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.8)
-        us_dot = self.alpha*es*self.beta + 1.0*(reinforce)
+        us_dot = self.alpha*es*self.beta + 1.0*(self.v + reinforce)
         # p_actual  = state[:2]
         # p_desired = goal[:2]
         # theta     = state[2]
