@@ -167,6 +167,7 @@ class DSR:
         self.w = 0.0
         
         self.dist = dist # inter-robot distance
+        self.reinforce_last = 0.0
 
     def lowPass(self, u, y_last, lowPassGain = 0.2):
         
@@ -228,9 +229,10 @@ class DSR:
         data.angular.y = 0.0
         dataPub.publish(data)
 
-        self.es_last   = es
-        self.ux_dot_last = ux_dot
-        self.uy_dot_last = uy_dot
+        self.es_last        = es
+        self.ux_dot_last    = ux_dot
+        self.uy_dot_last    = uy_dot
+        self.reinforce_last = reinforce
         return np.array([self.v, self.w])
 
 class Bezier:
