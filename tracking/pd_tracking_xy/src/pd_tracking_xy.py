@@ -647,12 +647,11 @@ class tracking_node:
                 goal = self.getUnitCircleTarget(targetPub, distance=self.spacing)
                 u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
             else:
-                u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
-                # u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
+                #u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
+                u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
 
             #print("self.target_status", self.target_status)
-            # print('self.leader_state-------------',self.leader_state)
-
+            print('self.leader_state-------------',self.leader_state)
             print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)
