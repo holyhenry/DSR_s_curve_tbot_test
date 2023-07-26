@@ -80,7 +80,7 @@ class PD:
         y_dot = 0
         ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
         uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
-        
+
         # -----------------------------------------------------------------------------
         self.v += ux_ddot*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
@@ -583,7 +583,7 @@ class tracking_node:
         indx   = 1
         target = np.zeros(2)
         threshold    = 0.08
-        check_length = 120 # Might need a larger number if interbot distance is longer
+        check_length = 170 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states)
 
         while(indx<check_length and len(leader_traj)!=0):
@@ -633,8 +633,8 @@ class tracking_node:
 
         # controller setups
         dt = 1.0/freq
-        ctrl_1 = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=self.spacing)
-        ctrl_2 = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=self.spacing)
+        ctrl_1 = PD(dt=dt, kp=1.0, kd=1.0, alpha=0.4, dist=self.spacing)
+        ctrl_2 = DSR(dt=dt, kp=1.0, kd=1.0, alpha=0.3, beta=0.5, dist=self.spacing)
 
         while not rospy.is_shutdown():
 
