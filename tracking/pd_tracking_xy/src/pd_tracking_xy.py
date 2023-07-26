@@ -107,7 +107,7 @@ class PD:
 
         reinforce = self.v + self.beta*(es - self.es_last)/self.dt
         reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
-        us_dot = self.alpha*es*self.beta + 1.0*(reinforce)
+        us_dot = self.alpha*es*self.beta + 0.0*(reinforce)
 
         # -----------------------------------------------------------------------------
         ex = us_dot*np.cos(theta_s)
@@ -135,7 +135,7 @@ class PD:
         data.linear.x  = es
         data.linear.y  = ex
         data.linear.z  = ey
-        data.angular.x = reinforce
+        data.angular.x = 0.0 #reinforce
         data.angular.y = 0.0
         dataPub.publish(data)
 
@@ -576,7 +576,7 @@ class tracking_node:
         indx   = 1
         target = np.zeros(2)
         threshold    = 0.08
-        check_length = 120 # Might need a larger number if interbot distance is longer
+        check_length = 170 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states)
 
         while(indx<check_length and len(leader_traj)!=0):
@@ -626,26 +626,25 @@ class tracking_node:
 
         # controller setups
         dt = 1.0/freq
-        ctrl_1 = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=self.spacing)
-        ctrl_2 = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=self.spacing)
+        ctrl_1 = PD(dt=dt, kp=1.0, kd=1.0, alpha=0.4, dist=self.spacing)
+        ctrl_2 = DSR(dt=dt, kp=1.0, kd=1.0, alpha=0.3, beta=0.5, dist=self.spacing)
 
         while not rospy.is_shutdown():
 
             self.leader_states = self.homoInvTransMulti2Local(self.leader_states_global)
             goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=self.spacing)
-            #getTarget = False
+            getTarget = False
 
             if not getTarget:
                 rospy.logwarn('bezier fail')
                 goal = self.getUnitCircleTarget(targetPub, distance=self.spacing)
                 u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
             else:
-                u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
-                # u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
+                #u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
+                u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
 
             #print("self.target_status", self.target_status)
-            # print('self.leader_state-------------',self.leader_state)
-
+            print('self.leader_state-------------',self.leader_state) 
             print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)
