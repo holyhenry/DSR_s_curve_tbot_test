@@ -36,7 +36,7 @@
 		<node machine="bot199" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
 			<param name="spacing" value="0.5"/>
 			<param name="alpha"   value="0.3"/>
-			<param name="bate"    value="0.5"/>
+			<param name="beta"    value="0.5"/>
 		</node>
 	</group>
 
