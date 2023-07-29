@@ -659,8 +659,8 @@ class tracking_node:
                 #u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
                 u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
 
-            #rospy.loginfo("target_status------------- %f", self.target_status)
-            rospy.loginfo("leader_state------------- %f", self.leader_state)
+            #print("target_status-------------", self.target_status)
+            print("leader_state--------------", self.leader_state)
             print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)
