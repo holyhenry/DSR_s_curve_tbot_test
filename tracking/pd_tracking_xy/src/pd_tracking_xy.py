@@ -297,7 +297,7 @@ class Bezier:
 
 class tracking_node:
 
-    def __init__(self, dist) -> None:
+    def __init__(self) -> None:
 
         # current state (local x,y,yaw)
         self.state        = np.zeros(3) 
@@ -306,7 +306,7 @@ class tracking_node:
 
         # leader stste (local x,y)       
         self.leader_state             = np.zeros(2) 
-        self.leader_state_last        = np.array([dist, 0.0])
+        self.leader_state_last        = np.array([0.4, 0.0])
         self.leader_state_global_last = np.zeros(2) 
 
         # odom (global)
@@ -316,7 +316,9 @@ class tracking_node:
         # tag info (global)
         self.leader_states_global = []
 
-        self.spacing = dist
+        self.spacing = 0.4
+        self.alpha   = 0.0
+        self.beta    = 0.0 
         self.target_status = -1
 
     def getLeaderGlobalStates(self):
@@ -336,14 +338,21 @@ class tracking_node:
         pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
         pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
 
+        self.spacing = rospy.get_param("spacing")
+        self.alpha   = rospy.get_param("alpha")
+        self.beta    = rospy.get_param("beta")
+
+        rospy.loginfo("%s params, spacing:%f alpha:%f beta:%f", ns, self.spacing, self.alpha, self.beta)
+
         return pub, pub_data, pub_target, pub_l_traj ,rate
 
     def checkInputs(self):
 
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
-            rospy.logwarn("waiting for data")
-
+            rospy.logwarn_once("waiting for data")
+        
         self.leader_states_global = self.interpInitLeaderStates(N=70)
+        rospy.loginfo("%s is ready", rospy.get_namespace())
 
     def interpInitLeaderStates(self, N=50):
         '''
@@ -633,8 +642,8 @@ class tracking_node:
 
         # controller setups
         dt = 1.0/freq
-        ctrl_1 = PD(dt=dt, kp=1.0, kd=1.0, alpha=0.4, dist=self.spacing)
-        ctrl_2 = DSR(dt=dt, kp=1.0, kd=1.0, alpha=0.3, beta=0.5, dist=self.spacing)
+        ctrl_1 = PD(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, dist=self.spacing)
+        ctrl_2 = DSR(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, beta=self.beta, dist=self.spacing)
 
         while not rospy.is_shutdown():
 
@@ -650,8 +659,8 @@ class tracking_node:
                 #u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
                 u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
 
-            #print("self.target_status", self.target_status)
-            print('self.leader_state-------------',self.leader_state)
+            #rospy.loginfo("target_status------------- %f", self.target_status)
+            rospy.loginfo("leader_state------------- %f", self.leader_state)
             print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)
@@ -663,9 +672,7 @@ class tracking_node:
 
 if __name__ == '__main__':
 
-    spacing = 0.5
-
-    Tracking_node = tracking_node(dist=spacing)
+    Tracking_node = tracking_node()
     Tracking_node.run(freq=10)
 
 

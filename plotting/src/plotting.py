@@ -377,14 +377,14 @@ class plotting_node:
             print('target_status from bag: ',self.tracking_target_type)
 
             plt.cla()
-            '''plot odom trajectory'''
-            plt.plot(np.array(self.follower_states)[0:f_len,0], np.array(self.follower_states)[0:f_len,1],marker='.',color='green')
+            '''plot odom or infered trajectory'''
+            plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='grey')
+            plt.plot(np.array(self.follower_states)[0:f_len,0], np.array(self.follower_states)[0:f_len,1],marker='.',color='red')
             # plt.plot(np.array(self.leader_states)[0:l_len,0]+distance, np.array(self.leader_states)[0:l_len,1],marker='.',color='red')
             '''plot current state'''
             # plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
-            plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',color='green',label="follower odom")
-            plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',color='orange',label="global infered from bag")
-            plt.plot(np.array(self.leader_states_tag_frombag)[0:il_len,0], np.array(self.leader_states_tag_frombag)[0:il_len,1],marker='.',color='orange')
+            plt.plot(np.array(self.follower_states)[-1,0], np.array(self.follower_states)[-1,1],marker='o',markersize='12',color='red',label="follower odom")
+            plt.plot(np.array(self.leader_states_tag_frombag)[-1,0], np.array(self.leader_states_tag_frombag)[-1,1],marker='o',markersize='12',color='grey',label="global infered from bag")
             '''plot tag-infered trajecotry''' 
             # plt.plot(np.array(self.leader_states_tag)[-1,0], np.array(self.leader_states_tag)[-1,1],marker='o',color='orange')
             # plt.plot(np.array(self.leader_states_tag)[0:ill_len,0], np.array(self.leader_states_tag)[0:ill_len,1],marker='.',color='orange',label="tag infered (g=0)")
@@ -392,7 +392,7 @@ class plotting_node:
             if self.bezier_curve is not None:
                 plt.plot(self.bezier_curve[0:b_len,0],self.bezier_curve[0:b_len,1],marker='.',color='lightcoral',label='computed bezier curve')
             '''plot tracking target'''
-            plt.plot(self.tracking_target[0],self.tracking_target[1],marker='x',color='black',label='recorded target') 
+            plt.plot(self.tracking_target[0],self.tracking_target[1],marker='x',markersize='12',color='blue',label='recorded target') 
             # plt.plot(goal_global[0],goal_global[1],marker='x',color='red',label='computed target')
 
             plt.axis('equal')
@@ -413,7 +413,7 @@ class plotting_node:
 
         # plotting setup
         plt.ion()
-        fig = plt.figure(figsize=(10,8))
+        fig = plt.figure(figsize=(8,8))
         fig.show()
 
         while not rospy.is_shutdown():
