@@ -349,7 +349,7 @@ class tracking_node:
     def checkInputs(self):
 
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
-            rospy.logwarn_once("waiting for data")
+            rospy.logwarn_once("%s waiting for data", rospy.get_namespace())
         
         self.leader_states_global = self.interpInitLeaderStates(N=70)
         rospy.loginfo("%s is ready", rospy.get_namespace())
