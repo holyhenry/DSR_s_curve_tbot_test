@@ -338,9 +338,9 @@ class tracking_node:
         pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
         pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
 
-        self.spacing = rospy.get_param(ns + "/pd_tracking_xy/alpha")
-        self.alpha   = rospy.get_param("alpha")
-        self.beta    = rospy.get_param("beta")
+        self.spacing = rospy.get_param(ns + "/pd_tracking_xy/spacing")
+        self.alpha   = rospy.get_param(ns + "/pd_tracking_xy/alpha")
+        self.beta    = rospy.get_param(ns + "/pd_tracking_xy/beta")
 
         rospy.loginfo("%s params, spacing:%f alpha:%f beta:%f", ns, self.spacing, self.alpha, self.beta)
 
