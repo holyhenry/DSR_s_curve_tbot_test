@@ -319,6 +319,8 @@ class tracking_node:
         self.spacing = 0.4
         self.alpha   = 0.0
         self.beta    = 0.0 
+        self.use_DSR = True
+        self.follower_indx = -1
         self.target_status = -1
 
     def getLeaderGlobalStates(self):
@@ -338,10 +340,12 @@ class tracking_node:
         pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
         pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
 
+        self.follower_indx = rospy.get_param(ns + "/pd_tracking_xy/follower_indx")
+        self.use_DSR = rospy.get_param(ns + "/pd_tracking_xy/ues_DSR")
         self.spacing = rospy.get_param(ns + "/pd_tracking_xy/spacing")
         self.alpha   = rospy.get_param(ns + "/pd_tracking_xy/alpha")
         self.beta    = rospy.get_param(ns + "/pd_tracking_xy/beta")
-
+        
         rospy.loginfo("%s params, spacing:%f alpha:%f beta:%f", ns, self.spacing, self.alpha, self.beta)
 
         return pub, pub_data, pub_target, pub_l_traj ,rate
@@ -349,7 +353,7 @@ class tracking_node:
     def checkInputs(self):
 
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
-            rospy.logwarn_once("%s waiting for data", rospy.get_namespace())
+            rospy.logwarn("%s waiting for data", rospy.get_namespace())
         
         self.leader_states_global = self.interpInitLeaderStates(N=70)
         rospy.loginfo("%s is ready", rospy.get_namespace())
@@ -404,11 +408,10 @@ class tracking_node:
         tag_x   = 0.0
         tag_y   = 0.0
         tag_phi = 0.0
-        follower_indx   = 0
         cam_pose_offset = 0.025
 
         for i in range(len(multi_tag)):
-            if (i%tag_space == 0 and (multi_tag[i]//num_tag == follower_indx)):
+            if (i%tag_space == 0 and (multi_tag[i]//num_tag == self.follower_indx)):
                 count += 1
                 x   = multi_tag[i+3]
                 y   = -(multi_tag[i+1]-cam_pose_offset)
@@ -656,8 +659,10 @@ class tracking_node:
                 goal = self.getUnitCircleTarget(targetPub, distance=self.spacing)
                 u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
             else:
-                #u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
-                u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
+                if self.use_DSR:
+                    u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
+                else:
+                    u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
 
             #print("target_status-------------", self.target_status)
             print("leader_state--------------", self.leader_state)
