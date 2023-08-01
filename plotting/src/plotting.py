@@ -97,7 +97,7 @@ class plotting_node:
         rospy.init_node('plotting_node')
         rate = rospy.Rate(int(freq))
         leader_ns = "/tbot165/"
-        follower_ns = "/tbot199/"
+        follower_ns = "/tbot162/"
 
         rospy.Subscriber(leader_ns + "odom", Odometry, self.leaderOdomCallback, queue_size=1)
         rospy.Subscriber(follower_ns + "odom", Odometry, self.followerOdomCallback, queue_size=1)

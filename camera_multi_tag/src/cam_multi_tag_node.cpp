@@ -4,7 +4,7 @@ Cam_Node::Cam_Node(ros::NodeHandle *nh)
 {
     std::string ns = ros::this_node::getNamespace();
     cam_data_pub = nh->advertise<std_msgs::Float32MultiArray>(ns + "/april_data_multi", 1);
-    img_raw_sub = nh->subscribe("/camera/color/image_raw", 10, &Cam_Node::img_raw_callback, this);
+    img_raw_sub = nh->subscribe(ns + "/camera/color/image_raw", 10, &Cam_Node::img_raw_callback, this);
     
 };
 
