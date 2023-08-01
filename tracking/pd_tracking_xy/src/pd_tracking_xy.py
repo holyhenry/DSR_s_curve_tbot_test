@@ -323,6 +323,9 @@ class tracking_node:
         self.follower_indx = -1
         self.target_status = -1
 
+        # test
+        self.pub_tag_data = rospy.Publisher(rospy.get_namespace() + "tag_data", Float32MultiArray, queue_size=1)
+
     def getLeaderGlobalStates(self):
 
         return np.array(self.leader_states_global).copy()
@@ -348,7 +351,7 @@ class tracking_node:
         
         rospy.loginfo("%s params, spacing:%f alpha:%f beta:%f", ns, self.spacing, self.alpha, self.beta)
 
-        return pub, pub_data, pub_target, pub_l_traj ,rate
+        return pub, pub_data, pub_target, pub_l_traj, rate
 
     def checkInputs(self):
 
@@ -409,6 +412,8 @@ class tracking_node:
         tag_y   = 0.0
         tag_phi = 0.0
         cam_pose_offset = 0.025
+        # test
+        ids = []
 
         for i in range(len(multi_tag)):
             if (i%tag_space == 0 and (multi_tag[i]//num_tag == self.follower_indx)):
@@ -421,6 +426,8 @@ class tracking_node:
                 tag_x   += infered_x
                 tag_y   += infered_y
                 tag_phi += infered_phi
+                # test
+                ids.append(id)
         
         if (count != 0):
             tag_x   /= count
@@ -435,6 +442,11 @@ class tracking_node:
 
             self.leader_state_last = self.leader_state
             self.leader_state_global_last = leader_state_global
+
+        # test
+        tag_filter_id = Float32MultiArray()
+        tag_filter_id.data = ids
+        self.pub_tag_data.publish(tag_filter_id)
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
 
