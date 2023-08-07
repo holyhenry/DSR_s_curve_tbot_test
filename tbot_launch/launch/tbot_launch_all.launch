@@ -2,7 +2,7 @@
 
 <launch>
 
-	<arg name="env"     default="/opt/ros/noetic/env_henry.sh">
+	<arg name="env"     default="/opt/ros/noetic/env_henry.sh"/>
 	<arg name="ues_DSR" default="True"/>
 	<arg name="spacing" default="0.5"/>
 	<arg name="alpha"   default="0.3"/>
