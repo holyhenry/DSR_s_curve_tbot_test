@@ -1,11 +1,18 @@
 <?xml version="1.0"?>
 
 <launch>
+
+	<arg name="env"     default="/opt/ros/noetic/env_henry.sh">
+	<arg name="ues_DSR" default="True"/>
+	<arg name="spacing" default="0.5"/>
+	<arg name="alpha"   default="0.3"/>
+	<arg name="beta"    default="0.5"/>
+
 	<group ns="tbot165">
 		<machine
 					name="bot165"
 					address="192.168.0.165"
-					env-loader="/opt/ros/noetic/env_henry.sh"
+					env-loader="$(arg env)"
 					default="true"
 					user="ubuntu"
 					password="turtlebot"
@@ -20,7 +27,7 @@
 		<machine
 					name="bot162"
 					address="192.168.0.162"
-					env-loader="/opt/ros/noetic/env_henry.sh"
+					env-loader="$(arg env)"
 					default="true"
 					user="ubuntu"
 					password="turtlebot"
@@ -35,36 +42,62 @@
 		
 		<node machine="bot162" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
 			<param name="follower_indx" value="0"/>
-			<param name="ues_DSR" value="True"/>
-			<param name="spacing" value="0.5"/>
-			<param name="alpha"   value="0.3"/>
-			<param name="beta"    value="0.5"/>
+			<param name="ues_DSR" value="$(arg ues_DSR)"/>
+			<param name="spacing" value="$(arg spacing)"/>
+			<param name="alpha"   value="$(arg alpha)"/>
+			<param name="beta"    value="$(arg beta)"/>
 		</node>
 	</group>
-	
-	<group ns="tbot199">
+
+	<group ns="tbot201">
 		<machine
-					name="bot199"
-					address="192.168.0.199"
-					env-loader="/opt/ros/noetic/env_henry.sh"
+					name="bot201"
+					address="192.168.0.201"
+					env-loader="$(arg env)"
 					default="true"
 					user="ubuntu"
 					password="turtlebot"
 		/>
-		<node machine="bot199" pkg="rosserial_python" type="serial_node.py" name="turtlebot3_core_199" output="screen">
+		<node machine="bot201" pkg="rosserial_python" type="serial_node.py" name="turtlebot3_core_201" output="screen">
 			<param name="port" value="/dev/ttyACM0"/>
 			<param name="baud" value="115200"/>
 		</node>
 
-		<node machine="bot199" pkg="camera_multi_tag" name="image_publisher" type="image_publisher.py" output="screen" />
-		<node machine="bot199" pkg="camera_multi_tag" name="cam_multi_tag_node" type="camera_multi_tag" output="screen" />
+		<node machine="bot201" pkg="camera_multi_tag" name="image_publisher" type="image_publisher.py" output="screen" />
+		<node machine="bot201" pkg="camera_multi_tag" name="cam_multi_tag_node" type="camera_multi_tag" output="screen" />
 		
-		<node machine="bot199" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
+		<node machine="bot201" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
 			<param name="follower_indx" value="1"/>
-			<param name="ues_DSR" value="True"/>
-			<param name="spacing" value="0.5"/>
-			<param name="alpha"   value="0.3"/>
-			<param name="beta"    value="0.5"/>
+			<param name="ues_DSR" value="$(arg ues_DSR)"/>
+			<param name="spacing" value="$(arg spacing)"/>
+			<param name="alpha"   value="$(arg alpha)"/>
+			<param name="beta"    value="$(arg beta)"/>
+		</node>
+	</group>
+	
+	<group ns="tbot149">
+		<machine
+					name="bot149"
+					address="192.168.0.149"
+					env-loader="$(arg env)"
+					default="true"
+					user="ubuntu"
+					password="turtlebot"
+		/>
+		<node machine="bot149" pkg="rosserial_python" type="serial_node.py" name="turtlebot3_core_149" output="screen">
+			<param name="port" value="/dev/ttyACM0"/>
+			<param name="baud" value="115200"/>
+		</node>
+
+		<node machine="bot149" pkg="camera_multi_tag" name="image_publisher" type="image_publisher.py" output="screen" />
+		<node machine="bot149" pkg="camera_multi_tag" name="cam_multi_tag_node" type="camera_multi_tag" output="screen" />
+		
+		<node machine="bot149" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
+			<param name="follower_indx" value="2"/>
+			<param name="ues_DSR" value="$(arg ues_DSR)"/>
+			<param name="spacing" value="$(arg spacing)"/>
+			<param name="alpha"   value="$(arg alpha)"/>
+			<param name="beta"    value="$(arg beta)"/>
 		</node>
 	</group>
 
