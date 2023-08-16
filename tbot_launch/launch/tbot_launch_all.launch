@@ -3,12 +3,14 @@
 <launch>
 
 	<!-- <arg name="env"     default="/opt/ros/noetic/env_henry.sh"/> -->
-	<arg name="env"     default="/opt/ros/noetic/env_alien.sh"/>
-	<arg name="ues_DSR" default="True"/>
-	<arg name="spacing" default="0.45"/>
-	<arg name="alpha"   default="0.3"/>
-	<arg name="beta"    default="0.5"/>
+	<arg name="env"        default="/opt/ros/noetic/env_alien.sh"/>
+	<arg name="use_Bezier" default="True"/>
+	<arg name="ues_DSR"    default="True"/>
+	<arg name="spacing"    default="0.45"/>
+	<arg name="alpha"      default="0.3"/>
+	<arg name="beta"       default="0.5"/>
 
+    <!-- tbot165 -->
 	<group ns="tbot165">
 		<machine
 					name="bot165"
@@ -24,6 +26,7 @@
 		</node>
 	</group>
 
+	<!-- tbot162 -->
 	<group ns="tbot162">
 		<machine
 					name="bot162"
@@ -43,13 +46,15 @@
 		
 		<node machine="bot162" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
 			<param name="follower_indx" value="0"/>
-			<param name="ues_DSR" value="$(arg ues_DSR)"/>
-			<param name="spacing" value="$(arg spacing)"/>
-			<param name="alpha"   value="$(arg alpha)"/>
-			<param name="beta"    value="$(arg beta)"/>
+			<param name="use_Bezier" value="$(arg use_Bezier)"/>
+			<param name="ues_DSR"    value="$(arg ues_DSR)"/>
+			<param name="spacing"    value="$(arg spacing)"/>
+			<param name="alpha"      value="$(arg alpha)"/>
+			<param name="beta"       value="$(arg beta)"/>
 		</node>
 	</group>
 
+	<!-- tbot201 -->
 	<group ns="tbot201">
 		<machine
 					name="bot201"
@@ -69,13 +74,15 @@
 		
 		<node machine="bot201" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
 			<param name="follower_indx" value="1"/>
-			<param name="ues_DSR" value="$(arg ues_DSR)"/>
-			<param name="spacing" value="$(arg spacing)"/>
-			<param name="alpha"   value="$(arg alpha)"/>
-			<param name="beta"    value="$(arg beta)"/>
+			<param name="use_Bezier" value="$(arg use_Bezier)"/>
+			<param name="ues_DSR"    value="$(arg ues_DSR)"/>
+			<param name="spacing"    value="$(arg spacing)"/>
+			<param name="alpha"      value="$(arg alpha)"/>
+			<param name="beta"       value="$(arg beta)"/>
 		</node>
 	</group>
 	
+	<!-- tbot149 -->
 	<group ns="tbot149">
 		<machine
 					name="bot149"
@@ -95,10 +102,11 @@
 		
 		<node machine="bot149" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
 			<param name="follower_indx" value="2"/>
-			<param name="ues_DSR" value="$(arg ues_DSR)"/>
-			<param name="spacing" value="$(arg spacing)"/>
-			<param name="alpha"   value="$(arg alpha)"/>
-			<param name="beta"    value="$(arg beta)"/>
+			<param name="use_Bezier" value="$(arg use_Bezier)"/>
+			<param name="ues_DSR"    value="$(arg ues_DSR)"/>
+			<param name="spacing"    value="$(arg spacing)"/>
+			<param name="alpha"      value="$(arg alpha)"/>
+			<param name="beta"       value="$(arg beta)"/>
 		</node>
 	</group>
 
