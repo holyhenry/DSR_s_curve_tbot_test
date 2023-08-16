@@ -320,6 +320,7 @@ class tracking_node:
         self.alpha   = 0.0
         self.beta    = 0.0 
         self.use_DSR = True
+        self.use_Bezier = True
         self.follower_indx = -1
         self.target_status = -1
 
@@ -344,6 +345,7 @@ class tracking_node:
         pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
 
         self.follower_indx = rospy.get_param(ns + "/pd_tracking_xy/follower_indx")
+        self.use_Bezier    = rospy.get_param(ns + "/pd_tracking_xy/use_Bezier")
         self.use_DSR = rospy.get_param(ns + "/pd_tracking_xy/ues_DSR")
         self.spacing = rospy.get_param(ns + "/pd_tracking_xy/spacing")
         self.alpha   = rospy.get_param(ns + "/pd_tracking_xy/alpha")
@@ -663,8 +665,11 @@ class tracking_node:
         while not rospy.is_shutdown():
 
             self.leader_states = self.homoInvTransMulti2Local(self.leader_states_global)
-            goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=self.spacing)
-            #getTarget = False
+
+            if self.use_Bezier:
+                goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=self.spacing)
+            else:
+                getTarget = False
 
             if not getTarget:
                 rospy.logwarn('bezier fail')
@@ -676,7 +681,6 @@ class tracking_node:
                 else:
                     u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
 
-            #print("target_status-------------", self.target_status)
             print("leader_state--------------", self.leader_state)
             print('----------------------------------------------')
 
