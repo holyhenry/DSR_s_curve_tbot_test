@@ -1,0 +1,1 @@
+rosbag record /tbot165/odom /tbot162/odom /tbot201/odom /tbot149/odom /tbot165/target /tbot162/target /tbot201/target /tbot149/target /tbot162/data /tbot201/data /tbot149/data /tbot162/april_data_multi /tbot201/april_data_multi /tbot149/april_data_multi

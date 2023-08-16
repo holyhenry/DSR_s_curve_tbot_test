@@ -13,7 +13,7 @@ class PD:
 
         self.dt = dt
         self.alpha = alpha
-        self.beta = 0.5 #TEST
+        self.beta = 1.0 #TEST
         
         self.kp = kp
         self.kd = kd
