@@ -574,14 +574,14 @@ class tracking_node:
         find_target = False
         leader_traj = np.array(self.leader_states)
 
-        for i in range(len(leader_traj)-1, -1, -1):
-            travel_length = leader_traj[i][:]-self.leader_state[:]
+        # for i in range(len(leader_traj)-1, -1, -1):
+        #     travel_length = leader_traj[i][:]-self.leader_state[:]
 
-            if np.linalg.norm(travel_length, ord=2)>=distance:
-                target = leader_traj[i][:]
-                self.target_status = 1
-                find_target = True
-                break
+        #     if np.linalg.norm(travel_length, ord=2)>=distance:
+        #         target = leader_traj[i][:]
+        #         self.target_status = 1
+        #         find_target = True
+        #         break
 
         if not find_target:
             dx    = self.leader_state[0]

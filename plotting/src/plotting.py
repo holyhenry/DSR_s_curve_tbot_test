@@ -423,7 +423,7 @@ class plotting_node:
 
     def plot(self, fig):
 
-        distance = 0.50
+        distance = 0.45
         
         # if (len(self.follower_states_0)>0 and len(self.leader_states)>0 and len(self.leader_states_tag)>0):
         if (len(self.follower_states_0)>0):
@@ -485,7 +485,7 @@ class plotting_node:
             plt.xlabel('x (m)')
             plt.ylabel('y (m)')
             plt.xlim(-1,3)
-            plt.ylim(-3,1)
+            plt.ylim(-1,3)
             plt.legend()
             plt.grid()
         
