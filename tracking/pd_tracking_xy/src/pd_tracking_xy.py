@@ -306,7 +306,7 @@ class tracking_node:
 
         # leader stste (local x,y)       
         self.leader_state             = np.zeros(2) 
-        self.leader_state_last        = np.array([0.4, 0.0])
+        self.leader_state_last        = np.zeros(2) 
         self.leader_state_global_last = np.zeros(2) 
 
         # odom (global)
@@ -316,20 +316,17 @@ class tracking_node:
         # tag info (global)
         self.leader_states_global = []
 
-        self.spacing = 0.4
-        self.alpha   = 0.0
-        self.beta    = 0.0 
-        self.use_DSR = True
-        self.use_Bezier = True
+        self.spacing       = 0.45
+        self.alpha         = 0.0
+        self.beta          = 0.0 
+        self.use_DSR       = True
+        self.use_Bezier    = True
         self.follower_indx = -1
         self.target_status = -1
+        self.lowpass_gain  = 1.0
 
         # test
         self.pub_tag_data = rospy.Publisher(rospy.get_namespace() + "tag_data", Float32MultiArray, queue_size=1)
-
-    def getLeaderGlobalStates(self):
-
-        return np.array(self.leader_states_global).copy()
 
     def initNode(self, freq):
 
@@ -337,19 +334,23 @@ class tracking_node:
         rate = rospy.Rate(int(freq))
         ns   = rospy.get_namespace()
 
+        self.spacing       = rospy.get_param(ns + "/pd_tracking_xy/spacing")
+        self.alpha         = rospy.get_param(ns + "/pd_tracking_xy/alpha")
+        self.beta          = rospy.get_param(ns + "/pd_tracking_xy/beta")
+        self.use_DSR       = rospy.get_param(ns + "/pd_tracking_xy/ues_DSR")
+        self.use_Bezier    = rospy.get_param(ns + "/pd_tracking_xy/use_Bezier")
+        self.follower_indx = rospy.get_param(ns + "/pd_tracking_xy/follower_indx")
+        self.lowpass_gain  = rospy.get_param(ns + "/pd_tracking_xy/lowpass_gain")
+
+        self.leader_state_last = np.array([self.spacing, 0.0])
+        
         rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
+
         pub        = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
         pub_data   = rospy.Publisher(ns + "data", Twist, queue_size=1)
         pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
         pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
-
-        self.follower_indx = rospy.get_param(ns + "/pd_tracking_xy/follower_indx")
-        self.use_Bezier    = rospy.get_param(ns + "/pd_tracking_xy/use_Bezier")
-        self.use_DSR = rospy.get_param(ns + "/pd_tracking_xy/ues_DSR")
-        self.spacing = rospy.get_param(ns + "/pd_tracking_xy/spacing")
-        self.alpha   = rospy.get_param(ns + "/pd_tracking_xy/alpha")
-        self.beta    = rospy.get_param(ns + "/pd_tracking_xy/beta")
         
         rospy.loginfo("%s params, spacing:%f alpha:%f beta:%f", ns, self.spacing, self.alpha, self.beta)
 
@@ -436,7 +437,7 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             leader_state_raw    = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            self.leader_state   = self.lowPass(leader_state_raw, self.leader_state_last, lowPassGain=1.0)
+            self.leader_state   = self.lowPass(leader_state_raw, self.leader_state_last, lowPassGain=self.lowpass_gain)
             leader_state_global = self.homoTrans2Global(self.leader_state)
 
             if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
@@ -548,6 +549,10 @@ class tracking_node:
 
         return new_states
 
+    def getLeaderGlobalStates(self):
+
+        return np.array(self.leader_states_global).copy()
+
     def pubLeaderTraj(self, pub):
         
         infered_leader_traj = Float32MultiArray()
@@ -574,14 +579,14 @@ class tracking_node:
         find_target = False
         leader_traj = np.array(self.leader_states)
 
-        # for i in range(len(leader_traj)-1, -1, -1):
-        #     travel_length = leader_traj[i][:]-self.leader_state[:]
+        for i in range(len(leader_traj)-1, -1, -1):
+            travel_length = leader_traj[i][:]-self.leader_state[:]
 
-        #     if np.linalg.norm(travel_length, ord=2)>=distance:
-        #         target = leader_traj[i][:]
-        #         self.target_status = 1
-        #         find_target = True
-        #         break
+            if np.linalg.norm(travel_length, ord=2)>=distance:
+                target = leader_traj[i][:]
+                self.target_status = 1
+                find_target = True
+                break
 
         if not find_target:
             dx    = self.leader_state[0]
@@ -672,7 +677,7 @@ class tracking_node:
                 getTarget = False
 
             if not getTarget:
-                rospy.logwarn('bezier fail')
+                #rospy.logwarn('bezier fail')
                 goal = self.getUnitCircleTarget(targetPub, distance=self.spacing)
                 u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
             else:
