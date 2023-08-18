@@ -67,14 +67,14 @@ class PD:
         # -----------------------------------------------------------------------------
         ex = goal[0]
         ey = goal[1]
-        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.1)
-        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.1)
+        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.05)
+        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.05)
 
         # -----------------------------------------------------------------------------
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
-        ex_dot = self.lowPass(ex_dot,self.ex_dot_last,lowPassGain=0.1)
-        ey_dot = self.lowPass(ey_dot,self.ey_dot_last,lowPassGain=0.1)
+        ex_dot = self.lowPass(ex_dot,self.ex_dot_last,lowPassGain=0.05)
+        ey_dot = self.lowPass(ey_dot,self.ey_dot_last,lowPassGain=0.05)
     
         x_dot = self.v
         y_dot = 0
