@@ -45,7 +45,7 @@
 		<node machine="bot162" pkg="camera_multi_tag" name="cam_multi_tag_node" type="camera_multi_tag" output="screen" />
 		
 		<node machine="bot162" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
-			<param name="follower_indx" value="0"/>
+			<param name="follower_indx" value="2"/>
 			<param name="use_Bezier" value="$(arg use_Bezier)"/>
 			<param name="ues_DSR"    value="$(arg ues_DSR)"/>
 			<param name="spacing"    value="$(arg spacing)"/>
@@ -101,7 +101,7 @@
 		<node machine="bot149" pkg="camera_multi_tag" name="cam_multi_tag_node" type="camera_multi_tag" output="screen" />
 		
 		<node machine="bot149" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
-			<param name="follower_indx" value="2"/>
+			<param name="follower_indx" value="0"/>
 			<param name="use_Bezier" value="$(arg use_Bezier)"/>
 			<param name="ues_DSR"    value="$(arg ues_DSR)"/>
 			<param name="spacing"    value="$(arg spacing)"/>
