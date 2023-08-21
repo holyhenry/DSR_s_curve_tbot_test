@@ -85,7 +85,7 @@ class PD:
         self.v += ux_ddot*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
-        self.w = self.invMapGain(velocity,0.04,1)*uy_ddot
+        self.w = self.invMapGain(velocity,0.05,1)*uy_ddot
         w_max  = self.omegaLim(velocity)
         self.w = np.clip(self.w,-w_max,w_max)
         
@@ -436,8 +436,7 @@ class tracking_node:
             tag_x   /= count
             tag_y   /= count
             tag_phi /= count
-            # leader_state_raw    = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            leader_state_raw    = np.array([tag_x,tag_y])
+            leader_state_raw    = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
             self.leader_state   = self.lowPass(leader_state_raw, self.leader_state_last, lowPassGain=self.lowpass_gain)
             leader_state_global = self.homoTrans2Global(self.leader_state)
 
