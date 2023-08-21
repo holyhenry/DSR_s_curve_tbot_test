@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 
 class PD:
 
-    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, dist=0.4):
+    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, dist=0.4, lowPassGain=0.167):
 
         self.dt = dt
         self.alpha = alpha
@@ -32,7 +32,9 @@ class PD:
         self.w = 0.0
 
         self.dist = dist # inter-robot distance
+        self.lowPassGain = lowPassGain
         self.reinforce_last = 0.0
+        
     
     def lowPass(self, u, y_last, lowPassGain = 0.2):
         
@@ -67,14 +69,14 @@ class PD:
         # -----------------------------------------------------------------------------
         ex = goal[0]
         ey = goal[1]
-        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.1)
-        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.1)
+        ex = self.lowPass(ex,self.ex_last,lowPassGain=self.lowPassGain)
+        ey = self.lowPass(ey,self.ey_last,lowPassGain=self.lowPassGain)
 
         # -----------------------------------------------------------------------------
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
-        ex_dot = self.lowPass(ex_dot,self.ex_dot_last,lowPassGain=0.1)
-        ey_dot = self.lowPass(ey_dot,self.ey_dot_last,lowPassGain=0.1)
+        ex_dot = self.lowPass(ex_dot,self.ex_dot_last,lowPassGain=self.lowPassGain)
+        ey_dot = self.lowPass(ey_dot,self.ey_dot_last,lowPassGain=self.lowPassGain)
     
         x_dot = self.v
         y_dot = 0
@@ -437,7 +439,7 @@ class tracking_node:
             tag_y   /= count
             tag_phi /= count
             leader_state_raw    = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            self.leader_state   = self.lowPass(leader_state_raw, self.leader_state_last, lowPassGain=self.lowpass_gain)
+            self.leader_state   = self.lowPass(leader_state_raw, self.leader_state_last, lowPassGain=1.0)
             leader_state_global = self.homoTrans2Global(self.leader_state)
 
             if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
@@ -664,7 +666,7 @@ class tracking_node:
 
         # controller setups
         dt = 1.0/freq
-        ctrl_1 = PD(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, dist=self.spacing)
+        ctrl_1 = PD(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, dist=self.spacing, lowPassGain=self.lowpass_gain)
         ctrl_2 = DSR(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, beta=self.beta, dist=self.spacing)
 
         while not rospy.is_shutdown():
