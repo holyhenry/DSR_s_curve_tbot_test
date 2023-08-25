@@ -63,20 +63,6 @@ class PD:
         w_max = min(4*np.abs(v),1.58)
         return w_max
     
-    def velocityFeedbackSwitch(self, odom, odom_last, cmd, useCmd=False):
-        '''
-        if odometry feedback is noisy, switch to cmd instead
-        '''
-        operate_v = 0.1
-        v_diff = 0.01
-        
-        if useCmd or np.abs(odom) > operate_v or np.abs(odom-odom_last) > v_diff:
-            return cmd
-         
-        else:
-            odom = self.lowPass(odom, odom_last, lowPassGain=0.5)
-            return odom
-    
     def pd(self, velocity, goal, dataPub):
         '''
         states are represented in follower local frame
@@ -211,22 +197,8 @@ class DSR:
 
         w_max = min(4*np.abs(v),1.58)
         return w_max
-    
-    def velocityFeedbackSwitch(self, odom, odom_last, cmd, useCmd=False):
-        '''
-        if odometry feedback is noisy, switch to cmd instead
-        '''
-        operate_v = 0.1
-        v_diff = 0.01
         
-        if useCmd or np.abs(odom) > operate_v or np.abs(odom-odom_last) > v_diff:
-            return cmd
-         
-        else:
-            odom = self.lowPass(odom, odom_last, lowPassGain=0.5)
-            return odom
-        
-    def dsr(self, velocity, curve_length_s, theta_s, dataPub):
+    def dsr(self, velocity, curve_length_s, theta_s, dataPub, reinforce_scal):
 
         # equation (2) ----------------------------------------------------------------
         es = curve_length_s - self.dist
@@ -234,14 +206,14 @@ class DSR:
         
         reinforce = self.v + self.beta*(es - self.es_last)/self.dt
         reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
-        us_dot    = self.alpha*es*self.beta + reinforce
+        us_dot    = self.alpha*es*self.beta + reinforce_scal*reinforce
 
         # equation (3) ----------------------------------------------------------------
         ux_dot = us_dot*np.cos(theta_s)
         uy_dot = us_dot*np.sin(theta_s)
         ux_dot = self.lowPass(ux_dot, self.ux_dot_last, lowPassGain=0.167)
         uy_dot = self.lowPass(uy_dot, self.uy_dot_last, lowPassGain=0.167)
-
+    
         x_dot  = self.v
         y_dot  = 0
         ux_ddot = ((ux_dot-self.ux_dot_last)/self.dt + self.kp*ux_dot) - self.kp*x_dot
@@ -349,14 +321,15 @@ class tracking_node:
         # tag info (global)
         self.leader_states_global = []
 
-        self.spacing       = 0.45
-        self.alpha         = 0.0
-        self.beta          = 0.0 
-        self.use_DSR       = True
-        self.use_Bezier    = True
-        self.follower_indx = -1
-        self.target_status = -1
-        self.lowpass_gain  = 1.0
+        self.spacing        = 0.45
+        self.alpha          = 0.0
+        self.beta           = 0.0 
+        self.use_DSR        = True
+        self.use_Bezier     = True
+        self.follower_indx  = -1
+        self.target_status  = -1
+        self.lowpass_gain   = 1.0
+        self.reinforce_scal = 1.0
 
         # test
         self.pub_tag_data = rospy.Publisher(rospy.get_namespace() + "tag_data", Float32MultiArray, queue_size=1)
@@ -367,13 +340,14 @@ class tracking_node:
         rate = rospy.Rate(int(freq))
         ns   = rospy.get_namespace()
 
-        self.spacing       = rospy.get_param(ns + "/pd_tracking_xy/spacing")
-        self.alpha         = rospy.get_param(ns + "/pd_tracking_xy/alpha")
-        self.beta          = rospy.get_param(ns + "/pd_tracking_xy/beta")
-        self.use_DSR       = rospy.get_param(ns + "/pd_tracking_xy/ues_DSR")
-        self.use_Bezier    = rospy.get_param(ns + "/pd_tracking_xy/use_Bezier")
-        self.follower_indx = rospy.get_param(ns + "/pd_tracking_xy/follower_indx")
-        self.lowpass_gain  = rospy.get_param(ns + "/pd_tracking_xy/lowpass_gain")
+        self.spacing        = rospy.get_param(ns + "/pd_tracking_xy/spacing")
+        self.alpha          = rospy.get_param(ns + "/pd_tracking_xy/alpha")
+        self.beta           = rospy.get_param(ns + "/pd_tracking_xy/beta")
+        self.use_DSR        = rospy.get_param(ns + "/pd_tracking_xy/ues_DSR")
+        self.use_Bezier     = rospy.get_param(ns + "/pd_tracking_xy/use_Bezier")
+        self.follower_indx  = rospy.get_param(ns + "/pd_tracking_xy/follower_indx")
+        self.lowpass_gain   = rospy.get_param(ns + "/pd_tracking_xy/lowpass_gain")
+        self.reinforce_scal = rospy.get_param(ns + "/pd_tracking_xy/reinforce_scal")
 
         self.leader_state_last = np.array([self.spacing, 0.0])
         
@@ -715,12 +689,12 @@ class tracking_node:
                 u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
             else:
                 if self.use_DSR:
-                    u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub)
+                    u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub, self.reinforce_scal)
                 else:
                     u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
 
-            print("leader_state--------------", self.leader_state)
-            print('----------------------------------------------')
+            # print("leader_state--------------", self.leader_state)
+            # print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)
             self.pubCmdVel(cmdVelPub, u[0], u[1])

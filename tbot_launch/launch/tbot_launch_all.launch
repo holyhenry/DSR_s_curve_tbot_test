@@ -2,14 +2,15 @@
 
 <launch>
 
-	<!-- <arg name="env"     default="/opt/ros/noetic/env_henry.sh"/> -->
-	<arg name="env"          default="/opt/ros/noetic/env_alien.sh"/>
-	<arg name="use_Bezier"   default="False"/>
-	<arg name="ues_DSR"      default="True"/>
-	<arg name="spacing"      default="0.35"/>
-	<arg name="alpha"        default="0.5"/>
-	<arg name="beta"         default="0.5"/>
-	<arg name="lowpass_gain" default="0.1"/>
+	<!-- <arg name="env"       default="/opt/ros/noetic/env_henry.sh"/> -->
+	<arg name="env"            default="/opt/ros/noetic/env_alien.sh"/>
+	<arg name="use_Bezier"     default="True"/>
+	<arg name="ues_DSR"        default="True"/>
+	<arg name="spacing"        default="0.45"/>
+	<arg name="alpha"          default="0.3"/>
+	<arg name="beta"           default="0.5"/>
+	<arg name="lowpass_gain"   default="0.1"/> 
+	<arg name="reinforce_scal" default="1.0"/> 
 
     <!-- tbot165 -->
 	<group ns="tbot165">
@@ -46,13 +47,14 @@
 		<node machine="bot162" pkg="camera_multi_tag" name="cam_multi_tag_node" type="camera_multi_tag" output="screen" />
 		
 		<node machine="bot162" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
-			<param name="follower_indx" value="2"/>
-			<param name="use_Bezier"    value="$(arg use_Bezier)"/>
-			<param name="ues_DSR"       value="$(arg ues_DSR)"/>
-			<param name="spacing"       value="$(arg spacing)"/>
-			<param name="alpha"         value="$(arg alpha)"/>
-			<param name="beta"          value="$(arg beta)"/>
-			<param name="lowpass_gain"  value="$(arg lowpass_gain)"/>
+			<param name="follower_indx"   value="1"/>
+			<param name="use_Bezier"      value="$(arg use_Bezier)"/>
+			<param name="ues_DSR"         value="$(arg ues_DSR)"/>
+			<param name="spacing"         value="$(arg spacing)"/>
+			<param name="alpha"           value="$(arg alpha)"/>
+			<param name="beta"            value="$(arg beta)"/>
+			<param name="lowpass_gain"    value="$(arg lowpass_gain)"/>
+			<param name="reinforce_scal"  value="$(arg reinforce_scal)"/>
 		</node>
 	</group>
 
@@ -75,13 +77,14 @@
 		<node machine="bot201" pkg="camera_multi_tag" name="cam_multi_tag_node" type="camera_multi_tag" output="screen" />
 		
 		<node machine="bot201" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
-			<param name="follower_indx" value="1"/>
-			<param name="use_Bezier"    value="$(arg use_Bezier)"/>
-			<param name="ues_DSR"       value="$(arg ues_DSR)"/>
-			<param name="spacing"       value="$(arg spacing)"/>
-			<param name="alpha"         value="$(arg alpha)"/>
-			<param name="beta"          value="$(arg beta)"/>
-			<param name="lowpass_gain"  value="$(arg lowpass_gain)"/>
+			<param name="follower_indx"   value="2"/>
+			<param name="use_Bezier"      value="$(arg use_Bezier)"/>
+			<param name="ues_DSR"         value="$(arg ues_DSR)"/>
+			<param name="spacing"         value="$(arg spacing)"/>
+			<param name="alpha"           value="$(arg alpha)"/>
+			<param name="beta"            value="$(arg beta)"/>
+			<param name="lowpass_gain"    value="$(arg lowpass_gain)"/>
+			<param name="reinforce_scal"  value="$(arg reinforce_scal)"/>
 		</node>
 	</group>
 	
@@ -104,13 +107,14 @@
 		<node machine="bot149" pkg="camera_multi_tag" name="cam_multi_tag_node" type="camera_multi_tag" output="screen" />
 		
 		<node machine="bot149" pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
-			<param name="follower_indx" value="0"/>
-			<param name="use_Bezier"    value="$(arg use_Bezier)"/>
-			<param name="ues_DSR"       value="$(arg ues_DSR)"/>
-			<param name="spacing"       value="$(arg spacing)"/>
-			<param name="alpha"         value="$(arg alpha)"/>
-			<param name="beta"          value="$(arg beta)"/>
-			<param name="lowpass_gain"  value="$(arg lowpass_gain)"/>
+			<param name="follower_indx"   value="0"/>
+			<param name="use_Bezier"      value="$(arg use_Bezier)"/>
+			<param name="ues_DSR"         value="$(arg ues_DSR)"/>
+			<param name="spacing"         value="$(arg spacing)"/>
+			<param name="alpha"           value="$(arg alpha)"/>
+			<param name="beta"            value="$(arg beta)"/>
+			<param name="lowpass_gain"    value="$(arg lowpass_gain)"/>
+			<param name="reinforce_scal"  value="$(arg reinforce_scal)"/>
 		</node>
 	</group>
 
