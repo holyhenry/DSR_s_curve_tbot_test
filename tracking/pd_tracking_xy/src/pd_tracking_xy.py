@@ -34,6 +34,7 @@ class PD:
         self.dist = dist # inter-robot distance
         self.lowPassGain = lowPassGain
         self.reinforce_last = 0.0
+        self.velocity_last  = 0.0
         
     
     def lowPass(self, u, y_last, lowPassGain = 0.2):
@@ -61,6 +62,20 @@ class PD:
 
         w_max = min(4*np.abs(v),1.58)
         return w_max
+    
+    def velocityFeedbackSwitch(self, odom, odom_last, cmd, useCmd=False):
+        '''
+        if odometry feedback is noisy, switch to cmd instead
+        '''
+        operate_v = 0.1
+        v_diff = 0.01
+        
+        if useCmd or np.abs(odom) > operate_v or np.abs(odom-odom_last) > v_diff:
+            return cmd
+         
+        else:
+            odom = self.lowPass(odom, odom_last, lowPassGain=0.5)
+            return odom
     
     def pd(self, velocity, goal, dataPub):
         '''
@@ -142,8 +157,8 @@ class PD:
         # record
         data = Twist()
         data.linear.x  = es
-        data.linear.y  = ex
-        data.linear.z  = ey
+        data.linear.y  = self.v
+        data.linear.z  = self.w
         data.angular.x = 0.0
         data.angular.y = 0.0
         dataPub.publish(data)
@@ -177,6 +192,7 @@ class DSR:
         
         self.dist = dist # inter-robot distance
         self.reinforce_last = 0.0
+        self.velocity_last  = 0.0
 
     def lowPass(self, u, y_last, lowPassGain = 0.2):
         
@@ -196,6 +212,20 @@ class DSR:
         w_max = min(4*np.abs(v),1.58)
         return w_max
     
+    def velocityFeedbackSwitch(self, odom, odom_last, cmd, useCmd=False):
+        '''
+        if odometry feedback is noisy, switch to cmd instead
+        '''
+        operate_v = 0.1
+        v_diff = 0.01
+        
+        if useCmd or np.abs(odom) > operate_v or np.abs(odom-odom_last) > v_diff:
+            return cmd
+         
+        else:
+            odom = self.lowPass(odom, odom_last, lowPassGain=0.5)
+            return odom
+        
     def dsr(self, velocity, curve_length_s, theta_s, dataPub):
 
         # equation (2) ----------------------------------------------------------------
@@ -212,7 +242,7 @@ class DSR:
         ux_dot = self.lowPass(ux_dot, self.ux_dot_last, lowPassGain=0.167)
         uy_dot = self.lowPass(uy_dot, self.uy_dot_last, lowPassGain=0.167)
 
-        x_dot  = self.v
+        x_dot  = self.velocityFeedbackSwitch(velocity, self.velocity_last, self.v)
         y_dot  = 0
         ux_ddot = ((ux_dot-self.ux_dot_last)/self.dt + self.kp*ux_dot) - self.kp*x_dot
         uy_ddot = ((uy_dot-self.uy_dot_last)/self.dt + self.kp*uy_dot) - self.kp*y_dot
@@ -232,8 +262,8 @@ class DSR:
         # record
         data = Twist()
         data.linear.x  = es
-        data.linear.y  = ux_dot
-        data.linear.z  = uy_dot
+        data.linear.y  = self.v
+        data.linear.z  = self.w
         data.angular.x = reinforce
         data.angular.y = 0.0
         dataPub.publish(data)
@@ -242,6 +272,7 @@ class DSR:
         self.ux_dot_last    = ux_dot
         self.uy_dot_last    = uy_dot
         self.reinforce_last = reinforce
+        self.velocity_last  = velocity
         return np.array([self.v, self.w])
 
 class Bezier:
