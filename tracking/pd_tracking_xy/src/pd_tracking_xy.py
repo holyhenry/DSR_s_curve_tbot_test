@@ -157,11 +157,12 @@ class PD:
     
 class DSR:
 
-    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, beta=0.5, dist=0.4):
+    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, beta1=0.5, beta2=0.5, dist=0.4):
 
         self.dt    = dt
         self.alpha = alpha
-        self.beta  = beta
+        self.beta1 = beta1
+        self.beta2 = beta2
 
         self.kp = kp
         self.kd = kd
@@ -204,9 +205,9 @@ class DSR:
         es = curve_length_s - self.dist
         es = self.lowPass(es, self.es_last, lowPassGain=0.167)
         
-        reinforce = self.v + self.beta*(es - self.es_last)/self.dt
+        reinforce = self.beta2*self.v + self.beta1*(es - self.es_last)/self.dt
         reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
-        us_dot    = self.alpha*es*self.beta + reinforce_scal*reinforce
+        us_dot    = self.alpha*es*self.beta1+ reinforce_scal*reinforce
 
         # equation (3) ----------------------------------------------------------------
         ux_dot = us_dot*np.cos(theta_s)
@@ -323,7 +324,8 @@ class tracking_node:
 
         self.spacing        = 0.45
         self.alpha          = 0.0
-        self.beta           = 0.0 
+        self.beta1          = 0.0
+        self.beta2          = 0.0 
         self.use_DSR        = True
         self.use_Bezier     = True
         self.follower_indx  = -1
@@ -342,7 +344,8 @@ class tracking_node:
 
         self.spacing        = rospy.get_param(ns + "/pd_tracking_xy/spacing")
         self.alpha          = rospy.get_param(ns + "/pd_tracking_xy/alpha")
-        self.beta           = rospy.get_param(ns + "/pd_tracking_xy/beta")
+        self.beta1          = rospy.get_param(ns + "/pd_tracking_xy/beta1")
+        self.beta2          = rospy.get_param(ns + "/pd_tracking_xy/beta2")
         self.use_DSR        = rospy.get_param(ns + "/pd_tracking_xy/ues_DSR")
         self.use_Bezier     = rospy.get_param(ns + "/pd_tracking_xy/use_Bezier")
         self.follower_indx  = rospy.get_param(ns + "/pd_tracking_xy/follower_indx")
@@ -359,7 +362,7 @@ class tracking_node:
         pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
         pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
         
-        rospy.loginfo("%s params, spacing:%f alpha:%f beta:%f", ns, self.spacing, self.alpha, self.beta)
+        rospy.loginfo("%s params, spacing:%f alpha:%f beta1:%f beta2:%f", ns, self.spacing, self.alpha, self.beta1, self.beta2)
 
         return pub, pub_data, pub_target, pub_l_traj, rate
 
@@ -672,7 +675,7 @@ class tracking_node:
         # controller setups
         dt = 1.0/freq
         ctrl_1 = PD(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, dist=self.spacing, lowPassGain=self.lowpass_gain)
-        ctrl_2 = DSR(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, beta=self.beta, dist=self.spacing)
+        ctrl_2 = DSR(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, beta1=self.beta1, beta2=self.beta2, dist=self.spacing)
 
         while not rospy.is_shutdown():
 

@@ -8,7 +8,8 @@
 	<arg name="ues_DSR"        default="True"/>
 	<arg name="spacing"        default="0.45"/>
 	<arg name="alpha"          default="0.3"/>
-	<arg name="beta"           default="0.5"/>
+	<arg name="beta1"          default="0.5"/>
+	<arg name="beta2"          default="0.5"/>
 	<arg name="lowpass_gain"   default="0.1"/> 
 	<arg name="reinforce_scal" default="0.95"/> 
 
@@ -52,7 +53,8 @@
 			<param name="ues_DSR"         value="$(arg ues_DSR)"/>
 			<param name="spacing"         value="$(arg spacing)"/>
 			<param name="alpha"           value="$(arg alpha)"/>
-			<param name="beta"            value="$(arg beta)"/>
+			<param name="beta1"           value="$(arg beta1)"/>
+			<param name="beta2"           value="$(arg beta2)"/>
 			<param name="lowpass_gain"    value="$(arg lowpass_gain)"/>
 			<param name="reinforce_scal"  value="$(arg reinforce_scal)"/>
 		</node>
@@ -82,7 +84,8 @@
 			<param name="ues_DSR"         value="$(arg ues_DSR)"/>
 			<param name="spacing"         value="$(arg spacing)"/>
 			<param name="alpha"           value="$(arg alpha)"/>
-			<param name="beta"            value="$(arg beta)"/>
+			<param name="beta1"           value="$(arg beta1)"/>
+			<param name="beta2"           value="$(arg beta2)"/>
 			<param name="lowpass_gain"    value="$(arg lowpass_gain)"/>
 			<param name="reinforce_scal"  value="$(arg reinforce_scal)"/>
 		</node>
@@ -112,7 +115,8 @@
 			<param name="ues_DSR"         value="$(arg ues_DSR)"/>
 			<param name="spacing"         value="$(arg spacing)"/>
 			<param name="alpha"           value="$(arg alpha)"/>
-			<param name="beta"            value="$(arg beta)"/>
+			<param name="beta1"           value="$(arg beta1)"/>
+			<param name="beta2"           value="$(arg beta2)"/>
 			<param name="lowpass_gain"    value="$(arg lowpass_gain)"/>
 			<param name="reinforce_scal"  value="$(arg reinforce_scal)"/>
 		</node>
