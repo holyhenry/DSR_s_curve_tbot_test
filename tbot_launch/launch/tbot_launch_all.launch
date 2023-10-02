@@ -5,12 +5,12 @@
 	<!-- <arg name="env"       default="/opt/ros/noetic/env_henry.sh"/> -->
 	<arg name="env"            default="/opt/ros/noetic/env_alien.sh"/>
 	<arg name="use_Bezier"     default="True"/>
-	<arg name="ues_DSR"        default="True"/>
+	<arg name="ues_DSR"        default="False"/>
 	<arg name="spacing"        default="0.45"/>
 	<arg name="alpha"          default="0.3"/>
 	<arg name="beta1"          default="0.5"/>
 	<arg name="beta2"          default="0.9"/>
-	<arg name="lowpass_gain"   default="0.1"/> 
+	<arg name="lowpass_gain"   default="0.2"/> 
 	<arg name="reinforce_scal" default="1.0"/> 
 
     <!-- tbot165 -->

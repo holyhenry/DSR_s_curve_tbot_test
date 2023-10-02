@@ -211,7 +211,7 @@ class DSR:
         ux_dot = self.lowPass(ux_dot, self.ux_dot_last, lowPassGain=0.167)
         uy_dot = self.lowPass(uy_dot, self.uy_dot_last, lowPassGain=0.167)
     
-        x_dot  = self.v
+        x_dot  = velocity
         y_dot  = 0
         ux_ddot = ((ux_dot-self.ux_dot_last)/self.dt + self.kp*ux_dot) - self.kp*x_dot
         uy_ddot = ((uy_dot-self.uy_dot_last)/self.dt + self.kp*uy_dot) - self.kp*y_dot
