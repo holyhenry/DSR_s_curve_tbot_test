@@ -33,7 +33,6 @@ class PD:
 
         self.dist = dist # inter-robot distance
         self.lowPassGain = lowPassGain
-        self.reinforce_last = 0.0
         self.velocity_last  = 0.0
         
     
@@ -115,9 +114,7 @@ class PD:
         es = curve_length_s - self.dist
         es = self.lowPass(es, self.es_last, lowPassGain=0.167)
 
-        reinforce = self.v + self.beta*(es - self.es_last)/self.dt
-        reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
-        us_dot = self.alpha*es*self.beta + 0.0*(reinforce)
+        us_dot = self.alpha*es*self.beta
 
         # -----------------------------------------------------------------------------
         ex = us_dot*np.cos(theta_s)
@@ -127,7 +124,7 @@ class PD:
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
-        x_dot = self.v
+        x_dot = velocity # noise-less: self.v
         y_dot = 0
         ux_ddot = (ex_dot + self.kp*ex) - self.kp*x_dot
         uy_ddot = (ey_dot + self.kp*ey) - self.kp*y_dot
@@ -152,7 +149,6 @@ class PD:
         self.es_last = es
         self.ex_last = ex
         self.ey_last = ey
-        self.reinforce_last = reinforce
         return np.array([self.v, self.w])
     
 class DSR:
@@ -306,9 +302,10 @@ class tracking_node:
     def __init__(self) -> None:
 
         # current state (local x,y,yaw)
-        self.state        = np.zeros(3) 
-        self.state_last   = np.zeros(3)   
-        self.velocity     = 0.0      
+        self.state         = np.zeros(3) 
+        self.state_last    = np.zeros(3)   
+        self.velocity      = 0.0
+        self.velocity_last = 0.0      
 
         # leader stste (local x,y)       
         self.leader_state             = np.zeros(2) 
@@ -407,12 +404,15 @@ class tracking_node:
         q_w = data.pose.pose.orientation.w
         (_, _, self_yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
 
-        self.velocity = data.twist.twist.linear.x
+        #self.velocity = data.twist.twist.linear.x
+        self.velocity = self.lowPass(data.twist.twist.linear.x, self.velocity_last, lowPassGain=self.lowpass_gain)
+
         self.state    = np.array([self_x, self_y, self_yaw])
         #self.state    = self.lowPass(self.state, self.state_last, lowPassGain=1.0)
         self.states.append(self.state)
         
-        self.state_last = self.state
+        self.state_last    = self.state
+        self.velocity_last = self.velocity
 
     def multiAprilTagCallback(self, data):
         
