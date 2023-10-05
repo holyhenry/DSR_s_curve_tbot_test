@@ -69,14 +69,14 @@ class PD:
         # -----------------------------------------------------------------------------
         ex = goal[0]
         ey = goal[1]
-        ex = self.lowPass(ex,self.ex_last,lowPassGain=self.lowPassGain)
-        ey = self.lowPass(ey,self.ey_last,lowPassGain=self.lowPassGain)
+        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.167)
+        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.167)
 
         # -----------------------------------------------------------------------------
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
-        ex_dot = self.lowPass(ex_dot,self.ex_dot_last,lowPassGain=self.lowPassGain)
-        ey_dot = self.lowPass(ey_dot,self.ey_dot_last,lowPassGain=self.lowPassGain)
+        ex_dot = self.lowPass(ex_dot,self.ex_dot_last,lowPassGain=0.167)
+        ey_dot = self.lowPass(ey_dot,self.ey_dot_last,lowPassGain=0.167)
     
         x_dot = self.v
         y_dot = 0
@@ -124,7 +124,7 @@ class PD:
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
         
-        x_dot = velocity # noise-less: self.v
+        x_dot = self.v 
         y_dot = 0
         ux_ddot = (ex_dot + self.kp*ex) - self.kp*x_dot
         uy_ddot = (ey_dot + self.kp*ey) - self.kp*y_dot
