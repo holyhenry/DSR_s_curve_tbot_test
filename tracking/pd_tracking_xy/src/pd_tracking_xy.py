@@ -461,7 +461,10 @@ class tracking_node:
         tag_filter_id.data = ids
         self.pub_tag_data.publish(tag_filter_id)
 
-    def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
+    def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.043):
+        # frame size 4.0cm, d=0.038mm
+        # frame size 4.5cm, d=0.043mm
+        # frame size 5.0cm, d=0.048mm
 
         if (id%num_tag == 0):
             x1_hat = x + d*np.cos(-np.pi/2+alpha+0.2616)
@@ -709,6 +712,6 @@ class tracking_node:
 if __name__ == '__main__':
 
     Tracking_node = tracking_node()
-    Tracking_node.run(freq=15)
+    Tracking_node.run(freq=20)
 
 
