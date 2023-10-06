@@ -1,9 +1,25 @@
 <launch>
-  <node pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
-			<param name="follower_indx" value="0"/>
-			<param name="ues_DSR" value="True"/>
-			<param name="spacing" value="0.5"/>
-			<param name="alpha"   value="0.3"/>
-			<param name="beta"    value="0.5"/>
-  </node>
+
+	<!-- <arg name="env"       default="/opt/ros/noetic/env_henry.sh"/> -->
+	<arg name="env"            default="/opt/ros/noetic/env_alien.sh"/>
+	<arg name="use_Bezier"     default="True"/>
+	<arg name="ues_DSR"        default="True"/>
+	<arg name="spacing"        default="0.45"/>
+	<arg name="alpha"          default="0.3"/>
+	<arg name="beta1"          default="0.5"/>
+	<arg name="beta2"          default="0.9"/>
+	<arg name="lowpass_gain"   default="0.2"/> 
+	<arg name="reinforce_scal" default="1.0"/> 
+
+	<node pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy.py" output="screen">
+		<param name="follower_indx"   value="0"/>
+		<param name="use_Bezier"      value="$(arg use_Bezier)"/>
+		<param name="ues_DSR"         value="$(arg ues_DSR)"/>
+		<param name="spacing"         value="$(arg spacing)"/>
+		<param name="alpha"           value="$(arg alpha)"/>
+		<param name="beta1"           value="$(arg beta1)"/>
+		<param name="beta2"           value="$(arg beta2)"/>
+		<param name="lowpass_gain"    value="$(arg lowpass_gain)"/>
+		<param name="reinforce_scal"  value="$(arg reinforce_scal)"/>
+	</node>
 </launch>

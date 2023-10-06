@@ -5,7 +5,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 
 rospy.init_node('image_publisher')
-r   = rospy.Rate(20) # 10hz
+r   = rospy.Rate(30) # 10hz
 
 ns  = rospy.get_namespace()
 pub = rospy.Publisher(ns + '/camera/color/image_raw', Image, queue_size=2)
