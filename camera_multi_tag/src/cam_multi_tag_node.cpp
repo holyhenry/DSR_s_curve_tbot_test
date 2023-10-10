@@ -10,7 +10,7 @@ Cam_Node::Cam_Node(ros::NodeHandle *nh)
 
 void Cam_Node::img_raw_callback(const sensor_msgs::Image::ConstPtr& msg)
 {
-    const float markerLength = 0.040;
+    const float markerLength = 0.035;
     cv::Mat imageCopy;
     cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
     cv_ptr->image.copyTo(imageCopy);
