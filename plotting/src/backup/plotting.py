@@ -70,20 +70,30 @@ class plotting_node:
         self.cum_angle = 0.0
         self.leader_state = np.zeros(3)
         self.follower_state_0 = np.zeros(3)
+        self.follower_state_1 = np.zeros(3)
+        self.follower_state_2 = np.zeros(3)
         self.leader_state_tag = np.zeros(2)
 
         # odom (global)
         self.leader_states = []
         self.follower_states_0 = []
+        self.follower_states_1 = []
+        self.follower_states_2 = []
         # tag info global
         self.leader_states_tag = []
         self.leader_states_tag_frombag_0 = []
+        self.leader_states_tag_frombag_1 = []
+        self.leader_states_tag_frombag_2 = []
         # tag info local
         self.leader_states_local = []
 
         # from rosbag
         self.tracking_target_0 = np.zeros(2)
+        self.tracking_target_1 = np.zeros(2)
+        self.tracking_target_2 = np.zeros(2)
         self.tracking_target_type_0 = -1
+        self.tracking_target_type_1 = -1
+        self.tracking_target_type_2 = -1
         
         self.tag_read_last = np.zeros(2) # for filtering
         self.target_status = -1
@@ -97,7 +107,7 @@ class plotting_node:
         rospy.init_node('plotting_node')
         rate = rospy.Rate(int(freq))
         leader_ns = "/tbot165/"
-        follower_ns = ["/tbot149/"]
+        follower_ns = ["/tbot149/","/tbot162/","/tbot201/"]
 
         rospy.Subscriber(leader_ns + "odom", Odometry, self.leaderOdomCallback, queue_size=1)
 
@@ -105,6 +115,16 @@ class plotting_node:
         rospy.Subscriber(follower_ns[0] + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback_0, queue_size=1)
         rospy.Subscriber(follower_ns[0] + "l_traj", Float32MultiArray, self.leaderInferedTrajCallback_0, queue_size=1)
         rospy.Subscriber(follower_ns[0] + "target", Point, self.trackingTargetCallback_0, queue_size=1)
+
+        rospy.Subscriber(follower_ns[1] + "odom", Odometry, self.followerOdomCallback_1, queue_size=1)
+        #rospy.Subscriber(follower_ns[1] + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback_1, queue_size=1)
+        rospy.Subscriber(follower_ns[1] + "l_traj", Float32MultiArray, self.leaderInferedTrajCallback_1, queue_size=1)
+        rospy.Subscriber(follower_ns[1] + "target", Point, self.trackingTargetCallback_1, queue_size=1)
+
+        rospy.Subscriber(follower_ns[2] + "odom", Odometry, self.followerOdomCallback_2, queue_size=1)
+        #rospy.Subscriber(follower_ns[2] + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback_2, queue_size=1)
+        rospy.Subscriber(follower_ns[2] + "l_traj", Float32MultiArray, self.leaderInferedTrajCallback_2, queue_size=1)
+        rospy.Subscriber(follower_ns[2] + "target", Point, self.trackingTargetCallback_2, queue_size=1)
 
     def lowPass(self, y_current, y_last, lowPassGain=0.5):
 
@@ -270,17 +290,67 @@ class plotting_node:
         self.follower_state_0 = np.array([x, y, yaw])
         self.follower_states_0.append(self.follower_state_0)
 
+    def followerOdomCallback_1(self, data):
+
+        x = data.pose.pose.position.x
+        y = data.pose.pose.position.y
+        q_x = data.pose.pose.orientation.x
+        q_y = data.pose.pose.orientation.y
+        q_z = data.pose.pose.orientation.z
+        q_w = data.pose.pose.orientation.w
+        (_, _, yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
+
+        self.follower_state_1 = np.array([x, y, yaw])
+        self.follower_states_1.append(self.follower_state_1)
+
+    def followerOdomCallback_2(self, data):
+
+        x = data.pose.pose.position.x
+        y = data.pose.pose.position.y
+        q_x = data.pose.pose.orientation.x
+        q_y = data.pose.pose.orientation.y
+        q_z = data.pose.pose.orientation.z
+        q_w = data.pose.pose.orientation.w
+        (_, _, yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
+
+        self.follower_state_2 = np.array([x, y, yaw])
+        self.follower_states_2.append(self.follower_state_2)
+
     def leaderInferedTrajCallback_0(self, data):
         '''
         global leader trajectory from rosbag
         '''
         self.leader_states_tag_frombag_0 = np.reshape(list(data.data),(-1,2))
 
+    def leaderInferedTrajCallback_1(self, data):
+        '''
+        global leader trajectory from rosbag
+        '''
+        self.leader_states_tag_frombag_1 = np.reshape(list(data.data),(-1,2))
+
+    def leaderInferedTrajCallback_2(self, data):
+        '''
+        global leader trajectory from rosbag
+        '''
+        self.leader_states_tag_frombag_2 = np.reshape(list(data.data),(-1,2))
+
     def trackingTargetCallback_0(self, data):
 
         self.tracking_target_0[0] = data.x
         self.tracking_target_0[1] = data.y
         self.tracking_target_type_0 = data.z
+
+    def trackingTargetCallback_1(self, data):
+
+        self.tracking_target_1[0] = data.x
+        self.tracking_target_1[1] = data.y
+        self.tracking_target_type_1 = data.z
+
+    def trackingTargetCallback_2(self, data):
+
+        self.tracking_target_2[0] = data.x
+        self.tracking_target_2[1] = data.y
+        self.tracking_target_type_2 = data.z
 
     def getUnitCircleTarget(self, distance):
 
@@ -359,8 +429,12 @@ class plotting_node:
         if (len(self.follower_states_0)>0):
 
             f_len_0 = len(self.follower_states_0)
+            f_len_1 = len(self.follower_states_1)
+            f_len_2 = len(self.follower_states_2)
             
             il_len_0  = len(self.leader_states_tag_frombag_0)
+            il_len_1  = len(self.leader_states_tag_frombag_1)
+            il_len_2  = len(self.leader_states_tag_frombag_2)
 
             l_len     = len(self.leader_states)
             ill_len   = len(self.leader_states_tag)
@@ -382,11 +456,19 @@ class plotting_node:
             '''plot odom or infered trajectory'''
             plt.plot(np.array(self.leader_states_tag_frombag_0)[0:il_len_0,0], np.array(self.leader_states_tag_frombag_0)[0:il_len_0,1],marker='.',color='grey')
             plt.plot(np.array(self.follower_states_0)[0:f_len_0,0], np.array(self.follower_states_0)[0:f_len_0,1],marker='.',color='red')
+            plt.plot(np.array(self.leader_states_tag_frombag_1)[0:il_len_1,0]+distance, np.array(self.leader_states_tag_frombag_1)[0:il_len_1,1],marker='.',color='grey')
+            plt.plot(np.array(self.follower_states_1)[0:f_len_1,0]+distance, np.array(self.follower_states_1)[0:f_len_1,1],marker='.',color='red')
+            plt.plot(np.array(self.leader_states_tag_frombag_2)[0:il_len_2,0]+2*distance, np.array(self.leader_states_tag_frombag_2)[0:il_len_2,1],marker='.',color='grey')
+            plt.plot(np.array(self.follower_states_2)[0:f_len_2,0]+2*distance, np.array(self.follower_states_2)[0:f_len_2,1],marker='.',color='red')
             # plt.plot(np.array(self.leader_states)[0:l_len,0]+distance, np.array(self.leader_states)[0:l_len,1],marker='.',color='red')
             '''plot current state'''
             # plt.plot(np.array(self.leader_states)[-1,0]+distance, np.array(self.leader_states)[-1,1],marker='o',color='red',label="leader odom")
             plt.plot(np.array(self.follower_states_0)[-1,0], np.array(self.follower_states_0)[-1,1],marker='o',markersize='12',color='red',label="follower odom")
             plt.plot(np.array(self.leader_states_tag_frombag_0)[-1,0], np.array(self.leader_states_tag_frombag_0)[-1,1],marker='o',markersize='12',color='grey',label="global infered from bag")
+            plt.plot(np.array(self.follower_states_1)[-1,0]+distance, np.array(self.follower_states_1)[-1,1],marker='o',markersize='12',color='red',label="follower odom")
+            plt.plot(np.array(self.leader_states_tag_frombag_1)[-1,0]+distance, np.array(self.leader_states_tag_frombag_1)[-1,1],marker='o',markersize='12',color='grey',label="global infered from bag")
+            plt.plot(np.array(self.follower_states_2)[-1,0]+2*distance, np.array(self.follower_states_2)[-1,1],marker='o',markersize='12',color='red',label="follower odom")
+            plt.plot(np.array(self.leader_states_tag_frombag_2)[-1,0]+2*distance, np.array(self.leader_states_tag_frombag_2)[-1,1],marker='o',markersize='12',color='grey',label="global infered from bag")
             '''plot tag-infered trajecotry''' 
             # plt.plot(np.array(self.leader_states_tag)[-1,0], np.array(self.leader_states_tag)[-1,1],marker='o',color='orange')
             # plt.plot(np.array(self.leader_states_tag)[0:ill_len,0], np.array(self.leader_states_tag)[0:ill_len,1],marker='.',color='orange',label="tag infered (g=0)")
@@ -395,6 +477,8 @@ class plotting_node:
             #     plt.plot(self.bezier_curve[0:b_len,0],self.bezier_curve[0:b_len,1],marker='.',color='lightcoral',label='computed bezier curve')
             '''plot tracking target'''
             plt.plot(self.tracking_target_0[0],self.tracking_target_0[1],marker='x',markersize='12',color='blue',label='recorded target') 
+            plt.plot(self.tracking_target_1[0]+distance,self.tracking_target_1[1],marker='x',markersize='12',color='blue',label='recorded target') 
+            plt.plot(self.tracking_target_2[0]+2*distance,self.tracking_target_2[1],marker='x',markersize='12',color='blue',label='recorded target') 
             # plt.plot(goal_global[0],goal_global[1],marker='x',color='red',label='computed target')
 
             plt.axis('equal')
