@@ -164,6 +164,9 @@ include_directories(
 catkin_install_python(PROGRAMS
    # scripts/my_python_script
    src/pd_tracking_xy.py
+   src/pd_tracking_xy_149.py
+   src/pd_tracking_xy_162.py
+   src/pd_tracking_xy_205.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 

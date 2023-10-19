@@ -9,27 +9,32 @@ from nav_msgs.msg import Odometry
 
 class PD:
 
-    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, dist=0.4):
+    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, dist=0.4, lowPassGain=0.167):
 
         self.dt = dt
         self.alpha = alpha
-        self.beta = 0.5 #TEST
+        self.beta = 1.0 #TEST
         
         self.kp = kp
         self.kd = kd
 
-        self.es_last = 0.0
         self.ex_last = 0.0
         self.ey_last = 0.0
 
-        self.ux_ddot = 0.0
-        self.uy_ddot = 0.0
+        # for PD_s only
+        self.es_last = 0.0
+
+        # for PD only
+        self.ex_dot_last = 0.0
+        self.ey_dot_last = 0.0
 
         self.v = 0.0
         self.w = 0.0
 
         self.dist = dist # inter-robot distance
-        self.reinforce_last = 0.0
+        self.lowPassGain = lowPassGain
+        self.velocity_last  = 0.0
+        
     
     def lowPass(self, u, y_last, lowPassGain = 0.2):
         
@@ -61,32 +66,71 @@ class PD:
         '''
         states are represented in follower local frame
         '''
-        # p_actual  = state[:2]
-        p_desired = goal[:2]
-        # theta     = state[2]
+        # -----------------------------------------------------------------------------
+        ex = goal[0]
+        ey = goal[1]
+        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.167)
+        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.167)
 
-        ex = p_desired[0]
-        ey = p_desired[1]
-        ex = self.lowPass(ex,self.ex_last,lowPassGain=0.2)
-        ey = self.lowPass(ey,self.ey_last,lowPassGain=0.2)
-
+        # -----------------------------------------------------------------------------
         ex_dot = (ex - self.ex_last)/self.dt
         ey_dot = (ey - self.ey_last)/self.dt
-        
+        ex_dot = self.lowPass(ex_dot,self.ex_dot_last,lowPassGain=0.167)
+        ey_dot = self.lowPass(ey_dot,self.ey_dot_last,lowPassGain=0.167)
+    
         x_dot = self.v
         y_dot = 0
-        # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
-        # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
         ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
         uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
 
-        # dynamic fb linearization map
-        # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
-                           # [np.sin(theta), tmp_vel*np.cos(theta)]])
-                           
-        # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
-        # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
-        self.v += (ux_ddot)*self.dt
+        # -----------------------------------------------------------------------------
+        self.v += ux_ddot*self.dt
+        self.v = np.clip(self.v,-0.2,0.2)
+
+        self.w = self.invMapGain(velocity,0.05,1)*uy_ddot
+        w_max  = self.omegaLim(velocity)
+        self.w = np.clip(self.w,-w_max,w_max)
+        
+        # record
+        data = Twist()
+        data.linear.x  = ex
+        data.linear.y  = ey
+        data.linear.z  = 0.0
+        data.angular.x = ey_dot
+        data.angular.y = ex_dot
+        dataPub.publish(data)
+
+        self.ex_last = ex
+        self.ey_last = ey
+        self.ex_dot_last = ex_dot
+        self.ey_dot_last = ey_dot
+        return np.array([self.v, self.w])
+    
+    def pd_s(self, velocity, curve_length_s, theta_s, dataPub):
+        '''
+        states are represented in follower local frame
+        '''
+        # -----------------------------------------------------------------------------
+        es = curve_length_s - self.dist
+        es = self.lowPass(es, self.es_last, lowPassGain=0.167)
+
+        us_dot = self.alpha*es*self.beta
+
+        # -----------------------------------------------------------------------------
+        ex = us_dot*np.cos(theta_s)
+        ey = us_dot*np.sin(theta_s)
+        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.167)
+        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.167)
+        ex_dot = (ex - self.ex_last)/self.dt
+        ey_dot = (ey - self.ey_last)/self.dt
+        
+        x_dot = self.v 
+        y_dot = 0
+        ux_ddot = (ex_dot + self.kp*ex) - self.kp*x_dot
+        uy_ddot = (ey_dot + self.kp*ey) - self.kp*y_dot
+
+        # -----------------------------------------------------------------------------
+        self.v += ux_ddot*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
         self.w = self.invMapGain(velocity,0.04,1)*uy_ddot
@@ -95,63 +139,9 @@ class PD:
         
         # record
         data = Twist()
-        data.linear.x  = ey
-        data.linear.y  = ex
-        data.angular.x = ey_dot
-        data.angular.y = ex_dot
-        data.linear.z  = 0.0
-        dataPub.publish(data)
-
-        self.ex_last = ex
-        self.ey_last = ey
-        return np.array([self.v, self.w])
-    
-    def pd_s(self, velocity, curve_length_s, theta_s, dataPub):
-        '''
-        states are represented in follower local frame
-        '''
-        es = curve_length_s - self.dist
-        es = self.lowPass(es, self.es_last, lowPassGain=0.167)
-
-        reinforce = self.v + self.beta*(es - self.es_last)/self.dt
-        reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
-        us_dot = self.alpha*es*self.beta + 1.0*(reinforce)
-        # p_actual  = state[:2]
-        # p_desired = goal[:2]
-        # theta     = state[2]
-
-        ex = us_dot*np.cos(theta_s)
-        ey = us_dot*np.sin(theta_s)
-        ex = self.lowPass(ex, self.ex_last, lowPassGain=0.167)
-        ey = self.lowPass(ey, self.ey_last, lowPassGain=0.167)
-        ex_dot = (ex - self.ex_last)/self.dt
-        ey_dot = (ey - self.ey_last)/self.dt
-        
-        x_dot = self.v
-        y_dot = 0
-        # self.ux_ddot = self.alpha*(ex_dot + self.kp*ex) - self.kp*x_dot
-        # self.uy_ddot = self.alpha*(ey_dot + self.kp*ey) - self.kp*y_dot
-        x_bar = (ex_dot + self.kp*ex) - self.kp*x_dot
-        y_bar = (ey_dot + self.kp*ey) - self.kp*y_dot
-
-        # dynamic fb linearization map
-        # aw_2_xy = np.array([[np.cos(theta), -tmp_vel*np.sin(theta)],
-                           # [np.sin(theta), tmp_vel*np.cos(theta)]])
-                           
-        # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[0]*self.dt
-        # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.ux_ddot, self.uy_ddot]))[1]
-        self.v += (x_bar)*self.dt
-        self.v = np.clip(self.v,-0.2,0.2)
-
-        self.w = self.invMapGain(velocity,0.04,1)*y_bar
-        w_max  = self.omegaLim(velocity)
-        self.w = np.clip(self.w,-w_max,w_max)
-        
-        # record
-        data = Twist()
         data.linear.x  = es
-        data.linear.y  = ex
-        data.linear.z  = ey
+        data.linear.y  = self.v
+        data.linear.z  = self.w
         data.angular.x = 0.0
         data.angular.y = 0.0
         dataPub.publish(data)
@@ -159,36 +149,37 @@ class PD:
         self.es_last = es
         self.ex_last = ex
         self.ey_last = ey
-        self.reinforce_last = reinforce
         return np.array([self.v, self.w])
     
 class DSR:
 
-    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, beta=0.5, dist=0.4):
+    def __init__(self, dt, kp=4.0, kd=1.0, alpha=1.0, beta1=0.5, beta2=0.5, dist=0.4):
 
         self.dt    = dt
         self.alpha = alpha
-        self.beta  = beta
+        self.beta1 = beta1
+        self.beta2 = beta2
 
         self.kp = kp
         self.kd = kd
 
-        self.x_dot_last = 0.0
-        self.y_dot_last = 0.0
+        self.ux_dot_last = 0.0
+        self.uy_dot_last = 0.0
         
-        self.e_s_last = 0.0
-        self.e_x_last = 0.0
-        self.e_y_last = 0.0
+        self.es_last = 0.0
+        self.ex_last = 0.0
+        self.ey_last = 0.0
 
         self.v = 0.0
         self.w = 0.0
         
         self.dist = dist # inter-robot distance
+        self.reinforce_last = 0.0
+        self.velocity_last  = 0.0
 
     def lowPass(self, u, y_last, lowPassGain = 0.2):
         
         y = lowPassGain*u + (1-lowPassGain)*y_last 
-
         return y
     
     def invMapGain(self, vel, thre, a):
@@ -197,53 +188,60 @@ class DSR:
             y = 1/vel
         else:
             y = 1/thre
-        """ 
-        k = (1/thre)**a/thre
-        if vel < 0:
-            y = -((-k*vel)**(1/a))
-        else:
-            y = (k*vel)**(1/a)
-        """
         return y
 
     def omegaLim(self, v):
 
         w_max = min(4*np.abs(v),1.58)
         return w_max
+        
+    def dsr(self, velocity, curve_length_s, theta_s, dataPub, reinforce_scal):
+
+        # equation (2) ----------------------------------------------------------------
+        es = curve_length_s - self.dist
+        es = self.lowPass(es, self.es_last, lowPassGain=0.167)
+        
+        reinforce = self.beta2*self.v + self.beta1*(es - self.es_last)/self.dt
+        reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
+        us_dot    = self.alpha*es*self.beta1+ reinforce_scal*reinforce
+
+        # equation (3) ----------------------------------------------------------------
+        ux_dot = us_dot*np.cos(theta_s)
+        uy_dot = us_dot*np.sin(theta_s)
+        ux_dot = self.lowPass(ux_dot, self.ux_dot_last, lowPassGain=0.167)
+        uy_dot = self.lowPass(uy_dot, self.uy_dot_last, lowPassGain=0.167)
     
-    def dsr(self, curve_length_s, theta_s, velocity, theta):
+        x_dot  = velocity
+        y_dot  = 0
+        ux_ddot = ((ux_dot-self.ux_dot_last)/self.dt + self.kp*ux_dot) - self.kp*x_dot
+        uy_ddot = ((uy_dot-self.uy_dot_last)/self.dt + self.kp*uy_dot) - self.kp*y_dot
 
-        # equation (2)
-        e_s = curve_length_s - self.dist
-        e_s = self.lowPass(e_s, self.e_s_last, lowPassGain=0.2)
-        # sf_dot = self.beta*velocity + (1-self.beta)*leader_velocity + self.alpha*self.beta*e_s 
-        sf_dot = self.alpha*self.beta*e_s #+ velocity + self.beta*(e_s-self.e_s_last)/self.dt 
-
-        # equation (3)
-        x_dot = sf_dot*np.cos(theta_s)
-        y_dot = sf_dot*np.sin(theta_s)
-        # x_ddot = ((x_dot-self.x_dot_past)/self.dt + self.kp*x_dot) - self.kp*velocity*np.cos(theta)
-        # y_ddot = ((y_dot-self.y_dot_past)/self.dt + self.kp*y_dot) - self.kp*velocity*np.sin(theta)
-        x_bar = ((x_dot-self.x_dot_last)/self.dt + self.kp*x_dot) - self.kp*velocity
-        y_bar = ((y_dot-self.y_dot_last)/self.dt + self.kp*y_dot)
-
-        # # equation (4)
+        # # equation (4) ----------------------------------------------------------------
         # aw_2_xy = np.array([[np.cos(theta), -velocity*np.sin(theta)],
         #                     [np.sin(theta), velocity*np.cos(theta)]])
         
-        # # equation (5)
-        # self.v += (np.linalg.pinv(aw_2_xy)@np.array([self.x_ddot, self.y_ddot]))[0]*self.dt
-        # self.w = (np.linalg.pinv(aw_2_xy)@np.array([self.x_ddot, self.y_ddot]))[1]
-        self.v += (x_bar)*self.dt
+        # # equation (5) ----------------------------------------------------------------
+        self.v += ux_ddot*self.dt
         self.v = np.clip(self.v,-0.2,0.2)
 
-        self.w = self.invMapGain(velocity,0.04,1)*y_bar
+        self.w = self.invMapGain(velocity,0.04,1)*uy_ddot
         w_max  = self.omegaLim(velocity)
         self.w = np.clip(self.w,-w_max,w_max)
         
-        self.e_s_last   = e_s
-        self.x_dot_last = x_dot
-        self.y_dot_last = y_dot
+        # record
+        data = Twist()
+        data.linear.x  = es
+        data.linear.y  = self.v
+        data.linear.z  = self.w
+        data.angular.x = reinforce
+        data.angular.y = 0.0
+        dataPub.publish(data)
+
+        self.es_last        = es
+        self.ux_dot_last    = ux_dot
+        self.uy_dot_last    = uy_dot
+        self.reinforce_last = reinforce
+        self.velocity_last  = velocity
         return np.array([self.v, self.w])
 
 class Bezier:
@@ -297,21 +295,21 @@ class Bezier:
     def getLength(self):
         
         self.curveLength = np.sum(np.sqrt(np.sum((self.BezierCurve[1:]-self.BezierCurve[:-1])**2,axis=1)))
-        
         return self.curveLength
 
 class tracking_node:
 
-    def __init__(self, dist) -> None:
+    def __init__(self) -> None:
 
         # current state (local x,y,yaw)
-        self.state        = np.zeros(3) 
-        self.state_last   = np.zeros(3)   
-        self.velocity     = 0.0      
+        self.state         = np.zeros(3) 
+        self.state_last    = np.zeros(3)   
+        self.velocity      = 0.0
+        self.velocity_last = 0.0      
 
         # leader stste (local x,y)       
         self.leader_state             = np.zeros(2) 
-        self.leader_state_last        = np.array([dist, 0.0])
+        self.leader_state_last        = np.zeros(2) 
         self.leader_state_global_last = np.zeros(2) 
 
         # odom (global)
@@ -321,12 +319,19 @@ class tracking_node:
         # tag info (global)
         self.leader_states_global = []
 
-        self.spacing = dist
-        self.target_status = -1
+        self.spacing        = 0.45
+        self.alpha          = 0.0
+        self.beta1          = 0.0
+        self.beta2          = 0.0 
+        self.use_DSR        = True
+        self.use_Bezier     = True
+        self.follower_indx  = -1
+        self.target_status  = -1
+        self.lowpass_gain   = 1.0
+        self.reinforce_scal = 1.0
 
-    def getLeaderGlobalStates(self):
-
-        return np.array(self.leader_states_global).copy()
+        # test
+        self.pub_tag_data = rospy.Publisher(rospy.get_namespace() + "tag_data", Float32MultiArray, queue_size=1)
 
     def initNode(self, freq):
 
@@ -334,21 +339,37 @@ class tracking_node:
         rate = rospy.Rate(int(freq))
         ns   = rospy.get_namespace()
 
+        self.spacing        = rospy.get_param(ns + "/pd_tracking_xy/spacing")
+        self.alpha          = rospy.get_param(ns + "/pd_tracking_xy/alpha")
+        self.beta1          = rospy.get_param(ns + "/pd_tracking_xy/beta1")
+        self.beta2          = rospy.get_param(ns + "/pd_tracking_xy/beta2")
+        self.use_DSR        = rospy.get_param(ns + "/pd_tracking_xy/ues_DSR")
+        self.use_Bezier     = rospy.get_param(ns + "/pd_tracking_xy/use_Bezier")
+        self.follower_indx  = rospy.get_param(ns + "/pd_tracking_xy/follower_indx")
+        self.lowpass_gain   = rospy.get_param(ns + "/pd_tracking_xy/lowpass_gain")
+        self.reinforce_scal = rospy.get_param(ns + "/pd_tracking_xy/reinforce_scal")
+
+        self.leader_state_last = np.array([self.spacing, 0.0])
+        
         rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
         rospy.Subscriber(ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
+
         pub        = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
         pub_data   = rospy.Publisher(ns + "data", Twist, queue_size=1)
         pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
         pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
+        
+        rospy.loginfo("%s params, spacing:%f alpha:%f beta1:%f beta2:%f", ns, self.spacing, self.alpha, self.beta1, self.beta2)
 
-        return pub, pub_data, pub_target, pub_l_traj ,rate
+        return pub, pub_data, pub_target, pub_l_traj, rate
 
     def checkInputs(self):
 
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
-            rospy.logwarn("waiting for data")
-
+            rospy.logwarn("%s waiting for data", rospy.get_namespace())
+        
         self.leader_states_global = self.interpInitLeaderStates(N=70)
+        rospy.loginfo("%s is ready", rospy.get_namespace())
 
     def interpInitLeaderStates(self, N=50):
         '''
@@ -383,12 +404,15 @@ class tracking_node:
         q_w = data.pose.pose.orientation.w
         (_, _, self_yaw) = transformations.euler_from_quaternion([q_x, q_y, q_z, q_w])
 
-        self.velocity = data.twist.twist.linear.x
+        #self.velocity = data.twist.twist.linear.x
+        self.velocity = self.lowPass(data.twist.twist.linear.x, self.velocity_last, lowPassGain=1.0)
+
         self.state    = np.array([self_x, self_y, self_yaw])
         #self.state    = self.lowPass(self.state, self.state_last, lowPassGain=1.0)
         self.states.append(self.state)
         
-        self.state_last = self.state
+        self.state_last    = self.state
+        self.velocity_last = self.velocity
 
     def multiAprilTagCallback(self, data):
         
@@ -400,11 +424,12 @@ class tracking_node:
         tag_x   = 0.0
         tag_y   = 0.0
         tag_phi = 0.0
-        follower_indx   = 0
         cam_pose_offset = 0.025
+        # test
+        ids = []
 
         for i in range(len(multi_tag)):
-            if (i%tag_space == 0 and (multi_tag[i]//num_tag == follower_indx)):
+            if (i%tag_space == 0 and (multi_tag[i]//num_tag == self.follower_indx)):
                 count += 1
                 x   = multi_tag[i+3]
                 y   = -(multi_tag[i+1]-cam_pose_offset)
@@ -414,6 +439,8 @@ class tracking_node:
                 tag_x   += infered_x
                 tag_y   += infered_y
                 tag_phi += infered_phi
+                # test
+                ids.append(id)
         
         if (count != 0):
             tag_x   /= count
@@ -429,7 +456,15 @@ class tracking_node:
             self.leader_state_last = self.leader_state
             self.leader_state_global_last = leader_state_global
 
-    def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.038):
+        # test
+        tag_filter_id = Float32MultiArray()
+        tag_filter_id.data = ids
+        self.pub_tag_data.publish(tag_filter_id)
+
+    def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.043):
+        # frame size 4.0cm, d=0.038mm
+        # frame size 4.5cm, d=0.043mm
+        # frame size 5.0cm, d=0.048mm
 
         if (id%num_tag == 0):
             x1_hat = x + d*np.cos(-np.pi/2+alpha+0.2616)
@@ -527,6 +562,10 @@ class tracking_node:
 
         return new_states
 
+    def getLeaderGlobalStates(self):
+
+        return np.array(self.leader_states_global).copy()
+
     def pubLeaderTraj(self, pub):
         
         infered_leader_traj = Float32MultiArray()
@@ -588,7 +627,7 @@ class tracking_node:
         indx   = 1
         target = np.zeros(2)
         threshold    = 0.08
-        check_length = 120 # Might need a larger number if interbot distance is longer
+        check_length = 170 # Might need a larger number if interbot distance is longer
         leader_traj  = np.array(self.leader_states)
 
         while(indx<check_length and len(leader_traj)!=0):
@@ -638,27 +677,30 @@ class tracking_node:
 
         # controller setups
         dt = 1.0/freq
-        ctrl_1 = PD(dt=dt, kp=0.3, kd=1.0, alpha=0.4, dist=self.spacing)
-        ctrl_2 = DSR(dt=dt, kp=0.3, kd=1.0, alpha=0.4, beta=1.0, dist=self.spacing)
+        ctrl_1 = PD(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, dist=self.spacing, lowPassGain=self.lowpass_gain)
+        ctrl_2 = DSR(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, beta1=self.beta1, beta2=self.beta2, dist=self.spacing)
 
         while not rospy.is_shutdown():
 
             self.leader_states = self.homoInvTransMulti2Local(self.leader_states_global)
-            goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=self.spacing)
-            #getTarget = False
+
+            if self.use_Bezier:
+                goal, theta_s, curvelength_s, getTarget = self.getBezierTarget(targetPub, distance=self.spacing)
+            else:
+                getTarget = False
 
             if not getTarget:
-                rospy.logwarn('bezier fail')
+                #rospy.logwarn('bezier fail')
                 goal = self.getUnitCircleTarget(targetPub, distance=self.spacing)
                 u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
             else:
-                u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
-                #u = ctrl_2.dsr(curvelength_s, theta_s, self.velocity, self.state[2], self.leader_state)
+                if self.use_DSR:
+                    u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub, self.reinforce_scal)
+                else:
+                    u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
 
-            #print("self.target_status", self.target_status)
-            # print('self.leader_state-------------',self.leader_state)
-
-            print('----------------------------------------------')
+            # print("leader_state--------------", self.leader_state)
+            # print('----------------------------------------------')
 
             self.pubLeaderTraj(lTrajPub)
             self.pubCmdVel(cmdVelPub, u[0], u[1])
@@ -669,9 +711,7 @@ class tracking_node:
 
 if __name__ == '__main__':
 
-    spacing = 0.5
-
-    Tracking_node = tracking_node(dist=spacing)
-    Tracking_node.run(freq=10)
+    Tracking_node = tracking_node()
+    Tracking_node.run(freq=20)
 
 
