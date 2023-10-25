@@ -712,6 +712,6 @@ class tracking_node:
 if __name__ == '__main__':
 
     Tracking_node = tracking_node()
-    Tracking_node.run(freq=15)
+    Tracking_node.run(freq=10)
 
 
