@@ -93,9 +93,9 @@ class PD:
         
         # record
         data = Twist()
-        data.linear.x  = ex
-        data.linear.y  = ey
-        data.linear.z  = 0.0
+        data.linear.x  = np.sqrt(ex**2+ey**2)
+        data.linear.y  = self.v
+        data.linear.z  = self.w
         data.angular.x = ey_dot
         data.angular.y = ex_dot
         dataPub.publish(data)
@@ -300,6 +300,9 @@ class Bezier:
 class tracking_node:
 
     def __init__(self) -> None:
+        
+        # default rate is 10Hz
+        self.dt = 0.01 
 
         # current state (local x,y,yaw)
         self.state         = np.zeros(3) 
@@ -308,6 +311,7 @@ class tracking_node:
         self.velocity_last = 0.0      
 
         # leader stste (local x,y)       
+        self.tag_state_last    = np.zeros(2)
         self.leader_state             = np.zeros(2) 
         self.leader_state_last        = np.zeros(2) 
         self.leader_state_global_last = np.zeros(2) 
@@ -330,15 +334,18 @@ class tracking_node:
         self.lowpass_gain   = 1.0
         self.reinforce_scal = 1.0
 
+        # store apriltag data 
+        self.multi_tag = []
+
         # test
-        self.pub_tag_data = rospy.Publisher(rospy.get_namespace() + "tag_data", Float32MultiArray, queue_size=1)
+        self.pub_tag_data = None
 
     def initNode(self, freq):
 
         rospy.init_node('pd_tracking_xy')
         rate = rospy.Rate(int(freq))
         ns   = rospy.get_namespace()
-
+        
         self.spacing        = rospy.get_param(ns + "/pd_tracking_xy/spacing")
         self.alpha          = rospy.get_param(ns + "/pd_tracking_xy/alpha")
         self.beta1          = rospy.get_param(ns + "/pd_tracking_xy/beta1")
@@ -349,15 +356,18 @@ class tracking_node:
         self.lowpass_gain   = rospy.get_param(ns + "/pd_tracking_xy/lowpass_gain")
         self.reinforce_scal = rospy.get_param(ns + "/pd_tracking_xy/reinforce_scal")
 
+        self.tag_state_last    = np.array([self.spacing-0.14, 0.0]) # spacing-Dist2BotCenter
         self.leader_state_last = np.array([self.spacing, 0.0])
-        
-        rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=1)
-        rospy.Subscriber(ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=1)
 
-        pub        = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=1)
-        pub_data   = rospy.Publisher(ns + "data", Twist, queue_size=1)
-        pub_target = rospy.Publisher(ns + "target", Point, queue_size=1)
-        pub_l_traj = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=1)
+        pub          = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=3)
+        pub_data     = rospy.Publisher(ns + "data", Twist, queue_size=3)
+        pub_target   = rospy.Publisher(ns + "target", Point, queue_size=3)
+        pub_l_traj   = rospy.Publisher(ns + "l_traj", Float32MultiArray, queue_size=3)
+
+        self.pub_tag_data = rospy.Publisher(ns + "tag_data", Float32MultiArray, queue_size=3)
+
+        rospy.Subscriber(ns + "odom", Odometry, self.odometeryCallback, queue_size=5)
+        rospy.Subscriber(ns + "april_data_multi",Float32MultiArray, self.multiAprilTagCallback, queue_size=5)
         
         rospy.loginfo("%s params, spacing:%f alpha:%f beta1:%f beta2:%f", ns, self.spacing, self.alpha, self.beta1, self.beta2)
 
@@ -366,6 +376,7 @@ class tracking_node:
     def checkInputs(self):
 
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
+            self.aprilTagFilter(self.multi_tag)
             rospy.logwarn("%s waiting for data", rospy.get_namespace())
         
         self.leader_states_global = self.interpInitLeaderStates(N=70)
@@ -414,52 +425,73 @@ class tracking_node:
         self.state_last    = self.state
         self.velocity_last = self.velocity
 
-    def multiAprilTagCallback(self, data):
+    def aprilTagFilter(self, multi_tag):
         
-        multi_tag  = data.data
         # initialize
-        count     = 0
-        num_tag   = 3
-        tag_space = 5
-        tag_x   = 0.0
-        tag_y   = 0.0
-        tag_phi = 0.0
+        count         = 0
+        num_tag       = 3
+        tag_x         = 0.0
+        tag_y         = 0.0
+        tag_phi       = 0.0
+        tag_space     = 4 # publish for visualize
+        raw_tag_space = 5 # from camera detection 
         cam_pose_offset = 0.025
-        # test
-        ids = []
+        filtered_tag_data = -1.0*np.ones(tag_space*num_tag)
 
+        # collect leader tag information and filter the outlier
+         
         for i in range(len(multi_tag)):
-            if (i%tag_space == 0 and (multi_tag[i]//num_tag == self.follower_indx)):
-                count += 1
+            if (i%raw_tag_space == 0 and (multi_tag[i]//num_tag == self.follower_indx)):
                 x   = multi_tag[i+3]
                 y   = -(multi_tag[i+1]-cam_pose_offset)
                 phi = multi_tag[i+4]
                 id  = multi_tag[i]
                 infered_x, infered_y, infered_phi = self.transformTag2Middle(x,y,phi,id)
-                tag_x   += infered_x
-                tag_y   += infered_y
-                tag_phi += infered_phi
-                # test
-                ids.append(id)
+
+                # check if the detection is an outlier
+                tag_pin = int(id%num_tag)*tag_space
+                filtered_tag_data[tag_pin] = id
+                tag_diff  = np.array([infered_x, infered_y])-self.tag_state_last 
+                isOutlier = np.linalg.norm(tag_diff, ord=2) > 0.04
+                # transform to global for visualization
+                infered_xy = self.homoTrans2BotCenter(np.array([infered_x,infered_y,infered_phi])) 
+                infered_xy = self.homoTrans2Global(infered_xy)
+                filtered_tag_data[tag_pin+1] = infered_xy[0]
+                filtered_tag_data[tag_pin+2] = infered_xy[1]
+                # store the readings
+                if not isOutlier:
+                    count   += 1
+                    tag_x   += infered_x
+                    tag_y   += infered_y
+                    tag_phi += infered_phi
+                # else:
+                #     print(rospy.get_namespace(), " filter outlier:",np.array([infered_x, infered_y]), self.tag_state_last)
         
+        filtered_tag_data[-1] = count
+        
+        # averaging out and transform the detections
         if (count != 0):
             tag_x   /= count
             tag_y   /= count
             tag_phi /= count
-            leader_state_raw    = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi]))
-            self.leader_state   = self.lowPass(leader_state_raw, self.leader_state_last, lowPassGain=1.0)
+            self.leader_state   = self.homoTrans2BotCenter(np.array([tag_x,tag_y,tag_phi])) 
             leader_state_global = self.homoTrans2Global(self.leader_state)
-
+            
+            # stop recording the data if leader is not moving
             if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
                 self.leader_states_global.append(leader_state_global)
 
-            self.leader_state_last = self.leader_state
+            self.tag_state_last           = np.array([tag_x,tag_y])
+            self.leader_state_last        = self.leader_state
             self.leader_state_global_last = leader_state_global
 
-        # test
-        tag_filter_id = Float32MultiArray()
-        tag_filter_id.data = ids
-        self.pub_tag_data.publish(tag_filter_id)
+        filtered_tag = Float32MultiArray()
+        filtered_tag.data = filtered_tag_data
+        self.pub_tag_data.publish(filtered_tag)
+
+    def multiAprilTagCallback(self, data):
+        
+        self.multi_tag = data.data
 
     def transformTag2Middle(self, x, y, alpha, id, num_tag=3, d=0.043):
         # frame size 4.0cm, d=0.038mm
@@ -676,12 +708,12 @@ class tracking_node:
         self.checkInputs()
 
         # controller setups
-        dt = 1.0/freq
-        ctrl_1 = PD(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, dist=self.spacing, lowPassGain=self.lowpass_gain)
-        ctrl_2 = DSR(dt=dt, kp=1.0, kd=1.0, alpha=self.alpha, beta1=self.beta1, beta2=self.beta2, dist=self.spacing)
+        self.dt = 1.0/freq
+        ctrl_1 = PD(dt=self.dt, kp=1.0, kd=1.0, alpha=self.alpha, dist=self.spacing, lowPassGain=self.lowpass_gain)
+        ctrl_2 = DSR(dt=self.dt, kp=1.0, kd=1.0, alpha=self.alpha, beta1=self.beta1, beta2=self.beta2, dist=self.spacing)
 
         while not rospy.is_shutdown():
-
+            self.aprilTagFilter(self.multi_tag)
             self.leader_states = self.homoInvTransMulti2Local(self.leader_states_global)
 
             if self.use_Bezier:
