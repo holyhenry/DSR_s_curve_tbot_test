@@ -5,10 +5,11 @@ import rospy
 import numpy as np
 from geometry_msgs.msg import Twist
 
-bright = rospy.get_param("/brightness")
+ns = rospy.get_namespace()
+
+bright = rospy.get_param(ns + "/lighting/brightness")
 pixels = neopixel.NeoPixel(board.D10, 64, brightness=bright)
 # pixels = neopixel.NeoPixel(board.D18, 64, brightness=bright)
-
 
 def callback(msg):
     if msg.data == "red":
@@ -62,13 +63,10 @@ def angleDataCallback(msg):
     pixels.fill(color) 
 
 def listener():
-
-    ns = rospy.get_namespace()
     
     rospy.init_node('lighting', anonymous=True)
     rospy.Subscriber(ns + "/data", Twist, angleDataCallback, queue_size=1)
 
-    # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
 
 if __name__ == '__main__':
