@@ -13,7 +13,7 @@ bright = rospy.get_param(ns + "/lighting/brightness")
 pixels = neopixel.NeoPixel(board.D10, 64, brightness=bright)
 # pixels = neopixel.NeoPixel(board.D18, 64, brightness=bright)
 
-def checkModeChange():
+def checkModeChange(mode, mode_last):
 
     if mode != mode_last:
         pixels.fill((0,0,0))
@@ -29,21 +29,23 @@ def angleDataCallback(msg):
 
     if angle < 45:
         mode = 1
-        checkModeChange()
+        checkModeChange(mode, mode_last)
         for i in smile_face:
             pixels[i] = (0, 255, 0) # green
 
     elif 45 <= angle and angle < 60:
         mode = 2
-        checkModeChange()
+        checkModeChange(mode, mode_last)
         for i in neutral_face:
             pixels[i] = (255, 69, 0) # yellow
 
     else:
         mode = 3
-        checkModeChange()
+        checkModeChange(mode, mode_last)
         for i in cry_face:
             pixels[i] = (255, 0, 0) # red
+
+    mode_last = mode
     
     # pixels.fill(color) 
 
