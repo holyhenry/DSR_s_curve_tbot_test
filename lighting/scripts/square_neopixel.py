@@ -43,7 +43,7 @@ class lighting_node:
                 self.mode = 1
                 if self.mode != self.mode_last:
                     self.pixels.fill((0,0,0))
-                    print('mode change!') 
+                    print('mode change!',self.mode, self.mode_last) 
                 for i in smile_face:
                     self.pixels[i] = (0, 255, 0) # green
 
