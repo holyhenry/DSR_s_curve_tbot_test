@@ -65,7 +65,7 @@ def angleDataCallback(msg):
 def listener():
     
     rospy.init_node('lighting', anonymous=True)
-    rospy.Subscriber(ns + "/data", Twist, angleDataCallback, queue_size=1)
+    rospy.Subscriber(ns + "data", Twist, angleDataCallback, queue_size=1)
 
     rospy.spin()
 
