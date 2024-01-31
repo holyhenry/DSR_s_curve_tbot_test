@@ -5,12 +5,21 @@ import rospy
 import numpy as np
 from geometry_msgs.msg import Twist
 
-ns = rospy.get_namespace()
+mode = 0
+mode_last = 0
 
+ns = rospy.get_namespace()
 bright = rospy.get_param(ns + "/lighting/brightness")
 pixels = neopixel.NeoPixel(board.D10, 64, brightness=bright)
 # pixels = neopixel.NeoPixel(board.D18, 64, brightness=bright)
-        
+
+def checkModeChange():
+
+    if mode != mode_last:
+        pixels.fill((0,0,0))
+        print('mode change!') 
+    mode_last = mode
+
 def angleDataCallback(msg):
 
     angle = np.abs((msg.angular.z)*180/np.pi)
@@ -19,28 +28,27 @@ def angleDataCallback(msg):
     neutral_face = [2,13,18,21,22,29,34,41,42,45,50,61]
 
     if angle < 45:
-        pixels.fill((0, 0, 0))
-        color = (0, 255, 0) # green
+        mode = 1
+        checkModeChange()
         for i in smile_face:
-            pixels[i] = color
+            pixels[i] = (0, 255, 0) # green
 
     elif 45 <= angle and angle < 60:
-        pixels.fill((0, 0, 0))
-        color = (255, 69, 0) # yellow
+        mode = 2
+        checkModeChange()
         for i in neutral_face:
-            pixels[i] = color
+            pixels[i] = (255, 69, 0) # yellow
 
     else:
-        pixels.fill((0, 0, 0))
-        color = (255, 0, 0) # red
+        mode = 3
+        checkModeChange()
         for i in cry_face:
-            pixels[i] = color
+            pixels[i] = (255, 0, 0) # red
     
     # pixels.fill(color) 
-     
 
 def listener():
-    
+
     rospy.init_node('lighting', anonymous=True)
     rospy.Subscriber(ns + "data", Twist, angleDataCallback, queue_size=1)
     rospy.spin()
