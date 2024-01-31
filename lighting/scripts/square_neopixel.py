@@ -51,7 +51,7 @@ class lighting_node:
                 self.mode = 2
                 if self.mode != self.mode_last:
                     self.pixels.fill((0,0,0))
-                    print('mode change!') 
+                    print('mode change!',self.mode, self.mode_last) 
                 for i in neutral_face:
                     self.pixels[i] = (255, 69, 0) # yellow
 
@@ -59,11 +59,11 @@ class lighting_node:
                 self.mode = 3
                 if self.mode != self.mode_last:
                     self.pixels.fill((0,0,0))
-                    print('mode change!') 
+                    print('mode change!',self.mode, self.mode_last) 
                 for i in cry_face:
                     self.pixels[i] = (255, 0, 0) # red
 
-        self.mode_last = self.mode
+            self.mode_last = self.mode
 
         if rospy.is_shutdown:
             self.pixels.fill((0, 0, 0))
