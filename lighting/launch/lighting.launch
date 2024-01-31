@@ -1,0 +1,7 @@
+<launch>
+
+    <node pkg="lighting" name="lighting" type="square_neopixel.py" output="screen"> 
+        <param name="brightness" value="0.05"/>
+    <node/>
+
+</launch>
