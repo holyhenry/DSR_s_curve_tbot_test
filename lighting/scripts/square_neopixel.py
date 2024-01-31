@@ -19,16 +19,19 @@ def angleDataCallback(msg):
     neutral_face = [2,13,18,21,22,29,34,41,42,45,50,61]
 
     if angle < 45:
+        pixels.fill((0, 0, 0))
         color = (0, 255, 0) # green
         for i in smile_face:
             pixels[i] = color
 
     elif 45 <= angle and angle < 60:
+        pixels.fill((0, 0, 0))
         color = (255, 69, 0) # yellow
         for i in neutral_face:
             pixels[i] = color
 
     else:
+        pixels.fill((0, 0, 0))
         color = (255, 0, 0) # red
         for i in cry_face:
             pixels[i] = color
@@ -43,7 +46,7 @@ def listener():
     rospy.spin()
 
 if __name__ == '__main__':
-    
+
     listener()
     if rospy.is_shutdown:
         pixels.fill((0, 0, 0))
