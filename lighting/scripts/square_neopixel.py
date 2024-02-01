@@ -33,6 +33,7 @@ class lighting_node:
     def run(self):
 
         self.initNode()
+        rate = rospy.Rate(8)
 
         smile_face   = [3,13,17,21,22,31,32,41,42,46,50,60]
         cry_face     = [0,14,18,21,22,28,35,41,42,45,49,63]
@@ -64,6 +65,7 @@ class lighting_node:
                     self.pixels[i] = (255, 0, 0) # red
 
             self.mode_last = self.mode
+            rate.sleep()
 
         if rospy.is_shutdown:
             self.pixels.fill((0, 0, 0))
