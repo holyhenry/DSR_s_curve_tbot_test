@@ -24,7 +24,7 @@ class cam_multi_tag_node_2:
                                     debug=0)
         
         cv2.destroyAllWindows()
-        self.connect_device()
+        #self.connect_device()
         
         # Configure depth and color streams
         self.pipeline = rs.pipeline()
