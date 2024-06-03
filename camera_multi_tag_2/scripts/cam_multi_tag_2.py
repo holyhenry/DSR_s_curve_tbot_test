@@ -24,7 +24,7 @@ class cam_multi_tag_node_2:
                                     debug=0)
         
         cv2.destroyAllWindows()
-        #self.connect_device()
+        self.connect_device()
         
         # Configure depth and color streams
         self.pipeline = rs.pipeline()
@@ -51,8 +51,9 @@ class cam_multi_tag_node_2:
         ctx = rs.context()
         serials = []
         devices = ctx.query_devices()
-        for dev in devices:
-            dev.hardware_reset()
+        print('devices',len(devices))
+        # for dev in devices:
+        #     dev.hardware_reset()
 
         if len(ctx.devices) > 0:
             for dev in ctx.devices:
@@ -71,43 +72,49 @@ class cam_multi_tag_node_2:
     def run(self, freq):
 
         detectPub, rate = self.initNode(freq)
+        cap = cv2.VideoCapture(2)
 
         while not rospy.is_shutdown():
 
             # Wait for a coherent pair of frames: depth and color
-            frames = self.pipeline.wait_for_frames()
-            color_frame = frames.get_color_frame()
+            ret, frame = cap.read()
+            # frames = self.pipeline.wait_for_frames()
+            # color_frame = frames.get_color_frame()
 
             # Convert images to numpy arrays
-            rgb = np.asanyarray(color_frame.get_data())
+            # rgb = np.asanyarray(color_frame.get_data())
             # rgb=cv2.GaussianBlur(rgb,(15,15),sigmaX=2.5, sigmaY=2.5)
 
-            # Tag detection
-            gray = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
-            results = self.at_detector.detect(gray, estimate_tag_pose=True, tag_size=self.TAG_SIZE, 
-                                                camera_params=self.cam_param)
-            
-            # Convert tvec rvec to tag data
-            n_data = 5
-            data = np.zeros(len(results)*n_data)
-            for i, result in enumerate(results):
+            if ret:
+                rgb = frame
 
-                R = result.pose_R
-                euler_y = np.arctan2(-R[2,0],np.sqrt(R[2,1]**2+R[2,2]**2))
+                # Tag detection
+                gray = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
+                results = self.at_detector.detect(gray, estimate_tag_pose=True, tag_size=self.TAG_SIZE, 
+                                                    camera_params=self.cam_param)
+                
+                # Convert tvec rvec to tag data
+                n_data = 5
+                data = np.zeros(len(results)*n_data)
+                for i, result in enumerate(results):
 
-                data[n_data*i]     = result.tag_id
-                data[n_data*i + 1] = result.pose_t[0,0] # robot frame x - left(-) & right(+)
-                data[n_data*i + 2] = result.pose_t[1,0] # robot frame y - up(-) & down(+)
-                data[n_data*i + 3] = result.pose_t[2,0] # robot frame z - foreward(+) & backward(-)
-                data[n_data*i + 4] = euler_y
-                # print(euler_y*180/np.pi)
+                    R = result.pose_R
+                    euler_y = np.arctan2(-R[2,0],np.sqrt(R[2,1]**2+R[2,2]**2))
 
-            # cv2.imshow('Raw', rgb)
-            # cv2.waitKey(1)
+                    data[n_data*i]     = result.tag_id
+                    data[n_data*i + 1] = result.pose_t[0,0] # robot frame x - left(-) & right(+)
+                    data[n_data*i + 2] = result.pose_t[1,0] # robot frame y - up(-) & down(+)
+                    data[n_data*i + 3] = result.pose_t[2,0] # robot frame z - foreward(+) & backward(-)
+                    data[n_data*i + 4] = euler_y
+                    # print(euler_y*180/np.pi)
 
-            tag_data = Float32MultiArray()
-            tag_data.data = data
-            detectPub.publish(tag_data)
+                    # cv2.imshow('Raw', rgb)
+                    # cv2.waitKey(1)
+
+                tag_data = Float32MultiArray()
+                tag_data.data = data
+                detectPub.publish(tag_data)
+
             rate.sleep()
         
         rospy.spin()
