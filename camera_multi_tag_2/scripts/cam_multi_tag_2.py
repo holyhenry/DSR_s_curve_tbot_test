@@ -24,7 +24,7 @@ class cam_multi_tag_node_2:
                                     debug=0)
         
         cv2.destroyAllWindows()
-        self.connect_device()
+        # self.connect_device() # rasp pi currently has issue with pyrealsense 
         
         # Configure depth and color streams
         self.pipeline = rs.pipeline()
@@ -51,9 +51,8 @@ class cam_multi_tag_node_2:
         ctx = rs.context()
         serials = []
         devices = ctx.query_devices()
-        print('devices',len(devices))
-        # for dev in devices:
-        #     dev.hardware_reset()
+        for dev in devices:
+            dev.hardware_reset()
 
         if len(ctx.devices) > 0:
             for dev in ctx.devices:
@@ -83,9 +82,10 @@ class cam_multi_tag_node_2:
 
             # Convert images to numpy arrays
             # rgb = np.asanyarray(color_frame.get_data())
-            # rgb=cv2.GaussianBlur(rgb,(15,15),sigmaX=2.5, sigmaY=2.5)
+            # rgb = cv2.GaussianBlur(rgb,(15,15),sigmaX=2.5, sigmaY=2.5)
 
             if ret:
+                
                 rgb = frame
 
                 # Tag detection
