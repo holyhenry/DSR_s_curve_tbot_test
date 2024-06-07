@@ -30,7 +30,7 @@ class cam_multi_tag_node_2:
         self.pipeline = rs.pipeline()
         self.config   = rs.config()
 
-        self.l = 640*480/360
+        self.l = int(640*480/360)
         self.w = 360
 
         # Start streaming
