@@ -72,8 +72,8 @@ class cam_multi_tag_node_2:
 
         detectPub, rate = self.initNode(freq)
         cap = cv2.VideoCapture(2)
-        # cap.set(3, 640)
-        # cap.set(4, 360)
+        cap.set(3, 640)
+        cap.set(4, 480)
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
         while not rospy.is_shutdown():
