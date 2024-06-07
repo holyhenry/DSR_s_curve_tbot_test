@@ -92,30 +92,30 @@ class cam_multi_tag_node_2:
                 rgb = frame
 
                 # Tag detection
-                # gray = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
-                # results = self.at_detector.detect(gray, estimate_tag_pose=True, tag_size=self.TAG_SIZE, 
-                #                                     camera_params=self.cam_param)
+                gray = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
+                results = self.at_detector.detect(gray, estimate_tag_pose=True, tag_size=self.TAG_SIZE, 
+                                                    camera_params=self.cam_param)
                 
-                # # Convert tvec rvec to tag data
-                # n_data = 5
-                # data = np.zeros(len(results)*n_data)
-                # for i, result in enumerate(results):
+                # Convert tvec rvec to tag data
+                n_data = 5
+                data = np.zeros(len(results)*n_data)
+                for i, result in enumerate(results):
 
-                #     R = result.pose_R
-                #     euler_y = np.arctan2(-R[2,0],np.sqrt(R[2,1]**2+R[2,2]**2))
+                    R = result.pose_R
+                    euler_y = np.arctan2(-R[2,0],np.sqrt(R[2,1]**2+R[2,2]**2))
 
-                #     data[n_data*i]     = result.tag_id
-                #     data[n_data*i + 1] = result.pose_t[0,0] # robot frame x - left(-) & right(+)
-                #     data[n_data*i + 2] = result.pose_t[1,0] # robot frame y - up(-) & down(+)
-                #     data[n_data*i + 3] = result.pose_t[2,0] # robot frame z - foreward(+) & backward(-)
-                #     data[n_data*i + 4] = euler_y
+                    data[n_data*i]     = result.tag_id
+                    data[n_data*i + 1] = result.pose_t[0,0] # robot frame x - left(-) & right(+)
+                    data[n_data*i + 2] = result.pose_t[1,0] # robot frame y - up(-) & down(+)
+                    data[n_data*i + 3] = result.pose_t[2,0] # robot frame z - foreward(+) & backward(-)
+                    data[n_data*i + 4] = euler_y
                     # print(euler_y*180/np.pi)
 
                     # cv2.imshow('Raw', rgb)
                     # cv2.waitKey(1)
 
                 tag_data = Float32MultiArray()
-                # tag_data.data = data
+                tag_data.data = data
                 detectPub.publish(tag_data)
 
             rate.sleep()
