@@ -31,7 +31,7 @@ class cam_multi_tag_node_2:
         self.config   = rs.config()
 
         # Start streaming
-        self.config.enable_stream(rs.stream.color, 640, 360, rs.format.bgr8, 30)
+        self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         cfg = self.pipeline.start(self.config)
         self.cam_param = self.get_rs_param(cfg)
         print("Starting to stream")
@@ -72,8 +72,8 @@ class cam_multi_tag_node_2:
 
         detectPub, rate = self.initNode(freq)
         cap = cv2.VideoCapture(2)
-        cap.set(3, 640)
-        cap.set(4, 360)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
         while not rospy.is_shutdown():
