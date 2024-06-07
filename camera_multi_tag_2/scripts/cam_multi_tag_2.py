@@ -30,8 +30,8 @@ class cam_multi_tag_node_2:
         self.pipeline = rs.pipeline()
         self.config   = rs.config()
 
-        self.w = 640
-        self.h = 480
+        self.w = 320
+        self.h = 240
 
         # Start streaming
         self.config.enable_stream(rs.stream.color, self.w, self.h, rs.format.bgr8, 30)
