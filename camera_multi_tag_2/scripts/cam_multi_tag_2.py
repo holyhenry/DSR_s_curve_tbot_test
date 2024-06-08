@@ -30,9 +30,9 @@ class cam_multi_tag_node_2:
         self.pipeline = rs.pipeline()
         self.config   = rs.config()
 
-        self.w = 320
+        self.w = 424
         self.h = 240
-
+        print("wh",self.w,self.h)
         # Start streaming
         self.config.enable_stream(rs.stream.color, self.w, self.h, rs.format.bgr8, 30)
         cfg = self.pipeline.start(self.config)
@@ -77,12 +77,13 @@ class cam_multi_tag_node_2:
         cap = cv2.VideoCapture(2)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.w)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.h)
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        # cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
 
         while not rospy.is_shutdown():
 
             # Wait for a coherent pair of frames: depth and color
             ret, frame = cap.read()
+            print("cv2 shape",int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
             # frames = self.pipeline.wait_for_frames()
             # color_frame = frames.get_color_frame()
 
