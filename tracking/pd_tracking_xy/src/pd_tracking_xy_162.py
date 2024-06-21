@@ -62,7 +62,7 @@ class PD:
         w_max = min(4*np.abs(v),1.58)
         return w_max
     
-    def pd(self, velocity, goal, dataPub):
+    def pd(self, velocity, goal, dataPub, tag_state_last):
         '''
         states are represented in follower local frame
         '''
@@ -98,6 +98,7 @@ class PD:
         data.linear.z  = self.w
         data.angular.x = ey_dot
         data.angular.y = ex_dot
+        data.angular.z = tag_state_last[2] 
         dataPub.publish(data)
 
         self.ex_last = ex
@@ -106,7 +107,7 @@ class PD:
         self.ey_dot_last = ey_dot
         return np.array([self.v, self.w])
     
-    def pd_s(self, velocity, curve_length_s, theta_s, dataPub):
+    def pd_s(self, velocity, curve_length_s, theta_s, dataPub, tag_state_last):
         '''
         states are represented in follower local frame
         '''
@@ -144,6 +145,7 @@ class PD:
         data.linear.z  = self.w
         data.angular.x = 0.0
         data.angular.y = 0.0
+        data.angular.z = tag_state_last[2] 
         dataPub.publish(data)
 
         self.es_last = es
@@ -195,7 +197,7 @@ class DSR:
         w_max = min(4*np.abs(v),1.58)
         return w_max
         
-    def dsr(self, velocity, curve_length_s, theta_s, dataPub, reinforce_scal):
+    def dsr(self, velocity, curve_length_s, theta_s, dataPub, reinforce_scal, tag_state_last):
 
         # equation (2) ----------------------------------------------------------------
         es = curve_length_s - self.dist
@@ -235,6 +237,7 @@ class DSR:
         data.linear.z  = self.w
         data.angular.x = reinforce
         data.angular.y = 0.0
+        data.angular.z = tag_state_last[2] # leader relative angle
         dataPub.publish(data)
 
         self.es_last        = es
@@ -311,7 +314,7 @@ class tracking_node:
         self.velocity_last = 0.0      
 
         # leader stste (local x,y)       
-        self.tag_state_last    = np.zeros(2)
+        self.tag_state_last    = np.zeros(3)
         self.leader_state             = np.zeros(2) 
         self.leader_state_last        = np.zeros(2) 
         self.leader_state_global_last = np.zeros(2) 
@@ -356,7 +359,7 @@ class tracking_node:
         self.lowpass_gain   = rospy.get_param(ns + "/pd_tracking_xy/lowpass_gain")
         self.reinforce_scal = rospy.get_param(ns + "/pd_tracking_xy/reinforce_scal")
 
-        self.tag_state_last    = np.array([self.spacing-0.14, 0.0]) # spacing-Dist2BotCenter
+        self.tag_state_last    = np.array([self.spacing-0.14, 0.0, 0.0]) # spacing-Dist2BotCenter
         self.leader_state_last = np.array([self.spacing, 0.0])
 
         pub          = rospy.Publisher(ns + "cmd_vel", Twist, queue_size=3)
@@ -378,6 +381,8 @@ class tracking_node:
         while not (len(self.states)>0 and len(self.leader_states_global)>0):
             self.aprilTagFilter(self.multi_tag)
             rospy.logwarn("%s waiting for data", rospy.get_namespace())
+            if rospy.ROSInterruptException:
+                pass
         
         self.leader_states_global = self.interpInitLeaderStates(N=70)
         rospy.loginfo("%s is ready", rospy.get_namespace())
@@ -451,7 +456,7 @@ class tracking_node:
                 # check if the detection is an outlier
                 tag_pin = int(id%num_tag)*tag_space
                 filtered_tag_data[tag_pin] = id
-                tag_diff  = np.array([infered_x, infered_y])-self.tag_state_last 
+                tag_diff  = np.array([infered_x, infered_y])-self.tag_state_last[:2] 
                 isOutlier = np.linalg.norm(tag_diff, ord=2) > 0.04
                 # transform to global for visualization
                 infered_xy = self.homoTrans2BotCenter(np.array([infered_x,infered_y,infered_phi])) 
@@ -481,9 +486,10 @@ class tracking_node:
             if np.linalg.norm(leader_state_global - self.leader_state_global_last, ord=2)>0.005:
                 self.leader_states_global.append(leader_state_global)
 
-            self.tag_state_last           = np.array([tag_x,tag_y])
+            self.tag_state_last           = np.array([tag_x,tag_y,tag_phi])
             self.leader_state_last        = self.leader_state
             self.leader_state_global_last = leader_state_global
+            print("self.leader_state_last:",self.leader_state_last)
 
         filtered_tag = Float32MultiArray()
         filtered_tag.data = filtered_tag_data
@@ -724,15 +730,12 @@ class tracking_node:
             if not getTarget:
                 #rospy.logwarn('bezier fail')
                 goal = self.getUnitCircleTarget(targetPub, distance=self.spacing)
-                u = ctrl_1.pd(self.velocity, goal, ctrlDataPub)
+                u = ctrl_1.pd(self.velocity, goal, ctrlDataPub, self.tag_state_last)
             else:
                 if self.use_DSR:
-                    u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub, self.reinforce_scal)
+                    u = ctrl_2.dsr(self.velocity, curvelength_s, theta_s, ctrlDataPub, self.reinforce_scal, self.tag_state_last)
                 else:
-                    u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub)
-
-            # print("leader_state--------------", self.leader_state)
-            # print('----------------------------------------------')
+                    u = ctrl_1.pd_s(self.velocity, curvelength_s, theta_s, ctrlDataPub, self.tag_state_last)
 
             self.pubLeaderTraj(lTrajPub)
             self.pubCmdVel(cmdVelPub, u[0], u[1])
@@ -744,6 +747,8 @@ class tracking_node:
 if __name__ == '__main__':
 
     Tracking_node = tracking_node()
-    Tracking_node.run(freq=20)
-
+    try:
+        Tracking_node.run(freq=15)
+    except rospy.ROSInterruptException:
+        pass
 
