@@ -1,6 +1,12 @@
 # DSR_s_curve_tbot_test
 A repo for Turtlebot hardware testing
 
+# Important rospackages
+1. camera_multi_tag: launch `image_publisher.py` and `cam_multi_tag_node` to dectect Aruco marker
+2. camera_multi_tag_2: launch `cam_multi_tag_2.py` to detect Apriltag
+3. tracking: tbot controller 
+4. tbot_launch: Main launch file
+
 # Usage
 Master device: Either henrypcl (IP:192.168.0.159) or the Alienware laptop (IP: NEED TO CHECK)
 
@@ -12,6 +18,8 @@ Master device: Either henrypcl (IP:192.168.0.159) or the Alienware laptop (IP: N
 `export TURTLEBOT3_MODEL=burger` 
 
 `export ROS_NAMESPACE=tbot165`
+
+`roslaunch turtlebot3_teleop turtlebot3_teleop_key.launch`
 
 ## Cmd window 2 - Bringup and open camera:
 2. Bringup all Turtlebots
