@@ -8,7 +8,9 @@ Master device: Either henrypcl (IP:192.168.0.159) or the Alienware laptop (IP: N
 1. Setup Turtlebot model & Turtlebot namespace
 
 `export ROS_MASTER_URI=...` (if needed)
+
 `export TURTLEBOT3_MODEL=burger` 
+
 `export ROS_NAMESPACE=tbot165`
 
 ## Cmd window 2 - Bringup and open camera:
