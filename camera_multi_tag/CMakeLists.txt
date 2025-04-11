@@ -160,6 +160,7 @@ target_link_libraries(camera_multi_tag ${catkin_LIBRARIES})
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/image_publisher.py
+  scripts/image_publisher_2.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
