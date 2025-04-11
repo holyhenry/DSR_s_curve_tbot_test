@@ -4,13 +4,13 @@
 	<arg name="ues_DSR"        default="False"/>
 	<arg name="spacing"        default="0.25"/>
 	<arg name="alpha"          default="0.3"/>
-	<arg name="beta1"          default="0.3"/>u
+	<arg name="beta1"          default="0.3"/>
 	<arg name="beta2"          default="0.85"/>
 	<arg name="lowpass_gain"   default="1.0"/> 
 	<arg name="reinforce_scal" default="1.0"/> 
 
     <!-- tbot149 -->	
-	<group ns="tbot149">
+	<!-- <group ns="tbot149">
 		<node pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy_149.py" output="screen">
 			<param name="follower_indx"   value="0"/>
 			<param name="use_Bezier"      value="$(arg use_Bezier)"/>
@@ -22,12 +22,12 @@
 			<param name="lowpass_gain"    value="$(arg lowpass_gain)"/>
 			<param name="reinforce_scal"  value="$(arg reinforce_scal)"/>
 		</node>
-	</group>
+	</group> -->
 
 	<!-- tbot162 -->
 	<!-- <group ns="tbot162">
 		<node pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy_162.py" output="screen">
-			<param name="follower_indx"   value="1"/>
+			<param name="follower_indx"   value="0"/>
 			<param name="use_Bezier"      value="$(arg use_Bezier)"/>
 			<param name="ues_DSR"         value="$(arg ues_DSR)"/>
 			<param name="spacing"         value="$(arg spacing)"/>
@@ -40,9 +40,9 @@
 	</group> -->
 	
 	<!-- tbot205 -->
-	<!-- <group ns="tbot205">
+	<group ns="tbot205">
 		<node pkg="pd_tracking_xy" name="pd_tracking_xy" type="pd_tracking_xy_205.py" output="screen">
-			<param name="follower_indx"   value="2"/>
+			<param name="follower_indx"   value="0"/>
 			<param name="use_Bezier"      value="$(arg use_Bezier)"/>
 			<param name="ues_DSR"         value="$(arg ues_DSR)"/>
 			<param name="spacing"         value="$(arg spacing)"/>
@@ -52,7 +52,7 @@
 			<param name="lowpass_gain"    value="$(arg lowpass_gain)"/>
 			<param name="reinforce_scal"  value="$(arg reinforce_scal)"/>
 		</node>
-	</group> -->
+	</group>
 
 
 </launch>

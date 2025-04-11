@@ -205,7 +205,8 @@ class DSR:
         
         reinforce = self.beta2*self.v + self.beta1*(es - self.es_last)/self.dt
         reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
-        us_dot    = self.alpha*es*self.beta1+ reinforce_scal*reinforce
+        us_dot    = self.alpha*es*self.beta1 + reinforce_scal*reinforce
+
 
         # equation (3) ----------------------------------------------------------------
         ux_dot = us_dot*np.cos(theta_s)
@@ -304,8 +305,8 @@ class tracking_node:
 
     def __init__(self) -> None:
         
-        # default rate is 10Hz
-        self.dt = 0.01 
+        # default rate is 20Hz
+        self.dt = 0.05 
 
         # current state (local x,y,yaw)
         self.state         = np.zeros(3) 
@@ -349,15 +350,15 @@ class tracking_node:
         rate = rospy.Rate(int(freq))
         ns   = rospy.get_namespace()
         
-        self.spacing        = rospy.get_param(ns + "/pd_tracking_xy/spacing")
-        self.alpha          = rospy.get_param(ns + "/pd_tracking_xy/alpha")
-        self.beta1          = rospy.get_param(ns + "/pd_tracking_xy/beta1")
-        self.beta2          = rospy.get_param(ns + "/pd_tracking_xy/beta2")
-        self.use_DSR        = rospy.get_param(ns + "/pd_tracking_xy/ues_DSR")
-        self.use_Bezier     = rospy.get_param(ns + "/pd_tracking_xy/use_Bezier")
-        self.follower_indx  = rospy.get_param(ns + "/pd_tracking_xy/follower_indx")
-        self.lowpass_gain   = rospy.get_param(ns + "/pd_tracking_xy/lowpass_gain")
-        self.reinforce_scal = rospy.get_param(ns + "/pd_tracking_xy/reinforce_scal")
+        self.spacing        = rospy.get_param(ns + "pd_tracking_xy/spacing")
+        self.alpha          = rospy.get_param(ns + "pd_tracking_xy/alpha")
+        self.beta1          = rospy.get_param(ns + "pd_tracking_xy/beta1")
+        self.beta2          = rospy.get_param(ns + "pd_tracking_xy/beta2")
+        self.use_DSR        = rospy.get_param(ns + "pd_tracking_xy/ues_DSR")
+        self.use_Bezier     = rospy.get_param(ns + "pd_tracking_xy/use_Bezier")
+        self.follower_indx  = rospy.get_param(ns + "pd_tracking_xy/follower_indx")
+        self.lowpass_gain   = rospy.get_param(ns + "pd_tracking_xy/lowpass_gain")
+        self.reinforce_scal = rospy.get_param(ns + "pd_tracking_xy/reinforce_scal")
 
         self.tag_state_last    = np.array([self.spacing-0.14, 0.0, 0.0]) # spacing-Dist2BotCenter
         self.leader_state_last = np.array([self.spacing, 0.0])
@@ -748,7 +749,7 @@ if __name__ == '__main__':
 
     Tracking_node = tracking_node()
     try:
-        Tracking_node.run(freq=15)
+        Tracking_node.run(freq=20)
     except rospy.ROSInterruptException:
         pass
 

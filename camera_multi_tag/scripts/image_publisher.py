@@ -8,13 +8,13 @@ rospy.init_node('image_publisher')
 r   = rospy.Rate(30) # 10hz
 
 ns  = rospy.get_namespace()
-pub = rospy.Publisher(ns + '/camera/color/image_raw', Image, queue_size=2)
+pub = rospy.Publisher(ns + 'camera/color/image_raw', Image, queue_size=2)
 
 # try to disable depth information, need to verify
 config = rs.config()
 config.disable_stream(rs.stream.depth)
 
-cap = cv2.VideoCapture(4)
+cap = cv2.VideoCapture(3)
 br  = CvBridge()
 
 while not rospy.is_shutdown():

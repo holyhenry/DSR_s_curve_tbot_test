@@ -205,7 +205,8 @@ class DSR:
         
         reinforce = self.beta2*self.v + self.beta1*(es - self.es_last)/self.dt
         reinforce = self.lowPass(reinforce, self.reinforce_last, lowPassGain=0.167)
-        us_dot    = self.alpha*es*self.beta1+ reinforce_scal*reinforce
+        us_dot    = self.alpha*es*self.beta1 + reinforce_scal*reinforce
+
 
         # equation (3) ----------------------------------------------------------------
         ux_dot = us_dot*np.cos(theta_s)
@@ -304,8 +305,8 @@ class tracking_node:
 
     def __init__(self) -> None:
         
-        # default rate is 10Hz
-        self.dt = 0.01 
+        # default rate is 20Hz
+        self.dt = 0.05 
 
         # current state (local x,y,yaw)
         self.state         = np.zeros(3) 
@@ -748,7 +749,7 @@ if __name__ == '__main__':
 
     Tracking_node = tracking_node()
     try:
-        Tracking_node.run(freq=15)
+        Tracking_node.run(freq=20)
     except rospy.ROSInterruptException:
         pass
 
