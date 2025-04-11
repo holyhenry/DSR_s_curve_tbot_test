@@ -14,6 +14,7 @@ pub = rospy.Publisher(ns + 'camera/color/image_raw', Image, queue_size=2)
 
 # try to disable depth information, need to verify
 config = rs.config()
+config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 config.disable_stream(rs.stream.depth)
 
 cap = cv2.VideoCapture(4)
