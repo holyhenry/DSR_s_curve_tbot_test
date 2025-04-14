@@ -70,15 +70,29 @@ while not rospy.is_shutdown():
                 rospy.logwarn("Pose estimation failed for tag ID %d", detection.tag_id)
 
             R, _ = cv2.Rodrigues(rvec)
-            sy = np.sqrt(R[2, 1]**2 + R[2, 2]**2)
-            euler_y = -np.arctan2(-R[2, 0], sy)
+
+            # Compute the intermediary value to handle singularities (gimbal lock)
+            sy = np.sqrt(R[0, 0]**2 + R[1, 0]**2)
+
+            # Check if the matrix is close to a singular configuration
+            singular = sy < 1e-6
+
+            if not singular:
+                roll  = np.arctan2(R[2, 1], R[2, 2])
+                pitch = np.arctan2(-R[2, 0], sy)  # Rotation about y axis.
+                yaw   = np.arctan2(R[1, 0], R[0, 0])
+            else:
+                # Gimbal lock: We set yaw to zero and compute roll differently.
+                roll  = np.arctan2(-R[1, 2], R[1, 1])
+                pitch = np.arctan2(-R[2, 0], sy)
+                yaw   = 0
 
             detection_data.append({
                 "id": detection.tag_id,
                 "tag_x": tvec[0], # robot frame - left(-) & right(+)
                 "tag_y": tvec[1], # robot frame - up(-) & down(+)
                 "tag_z": tvec[2], # robot frame - foreward(+) & backward(-)
-                "yaw": euler_y
+                "yaw": yaw
             })
 
             print(detection_data)
