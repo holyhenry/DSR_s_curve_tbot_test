@@ -13,7 +13,7 @@ r   = rospy.Rate(30) # 10hz
 
 ns  = rospy.get_namespace()
 image_pub = rospy.Publisher(ns + 'camera/color/image_raw', Image, queue_size=2)
-detection_pub = rospy.Publisher('/tag_detections', Float32MultiArray, queue_size=10)
+detection_pub = rospy.Publisher(ns + 'tag_detections', Float32MultiArray, queue_size=10)
 
 # try to disable depth information, need to verify
 config = rs.config()
