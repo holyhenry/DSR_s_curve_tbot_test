@@ -21,7 +21,7 @@ cap = cv2.VideoCapture(4)
 br  = CvBridge()
 
 # Tag size in meters
-tag_size = 0.045
+tag_size = 0.04
 
 # Define the 3D coordinates for the tag corners:
 # Assuming the detected order is [top-left, top-right, bottom-right, bottom-left]
