@@ -21,7 +21,7 @@ cap = cv2.VideoCapture(4)
 br  = CvBridge()
 
 # Tag size in meters
-tag_size = 0.45
+tag_size = 0.045
 
 # Define the 3D coordinates for the tag corners:
 # Assuming the detected order is [top-left, top-right, bottom-right, bottom-left]
@@ -57,18 +57,17 @@ while not rospy.is_shutdown():
 
         # Prepare detection data
         detection_data = []
+
         for detection in detections:
             # Convert detected corners to proper format
             image_points = np.array(detection.corners, dtype=np.float32)
             
             # Compute pose of the detected tag
             success, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
-            if success:
-                # Here you can publish or log the pose
-                rospy.loginfo("Tag ID %d: tvec = %s, rvec = %s", detection.tag_id, tvec.flatten(), rvec.flatten())
-            else:
+            if not success:
                 rospy.logwarn("Pose estimation failed for tag ID %d", detection.tag_id)
 
+            # Convert the rotation vector to a rotation matrix.
             R, _ = cv2.Rodrigues(rvec)
 
             # Compute the intermediary value to handle singularities (gimbal lock)
@@ -77,25 +76,25 @@ while not rospy.is_shutdown():
             # Check if the matrix is close to a singular configuration
             singular = sy < 1e-6
 
+            # Convert R to raw, pitch, yaw w.r.t actual robot frame
             if not singular:
-                roll  = np.arctan2(R[2, 1], R[2, 2])
+                #roll = np.arctan2(R[2, 1], R[2, 2])
                 pitch = np.arctan2(-R[2, 0], sy)  # Rotation about y axis.
-                yaw   = np.arctan2(R[1, 0], R[0, 0])
-            else:
-                # Gimbal lock: We set yaw to zero and compute roll differently.
-                roll  = np.arctan2(-R[1, 2], R[1, 1])
+                #yaw = np.arctan2(R[1, 0], R[0, 0])
+            else:  # Gimbal lock: We set yaw to zero and compute roll differently.
+                #roll = np.arctan2(-R[1, 2], R[1, 1])
                 pitch = np.arctan2(-R[2, 0], sy)
-                yaw   = 0
+                #yaw = 0
 
             detection_data.append({
                 "id": detection.tag_id,
-                "tag_x": tvec[0], # robot frame - left(-) & right(+)
-                "tag_y": tvec[1], # robot frame - up(-) & down(+)
-                "tag_z": tvec[2], # robot frame - foreward(+) & backward(-)
-                "yaw": yaw
+                "tag_x": tvec[0], # actual robot frame - left(-) & right(+)
+                "tag_y": tvec[1], # actual robot frame - up(-) & down(+)
+                "tag_z": tvec[2], # actual robot frame - foreward(+) & backward(-)
+                "yaw": pitch
             })
 
-            print(detection_data)
+            print(len(detection_data))
 
         # Publish the image.
         pub.publish(br.cv2_to_imgmsg(frame))
