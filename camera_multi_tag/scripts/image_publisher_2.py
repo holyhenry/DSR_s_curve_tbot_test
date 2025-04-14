@@ -56,9 +56,10 @@ while not rospy.is_shutdown():
         detections = detector.detect(gray_frame)
 
         # Prepare detection data
-        detection_data = [0 for i in range(5*len(detections))]
+        W = 5 
+        detection_data = [0 for i in range(W*len(detections))]
 
-        for detection in detections:
+        for i, detection in enumerate(detections):
             # Convert detected corners to proper format
             image_points = np.array(detection.corners, dtype=np.float32)
             
@@ -86,15 +87,13 @@ while not rospy.is_shutdown():
                 pitch = np.arctan2(-R[2, 0], sy)
                 #yaw = 0
 
-            detection_data.append([
-                detection.tag_id,
-                tvec[0],  # tag_x: actual robot frame - left(-) & right(+)
-                tvec[1],  # tag_y: actual robot frame - up(-) & down(+)
-                tvec[2],  # tag_z: actual robot frame - foreward(+) & backward(-)
-                pitch     # tag_yaw: rotate about tag_y 
-            ])
+            detection_data[i*W] = detection.tag_id
+            detection_data[i*W + 1] = tvec[0]  # tag_x: actual robot frame - left(-) & right(+)
+            detection_data[i*W + 2] = tvec[1]  # tag_y: actual robot frame - up(-) & down(+)
+            detection_data[i*W + 3] = tvec[2]  # tag_z: actual robot frame - foreward(+) & backward(-)
+            detection_data[i*W + 4] = pitch    # tag_yaw: rotate about tag_y 
 
-        print(len(detections))
+        print(detection_data)
 
         # Publish the image.
         pub.publish(br.cv2_to_imgmsg(frame))
