@@ -94,7 +94,7 @@ while not rospy.is_shutdown():
                 "yaw": pitch
             })
 
-            print(len(detection_data))
+        print(len(detection_data))
 
         # Publish the image.
         pub.publish(br.cv2_to_imgmsg(frame))
