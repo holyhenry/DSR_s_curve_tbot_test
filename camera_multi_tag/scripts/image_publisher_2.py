@@ -1,16 +1,19 @@
-import rospy
 import cv2
 import pyrealsense2 as rs
-from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import numpy as np
 import apriltag
+
+import rospy
+from sensor_msgs.msg import Image
+from std_msgs.msg import Float32MultiArray
 
 rospy.init_node('image_publisher')
 r   = rospy.Rate(30) # 10hz
 
 ns  = rospy.get_namespace()
-pub = rospy.Publisher(ns + 'camera/color/image_raw', Image, queue_size=2)
+image_pub = rospy.Publisher(ns + 'camera/color/image_raw', Image, queue_size=2)
+detection_pub = rospy.Publisher('/tag_detections', Float32MultiArray, queue_size=10)
 
 # try to disable depth information, need to verify
 config = rs.config()
@@ -94,9 +97,12 @@ while not rospy.is_shutdown():
             detection_data[i*W + 3] = tvec[2]  # tag_z: actual robot frame - foreward(+) & backward(-)
             detection_data[i*W + 4] = pitch    # tag_yaw: rotate about tag_y 
 
-        print(detection_data)
+        # print(detection_data)
 
-        # Publish the image.
-        pub.publish(br.cv2_to_imgmsg(frame))
+        # Publishers
+        float_array_msg = Float32MultiArray()
+        float_array_msg.data = detection_data
+        detection_pub.publish(float_array_msg)
+        # image_pub.publish(br.cv2_to_imgmsg(frame))
 
     r.sleep()
