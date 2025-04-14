@@ -87,6 +87,7 @@ while not rospy.is_shutdown():
                 pitch = np.arctan2(-R[2, 0], sy)
                 #yaw = 0
 
+            tvec = tvec.flatten()
             detection_data[i*W] = detection.tag_id
             detection_data[i*W + 1] = tvec[0]  # tag_x: actual robot frame - left(-) & right(+)
             detection_data[i*W + 2] = tvec[1]  # tag_y: actual robot frame - up(-) & down(+)
