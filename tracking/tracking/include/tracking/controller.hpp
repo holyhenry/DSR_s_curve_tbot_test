@@ -7,8 +7,7 @@
 
 class Controller{
 public:
-    Controller(double dt,
-               double alpha,
+    Controller(double alpha,
                double alpha_angle,
                double beta1,
                double beta2,
@@ -20,46 +19,44 @@ public:
                                    const std::vector<double>& target,
                                    double velocity);
 
-
 private:
-    // Parameters
-    double dt_;
+    // Basic gains
     double alpha_;
     double alpha_angle_;
+    // Additional gains for DSR
     double beta1_;
     double beta2_;
-    double tau_;
-    double spacing_;
-
-    // System state memory
+    // System parameters 
+    double tau_;                       // DSR delay (=controller period)
+    double spacing_;                   // Inter-robot spacing
+    // System memories
+    double error_;
     std::vector<double> target_last_;  // 2D
     std::vector<double> state_last_;   // 2D
+    // DSR specific memories
+    double t_d_last_;                  // Self-delayed
+    double e_l_last_;                  // Predecessor delayed
+    // Controller output
+    std::vector<double> input_;        // 2D [v, w]
+    // Controller output limits
+    double max_ = 0.2;
+    double min_ = -0.2;
 
-    // Output
-    std::vector<double> input_;  // [v, w]
-
-    // System limits
-    const double max_ = 0.2;
-    const double min_ = -0.2;
-
-    // Core logic
-    double signedError(const std::vector<double>& state,
-                       const std::vector<double>& target,
-                       double heading_rad) const;
-
+    // Utility functions
     double lowPass(double x, double x_last, double gain) const;
 
+    double checkLimits(double u) const;
+
+    double signedError(const std::vector<double>& target) const;
+
+    // Core logic
     double angularControl(const std::vector<double>& state,
                           const std::vector<double>& target,
                           double velocity) const;
 
-    double PUpdate(const std::vector<double>& state,
-                   const std::vector<double>& target,
-                   double heading) const;
+    double PUpdate(const std::vector<double>& target);
 
-    double DSRUpdate(const std::vector<double>& state,
-                     const std::vector<double>& target,
-                     double heading);
+    double DSRUpdate(const std::vector<double>& target);
 
-    double checkLimits(double u) const;
+    
 };
