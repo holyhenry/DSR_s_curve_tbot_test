@@ -39,8 +39,8 @@ private:
     // Controller output
     std::vector<double> input_;        // 2D [v, w]
     // Controller output limits
-    double max_ = 0.2;
-    double min_ = -0.2;
+    double const max_ = 0.2;
+    double const min_ = -0.2;
 
     // Utility functions
     double lowPass(double x, double x_last, double gain) const;
