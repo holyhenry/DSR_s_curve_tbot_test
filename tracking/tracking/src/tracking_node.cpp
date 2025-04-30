@@ -99,8 +99,9 @@ void TrackingNode::aprilTagFilter()
             double infered_phi = infered[2];
 
             // Filter the outliers
-            std::vector<double> tag_diff = {infered_x - tag_leader_state_[0],
-                                            infered_y - tag_leader_state_[1]};
+            std::vector<double> infered_bot = homoTrans2BotCenter(infered);
+            std::vector<double> tag_diff = {infered_bot[0] - tag_leader_state_[0],
+                                            infered_bot[1] - tag_leader_state_[1]};
             double norm_diff = std::sqrt(tag_diff[0]*tag_diff[0] + tag_diff[1]*tag_diff[1]);
             bool isOutlier = norm_diff > outlier_threshold;
 
@@ -117,6 +118,7 @@ void TrackingNode::aprilTagFilter()
                 ROS_INFO_STREAM("Filtered tag ID:" << id);
                 ROS_INFO_STREAM("Filtered raw_xy at (" << x << ", " << y << ")" << phi);
                 ROS_INFO_STREAM("Filtered outlier infered_xy at (" << infered_x << ", " << infered_y << ")" << infered_phi);
+                ROS_INFO_STREAM("Filtered outlier infered_bot at (" << infered_bot[0] << ", " << infered_bot[1] << ")" << infered_phi);
             }
         }
     }
@@ -131,8 +133,8 @@ void TrackingNode::aprilTagFilter()
 
         std::vector<double> tag_raw = {tag_x, tag_y, tag_phi};
         tag_leader_state_ = homoTrans2BotCenter(tag_raw);
-        ROS_INFO_STREAM("Filtered outlier at (" << tag_leader_state_[0] << ", "  
-                                                << tag_leader_state_[1] << ")");
+        ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", "  
+                                              << tag_leader_state_[1] << ")");
     }
 }
 
