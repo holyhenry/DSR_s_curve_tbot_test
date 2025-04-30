@@ -90,7 +90,7 @@ void TrackingNode::aprilTagFilter()
         {   
             int id = static_cast<int>(tag_multi_raw_[i]);
             double x = tag_multi_raw_[i + 3];
-            double y = -(tag_multi_raw_[i + 3] - cam_pos_offset);
+            double y = -(tag_multi_raw_[i + 1] - cam_pos_offset);
             double phi = tag_multi_raw_[i + 4];
 
             std::vector<double> infered = transformTag2Middle(x, y, phi, id);
@@ -114,8 +114,9 @@ void TrackingNode::aprilTagFilter()
             }
             else
             {   // Log outlier detection
-                ROS_INFO_STREAM("Filtered xy at (" << x << ", " << y << ")");
-                ROS_INFO_STREAM("Filtered outlier at (" << infered_x << ", " << infered_y << ")");
+                ROS_INFO_STREAM("Filtered tag ID:" << id);
+                ROS_INFO_STREAM("Filtered raw_xy at (" << x << ", " << y << ")");
+                ROS_INFO_STREAM("Filtered outlier infered_xy at (" << infered_x << ", " << infered_y << ")");
             }
         }
     }
