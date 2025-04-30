@@ -143,7 +143,7 @@ std::vector<double> TrackingNode::transformTag2Middle(double x, double y, double
 {   // frame size 4.0cm, d=0.038mm
     // frame size 4.5cm, d=0.043mm
     // frame size 5.0cm, d=0.048mm
-    if (id % num_tag == 0)
+    if (id % num_tag == 2)
     {
         double x1_hat = x + d * std::cos(-M_PI/2.0 + alpha + 0.2616);
         double y1_hat = y + d * std::sin(-M_PI/2.0 + alpha + 0.2616);
@@ -151,7 +151,7 @@ std::vector<double> TrackingNode::transformTag2Middle(double x, double y, double
         return {x1_hat, y1_hat, alpha};
     }
 
-    if (id % num_tag == 2)
+    if (id % num_tag == 0)
     {
         double x1_hat = x + d * std::cos(M_PI/2.0 + alpha - 0.2616);
         double y1_hat = y + d * std::sin(M_PI/2.0 + alpha - 0.2616);
