@@ -116,7 +116,7 @@ void TrackingNode::aprilTagFilter()
             {   // Log outlier detection
                 ROS_INFO_STREAM("Filtered tag ID:" << id);
                 ROS_INFO_STREAM("Filtered raw_xy at (" << x << ", " << y << ")" << phi);
-                ROS_INFO_STREAM("Filtered outlier infered_xy at (" << infered_x << ", " << infered_y << ")", infered_phi);
+                ROS_INFO_STREAM("Filtered outlier infered_xy at (" << infered_x << ", " << infered_y << ")" << infered_phi);
             }
         }
     }
