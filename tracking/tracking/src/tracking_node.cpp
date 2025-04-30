@@ -230,7 +230,7 @@ int main(int argc, char** argv) {
     pnh.param<double>("beta1", beta1, 0.8);
     pnh.param<double>("beta2", beta2, 0.95);
     pnh.param<double>("tau", tau, 0.02);
-    pnh.param<double>("spacing", spacing, 0.25);
+    pnh.param<double>("spacing", spacing, 0.35);
     pnh.param<int>("follower_indx", follower_indx, 0);
 
     // Call the node constructor
