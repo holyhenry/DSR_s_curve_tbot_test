@@ -112,7 +112,6 @@ void TrackingNode::aprilTagFilter()
             double norm_diff = std::sqrt(tag_diff[0]*tag_diff[0] + tag_diff[1]*tag_diff[1]);
             bool isOutlier = norm_diff > outlier_threshold;
 
-            ROS_INFO_STREAM("norm_diff"<<norm_diff);
             if (!isOutlier)
             {
                 count++;
@@ -159,7 +158,7 @@ void TrackingNode::aprilTagFilter()
         global_leader_pub_.publish(msg);
 
         // Log current tag position
-        ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
+        // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.rows());
     }
 }
