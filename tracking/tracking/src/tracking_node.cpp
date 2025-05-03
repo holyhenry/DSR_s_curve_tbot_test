@@ -13,8 +13,10 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
       tau_(tau), spacing_(spacing),
       follower_indx_(follower_indx)
 {
-    // Setup publishers (rm "/" in front of topic name to handle ns)
+    // Setup publisher (rm "/" in front of topic name to handle ns)
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 2);
+    // Setup debug publishers 
+    global_leader_pub_ = nh.advertise<std_msgs::Float32MultiArray>("global_leader_states", 1);
 
     // Setup scuscribers (rm "/" in front of topic name to handle ns)
     odom_sub_ = nh.subscribe("odom", 5, &TrackingNode::odomCallback, this);
@@ -26,6 +28,10 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
 
     // Initialize apriltag local measurement 
     tag_leader_state_ = {spacing_, 0.0};
+
+    // Initialize global leader state
+    global_leader_state_last_ = {spacing_, 0.0};
+    global_leader_states_ = Eigen::MatrixXd(0, 2);
 
 }
 // =============================Callback functions=============================
@@ -72,6 +78,7 @@ void TrackingNode::aprilTagFilter()
     const int raw_tag_space = 5;
     const double cam_pos_offset = 0.025;
     const double outlier_threshold = 0.04;
+    const double movement_threshold = 0.005;
 
     double tag_x = 0.0;
     double tag_y = 0.0;
@@ -89,9 +96,9 @@ void TrackingNode::aprilTagFilter()
         if (i % raw_tag_space == 0 && isCorrectID)
         {   
             int id = static_cast<int>(tag_multi_raw_[i]);
-            double x = tag_multi_raw_[i + 3];
-            double y = -(tag_multi_raw_[i + 1] - cam_pos_offset);
-            double phi = -tag_multi_raw_[i + 4];
+            double x   =   tag_multi_raw_[i + 3];
+            double y   = -(tag_multi_raw_[i + 1] - cam_pos_offset);
+            double phi =  -tag_multi_raw_[i + 4];
 
             std::vector<double> infered = transformTag2Middle(x, y, phi, id);
             double infered_x = infered[0];
@@ -115,15 +122,10 @@ void TrackingNode::aprilTagFilter()
             }
             else
             {   // Log outlier detection
-                ROS_INFO_STREAM("Filtered tag ID:" << id);
-                ROS_INFO_STREAM("Filtered raw_xy at (" << x << ", " << y << ")" << phi);
-                ROS_INFO_STREAM("Filtered outlier infered_xy at (" << infered_x << ", " << infered_y << ")" << infered_phi);
-                ROS_INFO_STREAM("Filtered outlier infered_bot at (" << infered_bot[0] << ", " << infered_bot[1] << ")" << infered_phi);
+                // ROS_INFO_STREAM("Filtered tag ID:" << id);
             }
         }
     }
-    
-    ROS_INFO_STREAM("count"<<count);
 
     if (count > 0)
     {
@@ -133,8 +135,32 @@ void TrackingNode::aprilTagFilter()
 
         std::vector<double> tag_raw = {tag_x, tag_y, tag_phi};
         tag_leader_state_ = homoTrans2BotCenter(tag_raw);
-        ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", "  
-                                              << tag_leader_state_[1] << ")");
+
+        // Transform to global frame
+        std::vector<double> global_leader_state = homoTrans2Global(tag_leader_state_);
+        double dx = global_leader_state[0] - global_leader_state_last_[0];
+        double dy = global_leader_state[1] - global_leader_state_last_[1];
+        double movement = std::sqrt(dx * dx + dy * dy);
+
+        if (movement > movement_threshold)
+        {
+            global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
+            global_leader_states_.row(global_leader_states_.rows() - 1) << global_leader_state[0], global_leader_state[1];
+            global_leader_state_last_ = global_leader_state;
+        }
+
+        // Publish global leader states
+        std_msgs::Float32MultiArray msg;
+        for (int i = 0; i < global_leader_states_.rows(); ++i)
+        {
+            msg.data.push_back(global_leader_states_(i, 0));
+            msg.data.push_back(global_leader_states_(i, 1));
+        }
+        global_leader_pub_.publish(msg);
+
+        // Log current tag position
+        ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
+        ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.rows());
     }
 }
 
@@ -209,7 +235,6 @@ std::vector<double> TrackingNode::homoTrans2Global(const std::vector<double>& lo
     // current_state_ holds robot's global [x, y, yaw]
     std::vector<double> current_state_ = addVectors(odom_state_last_, odom_displacement_);
     return homoTrans2D(current_state_, local_point); 
-   
 }
 
 // ==================================Main loop=================================

@@ -29,19 +29,25 @@ private:
     // Controller object
     Controller controller_;
 
-    // Robot odom states (global frame)
+    // Robot odom states (GLOBAL frame)
     std::vector<double> odom_displacement_; // [x, y, yaw]
     std::vector<double> odom_state_last_;   // [x, y, yaw]
 
-    // Robot tag raw & filtered detection (local frame)
-    std::vector<float> tag_multi_raw_;           // raw apriltag detection
-    std::vector<double> tag_leader_state_;       // filtered apriltag detection  [x, y]
+    // Robot tag raw & filtered detection (LOCAL frame)
+    std::vector<float> tag_multi_raw_;     // raw apriltag detection
+    std::vector<double> tag_leader_state_; // filtered apriltag detection [x, y]
+    
+    // Robot tag transformed global leader states (GLOBAL frame)
+    std::vector<double> global_leader_state_last_; // [x, y]
+    Eigen::MatrixXd global_leader_states_;         // Nx2 matrix
 
     // ROS interface & timer 
     ros::Publisher cmd_vel_pub_;
     ros::Subscriber odom_sub_;
     ros::Subscriber tag_sub_;
     ros::Rate loop_rate_;
+    // ROS interface (debugging & visualizing)
+    ros::Publisher global_leader_pub_;
 
     // =============================Internal functions=============================
 

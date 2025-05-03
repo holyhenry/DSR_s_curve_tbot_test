@@ -1,9 +1,12 @@
 #pragma once
 
+#include <ros/ros.h>
+#include <numeric>
 #include <vector>
 #include <utility>
 #include <cmath>
 #include <algorithm>
+#include <Eigen/Dense>
 
 class Controller{
 public:
@@ -19,6 +22,20 @@ public:
                                    const std::vector<double>& target,
                                    double velocity);
 
+    // System memories
+    double error_;
+    Eigen::MatrixXd observations_;     // shape: N rows × 2 columns
+    std::vector<double> target_last_;  // 2D [x, y]
+    std::vector<double> state_last_;   // 2D [x, y]
+
+    // ==============================Core functions==============================
+    std::vector<double> getTarget(bool memory_mode = true);
+    double angularControl(const std::vector<double>& state,
+                          const std::vector<double>& target,
+                          double velocity) const;
+    double PUpdate(const std::vector<double>& target);
+    double DSRUpdate(const std::vector<double>& target);
+
 private:
     // Basic gains
     double alpha_;
@@ -29,10 +46,6 @@ private:
     // System parameters 
     double tau_;                       // DSR delay (=controller period)
     double spacing_;                   // Inter-robot spacing
-    // System memories
-    double error_;
-    std::vector<double> target_last_;  // 2D
-    std::vector<double> state_last_;   // 2D
     // DSR specific memories
     double t_d_last_;                  // Self-delayed
     double e_l_last_;                  // Predecessor delayed
@@ -42,21 +55,9 @@ private:
     double const max_ = 0.2;
     double const min_ = -0.2;
 
-    // Utility functions
+    // =============================Helper functions=============================
     double lowPass(double x, double x_last, double gain) const;
-
     double checkLimits(double u) const;
-
     double signedError(const std::vector<double>& target) const;
-
-    // Core logic
-    double angularControl(const std::vector<double>& state,
-                          const std::vector<double>& target,
-                          double velocity) const;
-
-    double PUpdate(const std::vector<double>& target);
-
-    double DSRUpdate(const std::vector<double>& target);
-
     
 };
