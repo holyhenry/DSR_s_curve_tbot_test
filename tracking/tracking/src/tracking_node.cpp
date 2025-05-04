@@ -159,7 +159,7 @@ void TrackingNode::aprilTagFilter()
 
         // Log current tag position
         // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
-        ROS_INFO_STREAM(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
+        ROS_INFO_STREAM_THROTTLE(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
     }
 }
 
@@ -293,7 +293,7 @@ int main(int argc, char** argv) {
         node.aprilTagFilter();
         Eigen::MatrixXd local_leader_states = node.homoInvTransMulti2Local(node.getGlobalLeaderStates());
         
-        ROS_INFO_STREAM(0.5, "local_leader_states:\n" << local_leader_states);
+        ROS_INFO_STREAM_THROTTLE(0.5, "local_leader_states:\n" << local_leader_states);
 
         // Later you can add node.controlStep();  // For actual controller output
 
