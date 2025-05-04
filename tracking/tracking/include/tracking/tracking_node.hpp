@@ -17,6 +17,9 @@ public:
                  int follower_indx);
 
     // =============================Core functions=============================
+    Eigen::MatrixXd getGlobalLeaderStates() const;
+    Eigen::MatrixXd homoInvTransMulti2Local(const Eigen::MatrixXd& global_points);
+
     void aprilTagFilter();
     void run();
 
@@ -35,11 +38,11 @@ private:
 
     // Robot tag raw & filtered detection (LOCAL frame)
     std::vector<float> tag_multi_raw_;     // raw apriltag detection
-    std::vector<double> tag_leader_state_; // filtered apriltag detection [x, y]
+    std::vector<double> tag_leader_state_; // [x, y] - filtered apriltag detection
     
     // Robot tag transformed global leader states (GLOBAL frame)
     std::vector<double> global_leader_state_last_; // [x, y]
-    Eigen::MatrixXd global_leader_states_;         // Nx2 matrix
+    Eigen::MatrixXd global_leader_states_;  // Nx2 matrix
 
     // ROS interface & timer 
     ros::Publisher cmd_vel_pub_;

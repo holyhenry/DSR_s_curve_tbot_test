@@ -159,7 +159,7 @@ void TrackingNode::aprilTagFilter()
 
         // Log current tag position
         // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
-        ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.rows());
+        ROS_INFO_STREAM(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
     }
 }
 
@@ -236,6 +236,28 @@ std::vector<double> TrackingNode::homoTrans2Global(const std::vector<double>& lo
     return homoTrans2D(current_state_, local_point); 
 }
 
+Eigen::MatrixXd TrackingNode::homoInvTransMulti2Local(const Eigen::MatrixXd& global_points)
+{
+    double theta = odom_state_last_[2];
+    double cos_theta = std::cos(theta);
+    double sin_theta = std::sin(theta);
+
+    // Rotation matrix transpose (inverse rotation)
+    Eigen::Matrix2d R_inv;
+    R_inv << cos_theta, sin_theta,
+            -sin_theta, cos_theta;
+
+    Eigen::Vector2d t(odom_state_last_[0], odom_state_last_[1]);
+
+    // Shift all global points by -t, then rotate into local frame
+    Eigen::MatrixXd shifted = global_points.rowwise() - t.transpose();
+    Eigen::MatrixXd local_points = (R_inv * shifted.transpose()).transpose();
+
+    return local_points;
+}
+
+Eigen::MatrixXd TrackingNode::getGlobalLeaderStates() const { return global_leader_states_; }
+
 // ==================================Main loop=================================
 
 int main(int argc, char** argv) {
@@ -269,6 +291,9 @@ int main(int argc, char** argv) {
 
         // Run the leader tag filtering
         node.aprilTagFilter();
+        Eigen::MatrixXd local_leader_states = node.homoInvTransMulti2Local(node.getGlobalLeaderStates());
+        
+        ROS_INFO_STREAM(0.5, "local_leader_states:\n" << local_leader_states);
 
         // Later you can add node.controlStep();  // For actual controller output
 
