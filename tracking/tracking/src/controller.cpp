@@ -79,7 +79,7 @@ Eigen::Vector2d Controller::getTarget(bool memory_mode)
     }
 
     // Fallback: non memory_mode or no valid target found
-    ROS_WARN("[getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.");
+    ROS_INFO_STREAM_THROTTLE(1.0, "[getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.");
 
     Eigen::Vector2d direction = - leader_current_state;
     double theta = std::atan2(direction[1], direction[0]);
