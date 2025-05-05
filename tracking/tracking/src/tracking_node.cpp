@@ -181,7 +181,7 @@ void TrackingNode::runControlStep()
     double angular_controller = controller_.angularUpdate(target); // or TrajAngularUpdate()
 
     std::vector<double> cmd = controller_.step(linear_controller,
-                                               angular_controller * 0.1);
+                                               angular_controller * 0.0);
 
     geometry_msgs::Twist twist_msg;
     twist_msg.linear.x = cmd[0];
