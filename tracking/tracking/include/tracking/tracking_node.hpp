@@ -21,7 +21,7 @@ public:
     Eigen::MatrixXd homoInvTransMulti2Local(const Eigen::MatrixXd& global_points);
 
     void aprilTagFilter();
-    void run();
+    void runControlStep();
 
 private:
     // Platoon parameters

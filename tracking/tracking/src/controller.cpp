@@ -12,23 +12,31 @@ Controller::Controller(double alpha,
 {   
     // System memories
     error_ = 0.0;  // logitudinal error
-    observations_ = Eigen::MatrixXd(0, 2);          // predecessor observations
-    input_        = std::vector<double>{0.0, 0.0};  // controller command
-    target_last_  = std::vector<double>{0.0, 0.0}; 
-    state_last_   = std::vector<double>{0.0, 0.0};
+    observations_ = Eigen::MatrixXd(0, 2);    // predecessor observations
+    input_        = Eigen::Vector2d::Zero();  // controller command
+    target_last_  = Eigen::Vector2d::Zero(); 
+    state_last_   = Eigen::Vector2d::Zero();
     
 }
 // ==============================Core functions==============================
 
-double Controller::PUpdate(const std::vector<double>& target) 
+double Controller::angularUpdate(const Eigen::Vector2d& target) const
+{
+    double theta = std::atan2(target[1], target[0]);
+    double angle_fb = alpha_angle_ * theta;
+
+    return checkLimits(angle_fb, omega_min_, omega_max_);
+}
+
+double Controller::PUpdate(const Eigen::Vector2d& target) 
 {
     error_ = signedError(target);
     double linear_fb = alpha_ * error_;
 
-    return checkLimits(linear_fb);
+    return checkLimits(linear_fb, vel_min_, vel_max_);
 }
 
-double Controller::DSRUpdate(const std::vector<double>& target) 
+double Controller::DSRUpdate(const Eigen::Vector2d& target) 
 {
     error_ = signedError(target);
     // TODO: finish DSR update 2
@@ -36,13 +44,13 @@ double Controller::DSRUpdate(const std::vector<double>& target)
     return 0.0;
 }
 
-std::vector<double> Controller::getTarget(bool memory_mode)
+Eigen::Vector2d Controller::getTarget(bool memory_mode)
 {
     if (observations_.rows() == 0)  
     {
         ROS_WARN("[getTarget]: No observations.");
         
-        return std::vector<double>{0.0, 0.0};
+        return Eigen::Vector2d::Zero();
     }
 
     Eigen::Vector2d leader_current_state = observations_.row(observations_.rows() - 1);
@@ -66,10 +74,10 @@ std::vector<double> Controller::getTarget(bool memory_mode)
             int indx = valid_indicies.back();
             Eigen::RowVectorXd target = observations_.row(indx);  // (1 × 2) row
             
-            return std::vector<double>{target[0], target[1]};
+            return target;
         }
     }
-    
+
     // Fallback: non memory_mode or no valid target found
     ROS_WARN("[getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.");
 
@@ -77,7 +85,20 @@ std::vector<double> Controller::getTarget(bool memory_mode)
     double theta = std::atan2(direction[1], direction[0]);
     Eigen::Vector2d fallback = leader_current_state + spacing_ * Eigen::Vector2d(std::cos(theta), std::sin(theta));
     
-    return std::vector<double>{fallback[0], fallback[1]};
+    return fallback;
+}
+
+void Controller::setObservations(const Eigen::MatrixXd& observations)
+{
+    observations_ = observations;
+}
+
+std::vector<double> Controller::step(double linear_update, double anguler_update)
+{
+    // Update robot controller input
+    input_ << linear_update, anguler_update;
+
+    return toStdVector(input_);
 }
 
 // =============================Helper functions=============================
@@ -87,12 +108,12 @@ double Controller::lowPass(double x, double x_last, double gain) const
     return gain * x + (1.0 - gain) * x_last;
 }
 
-double Controller::checkLimits(double u) const 
+double Controller::checkLimits(double u, double min, double max) const 
 {
-    return std::max(min_, std::min(max_, u));
+    return std::max(min, std::min(max, u));
 }
 
-double Controller::signedError(const std::vector<double>& target) const 
+double Controller::signedError(const Eigen::Vector2d& target) const 
 {
     // Robot is at origin (0, 0) in local frame
     // Heading is fixed: +x
@@ -101,4 +122,9 @@ double Controller::signedError(const std::vector<double>& target) const
     double sign = (target[0] >= 0.0) ? 1.0 : -1.0;
 
     return magnitude * sign;
+}
+
+std::vector<double> Controller::toStdVector(const Eigen::Vector2d& v) const
+{
+    return std::vector<double>(v.data(), v.data() + v.size());
 }

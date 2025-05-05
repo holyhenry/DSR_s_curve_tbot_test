@@ -159,8 +159,34 @@ void TrackingNode::aprilTagFilter()
 
         // Log current tag position
         // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
-        ROS_INFO_STREAM_THROTTLE(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
+        // ROS_INFO_STREAM_THROTTLE(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
     }
+}
+
+void TrackingNode::runControlStep()
+{   
+    // 1. Compute predecessor states in current local frame
+    Eigen::MatrixXd local_leader_states = homoInvTransMulti2Local(getGlobalLeaderStates());        
+    ROS_INFO_STREAM_THROTTLE(1.0, "local_leader_states:\n" << local_leader_states);
+
+    // 2. Feed predecessor trajectory into the controller's buffer
+    controller_.setObservations(local_leader_states);
+
+    // 3. Compute the tracking target point
+    bool MEMORY_MODE = true;
+    Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
+
+    // 4. Run control logic & publish velocity command
+    double linear_controller = controller_.PUpdate(target);  // or DSRUpdate()
+    double angular_controller = controller_.angularUpdate(target); // or TrajAngularUpdate()
+
+    std::vector<double> cmd = controller_.step(linear_controller,
+                                               angular_controller);
+
+    geometry_msgs::Twist twist_msg;
+    twist_msg.linear.x = cmd[0];
+    twist_msg.angular.z = cmd[1];
+    cmd_vel_pub_.publish(twist_msg);
 }
 
 // ==============================Helper functions==============================
@@ -286,16 +312,14 @@ int main(int argc, char** argv) {
 
     while (ros::ok())
     {
-        // Process incoming messages (odom, tag detections, etc.)
+        // Process incoming messages (odom, tag detections)
         ros::spinOnce();
 
-        // Run the leader tag filtering
+        // Run the tag filtering
         node.aprilTagFilter();
-        Eigen::MatrixXd local_leader_states = node.homoInvTransMulti2Local(node.getGlobalLeaderStates());
-        
-        ROS_INFO_STREAM_THROTTLE(0.5, "local_leader_states:\n" << local_leader_states);
 
-        // Later you can add node.controlStep();  // For actual controller output
+        // Run controller step
+        node.runControlStep();
 
         // Sleep to maintain loop rate
         rate.sleep();
