@@ -167,7 +167,7 @@ void TrackingNode::runControlStep()
 {   
     // 1. Compute predecessor states in current local frame
     Eigen::MatrixXd local_leader_states = homoInvTransMulti2Local(getGlobalLeaderStates());        
-    ROS_INFO_STREAM_THROTTLE(1.0, "local_leader_states:\n" << local_leader_states);
+    // ROS_INFO_STREAM_THROTTLE(1.0, "local_leader_states:\n" << local_leader_states);
 
     // 2. Feed predecessor trajectory into the controller's buffer
     controller_.setObservations(local_leader_states);
