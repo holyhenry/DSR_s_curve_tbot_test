@@ -75,7 +75,8 @@ void TrackingNode::aprilTagFilter()
 {
     int count = 0;
     const int num_tag = 3;
-    const int raw_tag_space = 5;
+    const int tag_space = 5;
+    const int id_offset = 100;
     const double cam_pos_offset = 0.025;
     const double outlier_threshold = 0.04;
     const double movement_threshold = 0.005;
@@ -92,32 +93,27 @@ void TrackingNode::aprilTagFilter()
 
     for (size_t i = 0; i < tag_multi_raw_.size(); ++i)
     {   
-        bool isCorrectID = static_cast<int>(tag_multi_raw_[i]) / num_tag == follower_indx_;
-        if (i % raw_tag_space == 0 && isCorrectID)
+        bool isCorrectID = static_cast<int>(tag_multi_raw_[i] - id_offset) / num_tag == follower_indx_;
+        if (i % tag_space == 0 && isCorrectID)
         {   
-            int id = static_cast<int>(tag_multi_raw_[i]);
+            int id = static_cast<int>(tag_multi_raw_[i] - id_offset);
             double x   =   tag_multi_raw_[i + 3];
             double y   = -(tag_multi_raw_[i + 1] - cam_pos_offset);
             double phi =  -tag_multi_raw_[i + 4];
 
-            std::vector<double> infered = transformTag2Middle(x, y, phi, id);
-            double infered_x = infered[0];
-            double infered_y = infered[1];
-            double infered_phi = infered[2];
+            Eigen::Vector3d infered = transformTag2Middle(x, y, phi, id);
+            Eigen::Vector2d inferred_bot = homoTrans2BotCenter(infered);
 
             // Filter the outliers
-            std::vector<double> infered_bot = homoTrans2BotCenter(infered);
-            std::vector<double> tag_diff = {infered_bot[0] - tag_leader_state_[0],
-                                            infered_bot[1] - tag_leader_state_[1]};
-            double norm_diff = std::sqrt(tag_diff[0]*tag_diff[0] + tag_diff[1]*tag_diff[1]);
+            double norm_diff = (inferred_bot - tag_leader_state_).norm();
             bool isOutlier = norm_diff > outlier_threshold;
 
             if (!isOutlier)
             {
                 count++;
-                tag_x += infered_x;
-                tag_y += infered_y;
-                tag_phi += infered_phi;
+                tag_x += infered[0];
+                tag_y += infered[1];
+                tag_phi += infered[2];
             }
             else
             {   // Log outlier detection
@@ -132,19 +128,17 @@ void TrackingNode::aprilTagFilter()
         tag_y /= count;
         tag_phi /= count;
 
-        std::vector<double> tag_raw = {tag_x, tag_y, tag_phi};
+        Eigen::Vector3d tag_raw(tag_x, tag_y, tag_phi);
         tag_leader_state_ = homoTrans2BotCenter(tag_raw);
 
         // Transform to global frame
-        std::vector<double> global_leader_state = homoTrans2Global(tag_leader_state_);
-        double dx = global_leader_state[0] - global_leader_state_last_[0];
-        double dy = global_leader_state[1] - global_leader_state_last_[1];
-        double movement = std::sqrt(dx * dx + dy * dy);
+        Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
+        double movement = (global_leader_state - global_leader_state_last_).norm();
 
         if (movement > movement_threshold)
         {
             global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
-            global_leader_states_.row(global_leader_states_.rows() - 1) << global_leader_state[0], global_leader_state[1];
+            global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
             global_leader_state_last_ = global_leader_state;
         }
 
@@ -191,75 +185,53 @@ void TrackingNode::runControlStep()
 
 // ==============================Helper functions==============================
 
-std::vector<double> TrackingNode::transformTag2Middle(double x, double y, double alpha,
+Eigen::Vector3d TrackingNode::transformTag2Middle(double x, double y, double alpha,
                                                       int id, int num_tag, double d)
 {   // frame size 4.0cm, d=0.038mm
     // frame size 4.5cm, d=0.043mm
     // frame size 5.0cm, d=0.048mm
     if (id % num_tag == 0)
     {
-        double x1_hat = x + d * std::cos(-M_PI/2.0 + alpha + 0.2616);
-        double y1_hat = y + d * std::sin(-M_PI/2.0 + alpha + 0.2616);
-        alpha += (30.0 / 180.0) * M_PI;
-        return {x1_hat, y1_hat, alpha};
+        x += d * std::cos(-M_PI / 2 + alpha + 0.2616);
+        y += d * std::sin(-M_PI / 2 + alpha + 0.2616);
+        alpha += 30.0 * M_PI / 180.0;
     }
-
-    if (id % num_tag == 2)
+    else if (id % num_tag == 2)
     {
-        double x1_hat = x + d * std::cos(M_PI/2.0 + alpha - 0.2616);
-        double y1_hat = y + d * std::sin(M_PI/2.0 + alpha - 0.2616);
-        alpha -= (30.0 / 180.0) * M_PI;
-        return {x1_hat, y1_hat, alpha};
+        x += d * std::cos(M_PI / 2 + alpha - 0.2616);
+        y += d * std::sin(M_PI / 2 + alpha - 0.2616);
+        alpha -= 30.0 * M_PI / 180.0;
     }
-
-    return {x, y, alpha};
+    return Eigen::Vector3d(x, y, alpha);
 }
 
-std::vector<double> TrackingNode::addVectors(const std::vector<double>& a,
-                                             const std::vector<double>& b)
+Eigen::Vector2d TrackingNode::homoTrans2BotCenter(const Eigen::Vector3d& state)
 {
-    if (a.size() != b.size())
-    {
-        ROS_ERROR("Vector size mismatch in addVectors!");
-        return {};  // Return empty vector if sizes don't match
-    }
+    double theta = state[2];
+    Eigen::Matrix2d R;
+    R << std::cos(theta), -std::sin(theta),
+         std::sin(theta),  std::cos(theta);
 
-    std::vector<double> result(a.size());
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        result[i] = a[i] + b[i];
-    }
-    return result;
+    Eigen::Vector2d t = state.head<2>();
+    Eigen::Matrix3d T;
+    T << R, t,
+         0, 0, 1;
+
+    Eigen::Vector3d tag_offset(0.14, 0.0, 1.0);  // Offset from tag to robot center
+    Eigen::Vector3d transformed = T * tag_offset;
+
+    return transformed.head<2>();
 }
 
-std::vector<double> TrackingNode::homoTrans2D(const std::vector<double>& robot_pose,
-                                              const std::vector<double>& point)
+Eigen::Vector2d TrackingNode::homoTrans2Global(const Eigen::Vector2d& local_point)
 {
-    double theta = robot_pose[2];
-    double x = robot_pose[0];
-    double y = robot_pose[1];
+    double theta = odom_state_last_[2];
+    Eigen::Matrix2d R;
+    R << std::cos(theta), -std::sin(theta),
+         std::sin(theta),  std::cos(theta);
 
-    double cos_theta = std::cos(theta);
-    double sin_theta = std::sin(theta);
-
-    double new_x = cos_theta * point[0] - sin_theta * point[1] + x;
-    double new_y = sin_theta * point[0] + cos_theta * point[1] + y;
-
-    return {new_x, new_y};
-}
-
-std::vector<double> TrackingNode::homoTrans2BotCenter(const std::vector<double>& state)
-{   
-    // Tag center to robot center offset
-    std::vector<double> offset = {0.14, 0.0}; 
-    return homoTrans2D(state, offset);
-}
-
-std::vector<double> TrackingNode::homoTrans2Global(const std::vector<double>& local_point)
-{   
-    // current_state_ holds robot's global [x, y, yaw]
-    std::vector<double> current_state_ = addVectors(odom_state_last_, odom_displacement_);
-    return homoTrans2D(current_state_, local_point); 
+    Eigen::Vector2d t(odom_state_last_[0], odom_state_last_[1]);
+    return R * local_point + t;
 }
 
 Eigen::MatrixXd TrackingNode::homoInvTransMulti2Local(const Eigen::MatrixXd& global_points)
@@ -298,7 +270,7 @@ int main(int argc, char** argv) {
 
     // Load ROS parameters
     pnh.param<double>("alpha", alpha, 0.3);
-    pnh.param<double>("alpha_angle", alpha_angle, 20.0);
+    pnh.param<double>("alpha_angle", alpha_angle, 3.0);
     pnh.param<double>("beta1", beta1, 0.8);
     pnh.param<double>("beta2", beta2, 0.95);
     pnh.param<double>("tau", tau, 0.02);
