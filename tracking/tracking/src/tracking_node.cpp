@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include "tracking/tracking_node.hpp"
 
-TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
+TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::string mode_str,
                            double alpha, double alpha_angle,
                            double beta1, double beta2,
                            double tau, double spacing,
@@ -15,22 +15,27 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
 {
     // Setup publisher (rm "/" in front of topic name to handle ns)
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 2);
-    // Setup debug publishers 
+
+    // Setup logging publishers 
     global_leader_pub_ = nh.advertise<std_msgs::Float32MultiArray>("global_leader_states", 1);
 
     // Setup scuscribers (rm "/" in front of topic name to handle ns)
     odom_sub_ = nh.subscribe("odom", 5, &TrackingNode::odomCallback, this);
     tag_sub_ = nh.subscribe("tag_detections", 5, &TrackingNode::tagCallback, this);
 
+    // Setup controller mode
+    if (mode_str == "P") mode_ = ControllerMode::P;
+    if (mode_str == "DSR") mode_ = ControllerMode::DSR;
+
     // Initialize odom state 
-    odom_displacement_ = {0.0, 0.0 ,0.0};
-    odom_state_last_ = {0.0, 0.0 ,0.0};
+    odom_displacement_ = Eigen::Vector3d::Zero();
+    odom_state_last_ = Eigen::Vector3d::Zero();
 
     // Initialize apriltag local measurement 
-    tag_leader_state_ = {spacing_, 0.0};
+    tag_leader_state_ = Eigen::Vector2d(spacing_, 0.0);
 
     // Initialize global leader state
-    global_leader_state_last_ = {spacing_, 0.0};
+    global_leader_state_last_ = Eigen::Vector2d(spacing_, 0.0);
     global_leader_states_ = Eigen::MatrixXd(0, 2);
 
 }
@@ -38,9 +43,10 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
 
 void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
-    // Extract pose
+    // Extract pose & velocity
     double x = msg->pose.pose.position.x;
     double y = msg->pose.pose.position.y;
+    odom_vel_x_ = msg->twist.twist.linear.x;
 
     // Extract yaw from quaternion
     tf::Quaternion q(
@@ -54,12 +60,8 @@ void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     m.getRPY(roll, pitch, yaw);
 
     // Update displacement
-    std::vector<double> odom_state = {x, y, yaw};
-    odom_displacement_[0] = odom_state[0] - odom_state_last_[0];
-    odom_displacement_[1] = odom_state[1] - odom_state_last_[1];
-    odom_displacement_[2] = odom_state[2] - odom_state_last_[2];
-
-    // Update last state
+    Eigen::Vector3d odom_state(x, y, yaw);
+    odom_displacement_ = odom_state - odom_state_last_;
     odom_state_last_ = odom_state;
 }
 
@@ -117,7 +119,7 @@ void TrackingNode::aprilTagFilter()
             }
             else
             {   // Log outlier detection
-                // ROS_INFO_STREAM("Filtered tag ID:" << id);
+                ROS_INFO_STREAM("Filtered tag ID:" << id);
             }
         }
     }
@@ -171,9 +173,17 @@ void TrackingNode::runControlStep()
     Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
 
     // 4. Run control logic & publish velocity command
-    double linear_controller = controller_.PUpdate(target);  // or DSRUpdate()
+    double linear_controller;
+    switch (mode_)
+    {
+        case ControllerMode::P:
+            linear_controller = controller_.PUpdate(target);
+            break;
+        case ControllerMode::DSR:
+            linear_controller = controller_.DSRUpdate(target, odom_displacement_.head<2>());
+            break;
+    }
     double angular_controller = controller_.angularUpdate(target); // or TrajAngularUpdate()
-
     std::vector<double> cmd = controller_.step(linear_controller,
                                                angular_controller);
 
@@ -265,10 +275,12 @@ int main(int argc, char** argv) {
     ros::Rate rate(20.0);
 
     // Platoon parameters
+    std::string mode_str;
     double alpha, alpha_angle, beta1, beta2, tau, spacing;
     int follower_indx;
 
     // Load ROS parameters
+    pnh.param<std::string>("controller_mode", mode_str, "P");
     pnh.param<double>("alpha", alpha, 0.3);
     pnh.param<double>("alpha_angle", alpha_angle, 3.0);
     pnh.param<double>("beta1", beta1, 0.8);
@@ -278,7 +290,7 @@ int main(int argc, char** argv) {
     pnh.param<int>("follower_indx", follower_indx, 0);
 
     // Call the node constructor
-    TrackingNode node(nh, pnh, alpha, alpha_angle, beta1, beta2, tau, spacing, follower_indx);
+    TrackingNode node(nh, pnh, mode_str, alpha, alpha_angle, beta1, beta2, tau, spacing, follower_indx);
 
     ROS_INFO("Tracking node is running...");
 

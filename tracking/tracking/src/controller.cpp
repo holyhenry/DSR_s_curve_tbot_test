@@ -8,16 +8,15 @@ Controller::Controller(double alpha,
                        double spacing)
     : alpha_(alpha), alpha_angle_(alpha_angle),
       beta1_(beta1), beta2_(beta2), tau_(tau), spacing_(spacing),
-      error_(0.0), t_d_last_(0.0), e_l_last_(0.0)
+      error_(0.0), t_d_last_(0.0), s_d_last_(0.0)
 {   
     // System memories
-    error_ = 0.0;  // logitudinal error
-    observations_ = Eigen::MatrixXd(0, 2);    // predecessor observations
+    error_ = 0.0;                             // controller logitudinal error
+    observations_ = Eigen::MatrixXd(0, 2);    // local predecessor trajectory
     input_        = Eigen::Vector2d::Zero();  // controller command
     target_last_  = Eigen::Vector2d::Zero(); 
-    state_last_   = Eigen::Vector2d::Zero();
-    
 }
+
 // ==============================Core functions==============================
 
 double Controller::angularUpdate(const Eigen::Vector2d& target) const
@@ -36,12 +35,27 @@ double Controller::PUpdate(const Eigen::Vector2d& target)
     return checkLimits(linear_fb, vel_min_, vel_max_);
 }
 
-double Controller::DSRUpdate(const Eigen::Vector2d& target) 
-{
+double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement) 
+{   
     error_ = signedError(target);
-    // TODO: finish DSR update 2
+    double delta_target = signedError(target - target_last_);
+    double delta_state = signedError(displacement); 
 
-    return 0.0;
+    // Low-pass derivative terms
+    const double lp_gain = 0.167;
+    double t_d = lowPass(delta_target / tau_, t_d_last_, lp_gain);
+    double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
+
+    double linear_fb = alpha_ * beta1_ * error_
+                     + beta1_ * t_d 
+                     + (beta2_ - beta1_) * s_d; 
+
+    // Update controller memories
+    target_last_ = target;
+    t_d_last_ = t_d;
+    s_d_last_ = s_d;
+
+    return checkLimits(linear_fb, vel_min_, vel_max_);
 }
 
 Eigen::Vector2d Controller::getTarget(bool memory_mode)
@@ -95,8 +109,7 @@ void Controller::setObservations(const Eigen::MatrixXd& observations)
 
 std::vector<double> Controller::step(double linear_update, double anguler_update)
 {
-    // Update robot controller input
-    input_ << linear_update, anguler_update;
+    input_ << linear_update, anguler_update;  // Update robot controller input
 
     return toStdVector(input_);
 }

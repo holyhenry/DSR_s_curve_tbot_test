@@ -8,13 +8,17 @@
 #include <std_msgs/Float32MultiArray.h>
 #include "controller.hpp"
 
-class TrackingNode{
+class TrackingNode
+{
 public:
-    TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
+    TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::string mode_str,
                  double alpha, double alpha_angle,
                  double beta1, double beta2,
                  double tau, double spacing,
                  int follower_indx);
+    
+    enum class ControllerMode { P, DSR };
+    ControllerMode mode_;
 
     // =============================Core functions=============================
     Eigen::MatrixXd getGlobalLeaderStates() const;
@@ -30,9 +34,10 @@ private:
     // Controller object
     Controller controller_;
 
-    // Robot odom states (GLOBAL frame)
-    std::vector<double> odom_displacement_; // [x, y, yaw]
-    std::vector<double> odom_state_last_;   // [x, y, yaw]
+    // Robot odom states (GLOBAL frame) & velocity (LOCAL frame)
+    Eigen::Vector3d odom_displacement_; // [x, y, yaw]
+    Eigen::Vector3d odom_state_last_;   // [x, y, yaw]
+    double odom_vel_x_ = 0.0;           // vy ≈ 0 for diff-drive
 
     // Robot tag raw & filtered detection (LOCAL frame)
     std::vector<float> tag_multi_raw_;  // raw apriltag detection
@@ -62,5 +67,4 @@ private:
     Eigen::Vector2d homoTrans2BotCenter(const Eigen::Vector3d& state);
     Eigen::Vector2d homoTrans2Global(const Eigen::Vector2d& local_point);
     Eigen::MatrixXd homoInvTransMulti2Local(const Eigen::MatrixXd& global_points);
-
 };

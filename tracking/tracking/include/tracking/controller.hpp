@@ -17,17 +17,11 @@ public:
                double tau,
                double spacing);
 
-    // System memories
-    double error_;
-    Eigen::MatrixXd observations_; // shape: N rows × 2 columns
-    Eigen::Vector2d target_last_;  // 2D [x, y]
-    Eigen::Vector2d state_last_;   // 2D [x, y]
-
     // ==============================Core functions==============================
     double angularUpdate(const Eigen::Vector2d& target) const;
     double PUpdate(const Eigen::Vector2d& target);
-    double DSRUpdate(const Eigen::Vector2d& target);
-    
+    double DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement);
+
     Eigen::Vector2d getTarget(bool memory_mode = true);
     void setObservations(const Eigen::MatrixXd& observations);
     std::vector<double> step(double linear_update, double angular_update);
@@ -36,22 +30,26 @@ private:
     // Basic gains
     double alpha_;
     double alpha_angle_;
-    // Additional gains for DSR
+    // DSR gains
     double beta1_;
     double beta2_;
-    // System parameters 
-    double tau_;                       // DSR delay (=controller period)
+    // Controller parameters 
+    double tau_;                       // DSR time delay (=controller period)
     double spacing_;                   // Inter-robot spacing
-    // DSR specific memories
-    double t_d_last_;                  // Self-delayed
-    double e_l_last_;                  // Predecessor delayed
-    // Controller output - [v, w]
+    // Controller command - [v, w]
     Eigen::Vector2d input_;
     // Controller input limits
     double const vel_max_   = 0.2;
     double const vel_min_   = -0.2;
     double const omega_max_ = 1.0;
     double const omega_min_ = -1.0;
+    // Controller memories
+    double error_;
+    Eigen::MatrixXd observations_;     // N rows × 2 columns
+    // DSR specific memories
+    Eigen::Vector2d target_last_;
+    double t_d_last_;                  // Target delayed term 
+    double s_d_last_;                  // Self delayed term
 
     // =============================Helper functions=============================
     double lowPass(double x, double x_last, double gain) const;
