@@ -62,6 +62,7 @@ private:
     Eigen::Vector2d target_last_;
     double t_d_last_;                  // Target delayed term 
     double s_d_last_;                  // Self delayed term
+    double r_t_last_;                  // Reinforce term
 
     // =============================Helper functions=============================
     double lowPass(double x, double x_last, double gain) const;

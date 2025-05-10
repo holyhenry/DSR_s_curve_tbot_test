@@ -8,7 +8,7 @@ Controller::Controller(double alpha,
                        double spacing)
     : alpha_(alpha), alpha_angle_(alpha_angle),
       beta1_(beta1), beta2_(beta2), tau_(tau), spacing_(spacing),
-      error_(0.0), t_d_last_(0.0), s_d_last_(0.0)
+      error_(0.0), t_d_last_(0.0), s_d_last_(0.0), r_t_last_(0.0)
 {   
     // System memories
     error_ = 0.0;                             // controller logitudinal error
@@ -46,14 +46,17 @@ double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2
     double t_d = lowPass(delta_target / tau_, t_d_last_, lp_gain);
     double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
 
-    double linear_fb = alpha_ * beta1_ * error_
-                     + beta1_ * t_d 
-                     + (beta2_ - beta1_) * s_d; 
+    // Compute reinforce term
+    double reinforce = beta1_ * t_d  + (beta2_ - beta1_) * s_d; 
+    double r_t = lowPass(reinforce, r_t_last_, lp_gain);
+
+    double linear_fb = alpha_ * beta1_ * error_ + r_t;
 
     // Update controller memories
     target_last_ = target;
     t_d_last_ = t_d;
     s_d_last_ = s_d;
+    r_t_last_ = r_t;
 
     return checkLimits(linear_fb, vel_min_, vel_max_);
 }
@@ -146,8 +149,5 @@ std::vector<double> Controller::toStdVector(const Eigen::Vector2d& v) const
 
 ControllerDebug Controller::getDebugData() const
 {
-    double reinforce_term = beta1_ * t_d_last_ 
-                          + (beta2_ - beta1_) * s_d_last_;
-
-    return { target_last_, t_d_last_, s_d_last_, reinforce_term };
+    return { target_last_, t_d_last_, s_d_last_, r_t_last_ };
 }
