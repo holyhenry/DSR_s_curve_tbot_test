@@ -8,6 +8,15 @@
 #include <algorithm>
 #include <Eigen/Dense>
 
+struct ControllerDebug
+{
+    // From DSRUpdate()
+    Eigen::Vector2d target_last;
+    double t_d_last;
+    double s_d_last;
+    double reinforce_term;
+};
+
 class Controller{
 public:
     Controller(double alpha,
@@ -25,6 +34,9 @@ public:
     Eigen::Vector2d getTarget(bool memory_mode = true);
     void setObservations(const Eigen::MatrixXd& observations);
     std::vector<double> step(double linear_update, double angular_update);
+
+    // ==========================Debug Helper functions==========================
+    ControllerDebug getDebugData() const;
 
 private:
     // Basic gains
@@ -56,5 +68,5 @@ private:
     double checkLimits(double u, double min, double max) const;
     double signedError(const Eigen::Vector2d& target) const;
     std::vector<double> toStdVector(const Eigen::Vector2d& v) const;
-    
+
 };

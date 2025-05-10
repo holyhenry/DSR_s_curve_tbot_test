@@ -18,6 +18,8 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
 
     // Setup logging publishers 
     global_leader_pub_ = nh.advertise<std_msgs::Float32MultiArray>("global_leader_states", 1);
+    controllr_log_pub_ = nh.advertise<std_msgs::Float32MultiArray>("controller_log_info", 1);
+
 
     // Setup scuscribers (rm "/" in front of topic name to handle ns)
     odom_sub_ = nh.subscribe("odom", 5, &TrackingNode::odomCallback, this);
@@ -172,7 +174,7 @@ void TrackingNode::runControlStep()
     bool MEMORY_MODE = true;
     Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
 
-    // 4. Run control logic & publish velocity command
+    // 4. Run control logic 
     double linear_controller;
     switch (mode_)
     {
@@ -187,10 +189,30 @@ void TrackingNode::runControlStep()
     std::vector<double> cmd = controller_.step(linear_controller,
                                                angular_controller);
 
+    // 5. Publish velocity command & debug info
     geometry_msgs::Twist twist_msg;
     twist_msg.linear.x = cmd[0];
     twist_msg.angular.z = cmd[1];
     cmd_vel_pub_.publish(twist_msg);
+
+    ControllerDebug dbg = controller_.getDebugData();
+    Eigen::Vector3d odom_state = odom_state_last_;
+    Eigen::Vector3d odom_disp = odom_displacement_;
+
+    std_msgs::Float32MultiArray msg;
+    msg.data.push_back(dbg.target_last[0]);   // x of target_last
+    msg.data.push_back(dbg.target_last[1]);   // y of target_last
+    msg.data.push_back(dbg.t_d_last);
+    msg.data.push_back(dbg.s_d_last);
+    msg.data.push_back(dbg.reinforce_term);
+    msg.data.push_back(odom_vel_x_);
+    msg.data.push_back(odom_state[0]);        // odom x
+    msg.data.push_back(odom_state[1]);        // odom y
+    msg.data.push_back(odom_state[2]);        // odom yaw
+    msg.data.push_back(odom_disp[0]);         // dx
+    msg.data.push_back(odom_disp[1]);         // dy
+    msg.data.push_back(odom_disp[2]);         // dyaw
+    controllr_log_pub_.publish(msg);
 }
 
 // ==============================Helper functions==============================

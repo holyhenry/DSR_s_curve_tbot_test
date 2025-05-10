@@ -54,6 +54,7 @@ private:
     ros::Rate loop_rate_;
     // ROS interface (debugging & visualizing)
     ros::Publisher global_leader_pub_;
+    ros::Publisher controllr_log_pub_;
 
     // =============================Internal functions=============================
 

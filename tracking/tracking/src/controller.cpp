@@ -141,3 +141,13 @@ std::vector<double> Controller::toStdVector(const Eigen::Vector2d& v) const
 {
     return std::vector<double>(v.data(), v.data() + v.size());
 }
+
+// ==========================Debug Helper functions==========================
+
+ControllerDebug Controller::getDebugData() const
+{
+    double reinforce_term = beta1_ * t_d_last_ 
+                          + (beta2_ - beta1_) * s_d_last_;
+
+    return { target_last_, t_d_last_, s_d_last_, reinforce_term };
+}
