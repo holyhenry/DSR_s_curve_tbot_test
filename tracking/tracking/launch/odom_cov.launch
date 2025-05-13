@@ -1,3 +1,8 @@
 <launch>
   <node name="odom_cov_injector" pkg="tracking" type="odom_cov_injector" output="screen"/>
+
+  <!-- Static transform from imu_link to base_footprint -->
+  <node pkg="tf" type="static_transform_publisher" name="imu_to_base"
+        args="0 0 0 0 0 0 base_footprint imu_link 100" />
+
 </launch>
