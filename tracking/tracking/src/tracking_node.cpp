@@ -22,7 +22,7 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
 
 
     // Setup scuscribers (rm "/" in front of topic name to handle ns)
-    odom_sub_ = nh.subscribe("wheelodom", 5, &TrackingNode::odomCallback, this);
+    odom_sub_ = nh.subscribe("odom", 5, &TrackingNode::odomCallback, this);
     tag_sub_ = nh.subscribe("tag_detections", 5, &TrackingNode::tagCallback, this);
 
     // Setup controller mode
@@ -294,7 +294,7 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "tracking_node");
     ros::NodeHandle nh;
     ros::NodeHandle pnh("~");
-    ros::Rate rate(20.0);
+    ros::Rate rate(30.0);
 
     // Platoon parameters
     std::string mode_str;
