@@ -22,7 +22,7 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
 
 
     // Setup scuscribers (rm "/" in front of topic name to handle ns)
-    odom_sub_ = nh.subscribe("odom", 5, &TrackingNode::odomCallback, this);
+    odom_sub_ = nh.subscribe("wheelodom", 5, &TrackingNode::odomCallback, this);
     tag_sub_ = nh.subscribe("tag_detections", 5, &TrackingNode::tagCallback, this);
 
     // Setup controller mode
