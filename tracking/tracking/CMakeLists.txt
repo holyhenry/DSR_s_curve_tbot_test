@@ -141,6 +141,8 @@ add_executable(${PROJECT_NAME}_node
                src/tracking_node.cpp
                src/controller.cpp
 )
+add_executable(odom_cov_injector 
+               src/odom_cov_injector.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -156,6 +158,8 @@ add_executable(${PROJECT_NAME}_node
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
 )
+target_link_libraries(odom_cov_injector 
+  ${catkin_LIBRARIES})
 
 #############
 ## Install ##

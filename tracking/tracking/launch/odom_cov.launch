@@ -1,0 +1,3 @@
+<launch>
+  <node name="odom_cov_injector" pkg="tracking" type="odom_cov_injector" output="screen"/>
+</launch>
