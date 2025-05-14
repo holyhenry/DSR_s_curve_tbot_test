@@ -19,17 +19,17 @@ private:
         nav_msgs::Odometry odom = *msg;  // Copy message
 
         // Set realistic pose covariance (x, y, yaw)
-        odom.pose.covariance[0] = 0.05;    // x 0.01
-        odom.pose.covariance[7] = 0.05;    // y 0.01
+        odom.pose.covariance[0] = 0.1;    // x 0.05
+        odom.pose.covariance[7] = 0.1;    // y 0.05
         odom.pose.covariance[14] = 1.0e-9; // z (unused)
         odom.pose.covariance[21] = 1.0e-9; // roll
         odom.pose.covariance[28] = 1.0e-9; // pitch
-        odom.pose.covariance[35] = 0.0872; // yaw
+        odom.pose.covariance[35] = 0.15; // yaw 0.0872
 
         // Optional: twist covariance (linear + angular velocity)
         odom.twist.covariance[0] = 0.01;
-        odom.twist.covariance[7] = 0.01;
-        odom.twist.covariance[35] = 0.02;
+        odom.twist.covariance[7] = 0.01; 
+        odom.twist.covariance[35] = 0.05; // 0.02
 
         odom_pub_.publish(odom);
     }

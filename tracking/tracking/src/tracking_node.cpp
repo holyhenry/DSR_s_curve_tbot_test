@@ -294,7 +294,7 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "tracking_node");
     ros::NodeHandle nh;
     ros::NodeHandle pnh("~");
-    ros::Rate rate(30.0);
+    ros::Rate rate(25.0);
 
     // Platoon parameters
     std::string mode_str;
