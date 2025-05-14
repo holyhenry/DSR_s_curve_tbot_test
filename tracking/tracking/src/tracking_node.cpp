@@ -306,7 +306,7 @@ int main(int argc, char** argv) {
     pnh.param<double>("alpha", alpha, 0.3);
     pnh.param<double>("alpha_angle", alpha_angle, 3.0);
     pnh.param<double>("beta1", beta1, 0.8);
-    pnh.param<double>("beta2", beta2, 0.85);
+    pnh.param<double>("beta2", beta2, 0.9);
     pnh.param<double>("tau", tau, 0.02);
     pnh.param<double>("spacing", spacing, 0.35);
     pnh.param<int>("follower_indx", follower_indx, 0);
