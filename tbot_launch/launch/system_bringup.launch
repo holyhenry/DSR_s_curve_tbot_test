@@ -1,0 +1,15 @@
+<launch>
+
+  <!-- Bring up base hardware (sensors, motors, TF, etc.) -->
+  <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
+
+  <!-- Launch camera + Apriltag multi-tag detection -->
+  <include file="$(find camera_multi_tag)/launch/camera_multi_tag.launch" />
+
+  <!-- Launch robot_pose_ekf -->
+  <include file="$(find robot_pose_ekf)/launch/robot_pose_ekf.launch" />
+
+  <!-- Launch tracking node and odometry covariance wrapper -->
+  <include file="$(find tracking)/launch/tracking.launch" />
+
+</launch>

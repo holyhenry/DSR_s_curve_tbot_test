@@ -1,0 +1,26 @@
+<launch>
+  <!-- ===================== Parameters ===================== -->
+  <arg name="controller_mode" default="DSR"/>
+  <arg name="follower_indx" default="0"/>
+  <arg name="alpha" default="0.3"/>
+  <arg name="alpha_angle" default="20.0"/>
+  <arg name="beta1" default="0.8"/>
+  <arg name="beta2" default="0.95"/>
+  <arg name="tau" default="0.02"/>
+  <arg name="spacing" default="0.35"/>
+
+  <!-- ===================== Odom Covariance Wrapper ===================== -->
+  <include file="$(find tracking)/launch/odom_cov.launch" />
+
+  <!-- ===================== Tracking Node ===================== -->
+  <node name="tracking_node" pkg="tracking" type="tracking_node" output="screen">
+    <param name="alpha" value="$(arg alpha)"/>
+    <param name="alpha_angle" value="$(arg alpha_angle)"/>
+    <param name="beta1" value="$(arg beta1)"/>
+    <param name="beta2" value="$(arg beta2)"/>
+    <param name="tau" value="$(arg tau)"/>
+    <param name="spacing" value="$(arg spacing)"/>
+    <param name="follower_indx" value="$(arg follower_indx)"/>
+    <param name="mode" value="$(arg controller_mode)"/>
+  </node>
+</launch>
