@@ -3,9 +3,9 @@
   <arg name="controller_mode" default="DSR"/>
   <arg name="follower_indx" default="0"/>
   <arg name="alpha" default="0.3"/>
-  <arg name="alpha_angle" default="20.0"/>
+  <arg name="alpha_angle" default="3.0"/>
   <arg name="beta1" default="0.8"/>
-  <arg name="beta2" default="0.95"/>
+  <arg name="beta2" default="0.94"/>
   <arg name="tau" default="0.02"/>
   <arg name="spacing" default="0.35"/>
 
