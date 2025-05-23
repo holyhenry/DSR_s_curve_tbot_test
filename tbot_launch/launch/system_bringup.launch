@@ -1,15 +1,22 @@
 <launch>
+  <!-- Define arguments -->
+  <arg name="follower_indx" default="0" />
+  <arg name="controller_mode" default="DSR" />
+  <arg name="spacing" default="0.35" />
 
-  <!-- Bring up base hardware (sensors, motors, TF, etc.) -->
+  <!-- Base bringup -->
   <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
 
-  <!-- Launch camera + Apriltag multi-tag detection -->
+  <!-- Camera and Apriltag detection -->
   <include file="$(find camera_multi_tag)/launch/camera_multi_tag.launch" />
 
-  <!-- Launch robot_pose_ekf -->
+  <!-- EKF for pose estimation -->
   <include file="$(find robot_pose_ekf)/launch/robot_pose_ekf.launch" />
 
-  <!-- Launch tracking node and odometry covariance wrapper -->
-  <include file="$(find tracking)/launch/tracking.launch" />
-
+  <!-- Tracking node -->
+  <include file="$(find tracking)/launch/tracking.launch">
+    <arg name="follower_indx" value="$(arg follower_indx)" />
+    <arg name="controller_mode" value="$(arg controller_mode)" />
+    <arg name="spacing" value="$(arg spacing)" />
+  </include>
 </launch>
