@@ -185,7 +185,7 @@ void TrackingNode::runControlStep()
     switch (mode_)
     {
         case ControllerMode::P:
-            ROS_INFO_STREAM("PPPPPPPPPPPPPP")
+            ROS_INFO_STREAM("PPPPPPPPPPPPPP");
             linear_controller = controller_.PUpdate(target);
             break;
         case ControllerMode::DSR:
