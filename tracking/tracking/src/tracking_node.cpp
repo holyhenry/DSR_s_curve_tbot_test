@@ -304,12 +304,12 @@ int main(int argc, char** argv) {
     ros::Rate rate(25.0);
 
     // Platoon parameters
-    std::string mode_str;
+    std::string controller_mode;
     double alpha, alpha_angle, beta1, beta2, tau, spacing;
     int follower_indx;
 
     // Load ROS parameters
-    pnh.param<std::string>("controller_mode", mode_str, "DSR");
+    pnh.param<std::string>("controller_mode", controller_mode, "DSR");
     pnh.param<double>("alpha", alpha, 0.3);
     pnh.param<double>("alpha_angle", alpha_angle, 3.0);
     pnh.param<double>("beta1", beta1, 0.8);
@@ -319,8 +319,9 @@ int main(int argc, char** argv) {
     pnh.param<int>("follower_indx", follower_indx, 0);
 
     ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!! mode_str" << mode_str);
+    ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!! follower_indx" << follower_indx);
     // Call the node constructor
-    TrackingNode node(nh, pnh, mode_str, alpha, alpha_angle, beta1, beta2, tau, spacing, follower_indx);
+    TrackingNode node(nh, pnh, controller_mode, alpha, alpha_angle, beta1, beta2, tau, spacing, follower_indx);
 
     ROS_INFO("Tracking node is running...");
 
