@@ -189,6 +189,7 @@ void TrackingNode::runControlStep()
             linear_controller = controller_.PUpdate(target);
             break;
         case ControllerMode::DSR:
+            ROS_INFO_STREAM("DSRDSRDSRDSRDSR");
             linear_controller = controller_.DSRUpdate(target, odom_displacement_.head<2>());
             break;
     }
@@ -310,7 +311,7 @@ int main(int argc, char** argv) {
     int follower_indx;
 
     // Load ROS parameters
-    pnh.param<std::string>("controller_mode", controller_mode, "DSR");
+    pnh.param<std::string>("mode", controller_mode, "DSR");
     pnh.param<double>("alpha", alpha, 0.3);
     pnh.param<double>("alpha_angle", alpha_angle, 3.0);
     pnh.param<double>("beta1", beta1, 0.8);
