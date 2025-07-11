@@ -182,6 +182,7 @@ void TrackingNode::runControlStep()
             linear_controller = controller_.PUpdate(target);
             break;
         case ControllerMode::DSR:
+            ROS_INFO_STREAM(" D S R in use")
             linear_controller = controller_.DSRUpdate(target, odom_displacement_.head<2>());
             break;
     }
