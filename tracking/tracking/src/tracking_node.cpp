@@ -26,8 +26,17 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
     tag_sub_ = nh.subscribe("tag_detections", 5, &TrackingNode::tagCallback, this);
 
     // Setup controller mode
-    if (mode_str == "P") mode_ = ControllerMode::P;
-    if (mode_str == "DSR") mode_ = ControllerMode::DSR;
+    if (mode_str == "P") 
+    {   
+        ROS_INFO_STREAM("mode_str == P");
+        mode_ = ControllerMode::P;
+    }
+        
+    if (mode_str == "DSR") 
+
+    {   ROS_INFO_STREAM("mode_str == DSR");
+        mode_ = ControllerMode::DSR;
+    }
 
     // Initialize odom state 
     odom_displacement_ = Eigen::Vector3d::Zero();
@@ -182,7 +191,6 @@ void TrackingNode::runControlStep()
             linear_controller = controller_.PUpdate(target);
             break;
         case ControllerMode::DSR:
-            ROS_INFO_STREAM(" D S R in use");
             linear_controller = controller_.DSRUpdate(target, odom_displacement_.head<2>());
             break;
     }
