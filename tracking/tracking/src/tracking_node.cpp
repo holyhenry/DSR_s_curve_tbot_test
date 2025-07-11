@@ -200,6 +200,7 @@ void TrackingNode::runControlStep()
     Eigen::Vector3d odom_disp = odom_displacement_;
 
     std_msgs::Float32MultiArray msg;
+    msg.data.push_back(dbg.error);
     msg.data.push_back(dbg.target_last[0]);   // x of target_last
     msg.data.push_back(dbg.target_last[1]);   // y of target_last
     msg.data.push_back(dbg.t_d_last);
@@ -308,7 +309,7 @@ int main(int argc, char** argv) {
     pnh.param<double>("beta1", beta1, 0.8);
     pnh.param<double>("beta2", beta2, 0.94);
     pnh.param<double>("tau", tau, 0.02);
-    pnh.param<double>("spacing", spacing, 0.35);
+    pnh.param<double>("spacing", spacing, 0.25);
     pnh.param<int>("follower_indx", follower_indx, 0);
 
     // Call the node constructor

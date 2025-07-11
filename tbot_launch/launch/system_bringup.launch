@@ -2,7 +2,7 @@
   <!-- Define arguments -->
   <arg name="follower_indx" default="0" />
   <arg name="controller_mode" default="DSR" />
-  <arg name="spacing" default="0.35" />
+  <arg name="spacing" default="0.25" />
 
   <!-- Base bringup -->
   <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />

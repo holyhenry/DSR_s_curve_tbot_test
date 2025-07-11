@@ -149,5 +149,5 @@ std::vector<double> Controller::toStdVector(const Eigen::Vector2d& v) const
 
 ControllerDebug Controller::getDebugData() const
 {
-    return { target_last_, t_d_last_, s_d_last_, r_t_last_ };
+    return { error_, target_last_, t_d_last_, s_d_last_, r_t_last_ };
 }
