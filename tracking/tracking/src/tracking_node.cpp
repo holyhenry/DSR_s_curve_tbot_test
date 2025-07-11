@@ -185,6 +185,7 @@ void TrackingNode::runControlStep()
     switch (mode_)
     {
         case ControllerMode::P:
+            ROS_INFO_STREAM("PPPPPPPPPPPPPP")
             linear_controller = controller_.PUpdate(target);
             break;
         case ControllerMode::DSR:
@@ -318,7 +319,7 @@ int main(int argc, char** argv) {
     pnh.param<double>("spacing", spacing, 0.25);
     pnh.param<int>("follower_indx", follower_indx, 0);
 
-    ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!! mode_str" << mode_str);
+    ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!! controller_mode" << controller_mode);
     ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!! follower_indx" << follower_indx);
     // Call the node constructor
     TrackingNode node(nh, pnh, controller_mode, alpha, alpha_angle, beta1, beta2, tau, spacing, follower_indx);
