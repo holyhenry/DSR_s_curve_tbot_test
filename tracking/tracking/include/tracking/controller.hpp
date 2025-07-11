@@ -11,6 +11,7 @@
 struct ControllerDebug
 {
     // From DSRUpdate()
+    double error;
     Eigen::Vector2d target_last;
     double t_d_last;
     double s_d_last;
