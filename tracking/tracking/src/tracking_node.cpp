@@ -28,13 +28,10 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
     // Setup controller mode
     if (mode_str == "P") 
     {   
-        ROS_INFO_STREAM("mode_str == P");
         mode_ = ControllerMode::P;
     }
-        
     if (mode_str == "DSR") 
-
-    {   ROS_INFO_STREAM("mode_str == DSR");
+    {  
         mode_ = ControllerMode::DSR;
     }
 
@@ -321,6 +318,7 @@ int main(int argc, char** argv) {
     pnh.param<double>("spacing", spacing, 0.25);
     pnh.param<int>("follower_indx", follower_indx, 0);
 
+    ROS_INFO_STREAM("!!!!!!!!!!!!!!!!!! mode_str" << mode_str);
     // Call the node constructor
     TrackingNode node(nh, pnh, mode_str, alpha, alpha_angle, beta1, beta2, tau, spacing, follower_indx);
 
