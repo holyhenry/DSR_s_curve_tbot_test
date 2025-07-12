@@ -48,7 +48,7 @@ double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2
 
     // Compute reinforce term
     double reinforce = beta1_ * t_d  + (beta2_ - beta1_) * s_d; 
-    double r_t = lowPass(reinforce, r_t_last_, 1.0);
+    double r_t = lowPass(reinforce, r_t_last_, lp_gain);
 
     double linear_fb = alpha_ * beta1_ * error_ + r_t;
 
