@@ -42,13 +42,13 @@ double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2
     double delta_state = signedError(displacement); 
 
     // Low-pass derivative terms
-    const double lp_gain = 0.05;
+    const double lp_gain = 0.1;
     double t_d = lowPass(delta_target / tau_, t_d_last_, lp_gain);
     double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
 
     // Compute reinforce term
     double reinforce = beta1_ * t_d  + (beta2_ - beta1_) * s_d; 
-    double r_t = lowPass(reinforce, r_t_last_, lp_gain);
+    double r_t = lowPass(reinforce, r_t_last_, 1.0);
 
     double linear_fb = alpha_ * beta1_ * error_ + r_t;
 
