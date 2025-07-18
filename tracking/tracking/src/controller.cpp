@@ -22,8 +22,14 @@ Controller::Controller(double alpha,
 double Controller::angularUpdate(const Eigen::Vector2d& target) const
 {
     double theta = std::atan2(target[1], target[0]);
-    double angle_fb = alpha_angle_ * theta;
 
+    // Stop rotating if the angular error is too large (±60 deg)
+    if (std::abs(theta) > M_PI / 3.0)
+    {
+        return 0.0;
+    }
+
+    double angle_fb = alpha_angle_ * theta;
     return checkLimits(angle_fb, omega_min_, omega_max_);
 }
 
