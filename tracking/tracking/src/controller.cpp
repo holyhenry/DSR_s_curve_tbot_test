@@ -48,7 +48,7 @@ double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2
     double delta_state = signedError(displacement); 
 
     // Low-pass derivative terms
-    const double lp_gain = 0.05;
+    const double lp_gain = 0.01;
     double t_d = lowPass(delta_target / tau_, t_d_last_, lp_gain);
     double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
 
