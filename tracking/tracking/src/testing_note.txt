@@ -1,0 +1,8 @@
+7/11 test:
+    GOOD
+    1. Using 2 low pass is a MUST (decent gain value 0.01 - 0.1)
+7/18 test:
+    GOOD
+    1. Increasing tau SIGNIFICANTLY decrease spacing error 0.02 -> 0.01 (or 0.008)
+    BAD
+    2. Potential lighting issue, robot not catching up at very specific location
