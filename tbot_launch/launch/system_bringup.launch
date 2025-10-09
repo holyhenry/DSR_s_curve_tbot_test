@@ -5,7 +5,7 @@
   <arg name="alpha" default="0.3"/>
   <arg name="alpha_angle" default="1.5"/>
   <arg name="spacing" default="0.25" />
-  <arg name="tau" default="0.02"/>
+  <arg name="tau" default="0.04"/>
 
   <!-- Base bringup -->
   <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />

@@ -6,7 +6,7 @@
   <arg name="alpha_angle" default="3.0"/>
   <arg name="beta1" default="0.8"/>
   <arg name="beta2" default="0.94"/>
-  <arg name="tau" default="0.02"/>
+  <arg name="tau" default="0.04"/>
   <arg name="spacing" default="0.35"/>
 
   <!-- ===================== Odom Covariance Wrapper ===================== -->

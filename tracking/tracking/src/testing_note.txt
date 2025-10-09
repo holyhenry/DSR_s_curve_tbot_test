@@ -6,3 +6,8 @@
     1. Increasing tau SIGNIFICANTLY decrease spacing error 0.02 -> 0.01 (or 0.008)
     BAD
     2. Potential lighting issue, robot not catching up at very specific location
+
+10/7 test:
+    1. tbot162 has setup quick system start. Run the following command for example:
+       $ roslaunch tbot_launch system_bringup.launch follower_indx:=0 spacing:=0.25 controller_mode:=DSR tau:=0.008
+    2. 
