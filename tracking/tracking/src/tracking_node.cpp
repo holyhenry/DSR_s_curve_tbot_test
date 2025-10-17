@@ -14,16 +14,16 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
       follower_indx_(follower_indx)
 {
     // Setup publisher (rm "/" in front of topic name to handle ns)
-    cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 2);
+    cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 5);
 
     // Setup logging publishers 
-    global_leader_pub_ = nh.advertise<std_msgs::Float32MultiArray>("global_leader_states", 1);
-    controllr_log_pub_ = nh.advertise<std_msgs::Float32MultiArray>("controller_log_info", 1);
+    global_leader_pub_ = nh.advertise<geometry_msgs::Pose2D>("global_leader_states", 5);
+    controllr_log_pub_ = nh.advertise<std_msgs::Float32MultiArray>("controller_log_info", 5);
 
 
     // Setup scuscribers (rm "/" in front of topic name to handle ns)
-    odom_sub_ = nh.subscribe("wheelodom", 5, &TrackingNode::odomCallback, this);
-    tag_sub_ = nh.subscribe("tag_detections", 5, &TrackingNode::tagCallback, this);
+    odom_sub_ = nh.subscribe("wheelodom", 10, &TrackingNode::odomCallback, this);
+    tag_sub_ = nh.subscribe("tag_detections", 10, &TrackingNode::tagCallback, this);
 
     // Setup controller mode
     if (mode_str == "P") 
@@ -153,12 +153,12 @@ void TrackingNode::aprilTagFilter()
         }
 
         // Publish global leader states
-        std_msgs::Float32MultiArray msg;
-        for (int i = 0; i < global_leader_states_.rows(); ++i)
-        {
-            msg.data.push_back(global_leader_states_(i, 0));
-            msg.data.push_back(global_leader_states_(i, 1));
-        }
+        const int last = global_leader_states_.rows() - 1;
+
+        geometry_msgs::Pose2D msg;
+        msg.x = global_leader_states_(last, 0);  // coordinate x
+        msg.y = global_leader_states_(last, 1);  // coordinate y
+
         global_leader_pub_.publish(msg);
 
         // Log current tag position

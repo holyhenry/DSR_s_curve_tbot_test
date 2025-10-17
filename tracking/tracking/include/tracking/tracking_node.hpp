@@ -2,6 +2,7 @@
 
 #include <tf/tf.h>  // for quaternion to yaw conversion
 #include <ros/ros.h>
+#include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/Odometry.h>
