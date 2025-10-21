@@ -6,14 +6,14 @@ import apriltag
 
 import rospy
 from sensor_msgs.msg import Image
-from common_msgs.msg import Float32MultiArrayStamped
+from common_msgs.msg import Float32ArrayStamped
 
 rospy.init_node('image_publisher')
 r             = rospy.Rate(30) # 10hz
 LP_GAIN       = rospy.get_param('~tag_lp_gain', 0.2)
 ns            = rospy.get_namespace()
 image_pub     = rospy.Publisher(ns + 'camera/color/image_raw', Image, queue_size=2)
-detection_pub = rospy.Publisher(ns + 'tag_detections', Float32MultiArrayStamped, queue_size=10)
+detection_pub = rospy.Publisher(ns + 'tag_detections', Float32ArrayStamped, queue_size=10)
 
 # try to disable depth information, need to verify
 config = rs.config()
@@ -123,7 +123,7 @@ while not rospy.is_shutdown():
         msg = Float32MultiArrayStamped()
         msg.header.stamp = rospy.Time.now()
         msg.header.frame_id = "camera_frame"
-        
+
         msg.data.data = detection_data
         detection_pub.publish(msg)
         # image_pub.publish(br.cv2_to_imgmsg(frame))
