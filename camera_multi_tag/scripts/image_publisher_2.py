@@ -120,7 +120,7 @@ while not rospy.is_shutdown():
         # print(detection_data)
 
         # Publishers
-        msg = Float32MultiArrayStamped()
+        msg = Float32ArrayStamped()
         msg.header.stamp = rospy.Time.now()
         msg.header.frame_id = "camera_frame"
 
