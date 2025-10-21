@@ -102,7 +102,7 @@ while not rospy.is_shutdown():
 
             # Low-pass filter tvec per tag
             tid = int(detection.tag_id)
-            tvec = tvec = tvec.flatten().astype(float)
+            tvec = tvec.flatten().astype(float)
             if tid in tvec_lp_state:
                 tvec_f = _low_pass(tvec, tvec_lp_state[tid], lp_gain=float(LP_GAIN))
             else:
