@@ -104,7 +104,8 @@ while not rospy.is_shutdown():
             tid = int(detection.tag_id)
             tvec = tvec.flatten().astype(float)
             if tid in tvec_lp_state:
-                tvec_f = _low_pass(tvec, tvec_lp_state[tid], lp_gain=float(LP_GAIN))
+                # tvec_f = _low_pass(tvec, tvec_lp_state[tid], lp_gain=float(LP_GAIN))
+                tvec_f = tvec
             else:
                 tvec_f = tvec
             tvec_lp_state[tid] = tvec_f
