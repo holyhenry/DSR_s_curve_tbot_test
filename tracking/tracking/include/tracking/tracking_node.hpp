@@ -7,6 +7,7 @@
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32MultiArray.h>
+#include <common_msgs/Float32ArrayStamped.h>
 #include "controller.hpp"
 
 class TrackingNode
@@ -41,6 +42,7 @@ private:
     double odom_vel_x_ = 0.0;           // vy ≈ 0 for diff-drive
 
     // Robot tag raw & filtered detection (LOCAL frame)
+    ros::Time          tag_stamp_; 
     std::vector<float> tag_multi_raw_;  // raw apriltag detection
     Eigen::Vector2d tag_leader_state_;  // [x, y] - filtered apriltag detection
     
@@ -61,7 +63,7 @@ private:
 
     // Callback functions
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
-    void tagCallback(const std_msgs::Float32MultiArray::ConstPtr& msg);
+    void tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg);
 
     // Helper functions
     Eigen::Vector3d transformTag2Middle(double x, double y, double alpha, 

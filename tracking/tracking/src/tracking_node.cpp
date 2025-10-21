@@ -20,7 +20,6 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
     global_leader_pub_ = nh.advertise<geometry_msgs::Pose2D>("global_leader_states", 5);
     controllr_log_pub_ = nh.advertise<std_msgs::Float32MultiArray>("controller_log_info", 5);
 
-
     // Setup scuscribers (rm "/" in front of topic name to handle ns)
     odom_sub_ = nh.subscribe("wheelodom", 10, &TrackingNode::odomCallback, this);
     tag_sub_ = nh.subscribe("tag_detections", 10, &TrackingNode::tagCallback, this);
@@ -73,10 +72,11 @@ void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     odom_state_last_ = odom_state;
 }
 
-void TrackingNode::tagCallback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+void TrackingNode::tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg)
 {   
     // Data format: {id, tag_x, tag_y, tag_z, tag_yaw}
-    tag_multi_raw_ = msg->data;
+    tag_stamp_     = msg->header.stamp;
+    tag_multi_raw_ = msg->data.data;
 }
 
 // ===============================Core operations==============================

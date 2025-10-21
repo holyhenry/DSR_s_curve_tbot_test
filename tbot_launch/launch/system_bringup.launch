@@ -7,11 +7,15 @@
   <arg name="spacing" default="0.25" />
   <arg name="tau" default="0.04"/>
 
+  <arg name="tag_lp_gain" default="0.15"/>
+
   <!-- Base bringup -->
   <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
 
-  <!-- Camera and Apriltag detection -->
-  <include file="$(find camera_multi_tag)/launch/camera_multi_tag.launch" />
+  <!-- Camera and Apriltag detection (life param allowed) -->
+  <include file="$(find camera_multi_tag)/launch/camera_multi_tag.launch">
+    <arg name="tag_lp_gain" value="$(arg tag_lp_gain)"/>
+  </include>
 
   <!-- EKF for pose estimation -->
   <include file="$(find robot_pose_ekf)/launch/robot_pose_ekf.launch" />

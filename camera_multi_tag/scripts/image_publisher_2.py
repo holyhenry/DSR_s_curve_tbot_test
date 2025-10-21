@@ -6,14 +6,14 @@ import apriltag
 
 import rospy
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float32MultiArray
+from common_msgs.msg import Float32MultiArrayStamped
 
 rospy.init_node('image_publisher')
-r   = rospy.Rate(30) # 10hz
-
-ns  = rospy.get_namespace()
-image_pub = rospy.Publisher(ns + 'camera/color/image_raw', Image, queue_size=2)
-detection_pub = rospy.Publisher(ns + 'tag_detections', Float32MultiArray, queue_size=10)
+r             = rospy.Rate(30) # 10hz
+LP_GAIN       = rospy.get_param('~tag_lp_gain', 0.2)
+ns            = rospy.get_namespace()
+image_pub     = rospy.Publisher(ns + 'camera/color/image_raw', Image, queue_size=2)
+detection_pub = rospy.Publisher(ns + 'tag_detections', Float32MultiArrayStamped, queue_size=10)
 
 # try to disable depth information, need to verify
 config = rs.config()
@@ -49,7 +49,17 @@ dist_coeffs = np.array([0, 0, 0, 0, 0], dtype=np.float32)
 options = apriltag.DetectorOptions(families="tag36h11")
 detector = apriltag.Detector(options)
 
+# Help functions
+tvec_lp_state = {}  # tag_id -> np.array([tx,ty,tz], float)
+
+def _low_pass(x, x_last, lp_gain = 0.2):
+        return lp_gain * x + (1 - lp_gain) * x_last
+
 while not rospy.is_shutdown():
+
+    # Allow live filtr tuning
+    LP_GAIN = rospy.get_param('~tag_lp_gain', LP_GAIN)
+
     ret, frame = cap.read()
     if ret:
         # Convert to grayscale for AprilTag detection
@@ -90,19 +100,32 @@ while not rospy.is_shutdown():
                 pitch = np.arctan2(-R[2, 0], sy)
                 #yaw = 0
 
-            tvec = tvec.flatten()
-            detection_data[i*W] = detection.tag_id
-            detection_data[i*W + 1] = tvec[0]  # tag_x: actual robot frame - left(-) & right(+)
-            detection_data[i*W + 2] = tvec[1]  # tag_y: actual robot frame - up(-) & down(+)
-            detection_data[i*W + 3] = tvec[2]  # tag_z: actual robot frame - foreward(+) & backward(-)
-            detection_data[i*W + 4] = pitch    # tag_yaw: rotate about tag_y 
+            # Low-pass filter tvec per tag
+            tid = int(detection.tag_id)
+            tvec = tvec = tvec.flatten().astype(float)
+            if tid in tvec_lp_state:
+                tvec_f = _low_pass(tvec, tvec_lp_state[tid], lp_gain=float(LP_GAIN))
+            else:
+                tvec_f = tvec
+            tvec_lp_state[tid] = tvec_f
+            
+            # Fill payload with FILTERED translation (x,y,z) + pitch
+            base = i*W
+            detection_data[base + 0] = float(tid)
+            detection_data[base + 1] = float(tvec_f[0])  # tag_x: actual robot frame - left(-) & right(+)
+            detection_data[base + 2] = float(tvec_f[1])  # tag_y: actual robot frame - up(-) & down(+)
+            detection_data[base + 3] = float(tvec_f[2])  # tag_z: actual robot frame - foreward(+) & backward(-)
+            detection_data[base + 4] = float(pitch)      # tag_yaw: rotate about tag_y 
 
         # print(detection_data)
 
         # Publishers
-        float_array_msg = Float32MultiArray()
-        float_array_msg.data = detection_data
-        detection_pub.publish(float_array_msg)
+        msg = Float32MultiArrayStamped()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = "camera_frame"
+        
+        msg.data.data = detection_data
+        detection_pub.publish(msg)
         # image_pub.publish(br.cv2_to_imgmsg(frame))
 
     r.sleep()
