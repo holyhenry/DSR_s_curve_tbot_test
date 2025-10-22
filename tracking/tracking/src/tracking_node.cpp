@@ -132,6 +132,8 @@ void TrackingNode::aprilTagFilter()
         }
     }
 
+    ROS_INFO_STREAM("GET TO HERE ++++++++++++++++++++++++++++++++++");
+
     if (count > 0)
     {
         tag_x /= count;
@@ -165,6 +167,8 @@ void TrackingNode::aprilTagFilter()
         // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         // ROS_INFO_STREAM_THROTTLE(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
     }
+
+    ROS_INFO_STREAM("GET TO HERE 9999999999999999999999999999999999999");
 }
 
 void TrackingNode::runControlStep()
