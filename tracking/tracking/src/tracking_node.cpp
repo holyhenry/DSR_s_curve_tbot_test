@@ -146,13 +146,15 @@ void TrackingNode::aprilTagFilter()
         // Transform to global frame
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
         double movement = (global_leader_state - global_leader_state_last_).norm();
-        ROS_INFO_STREAM("GET TO HERE 9999999999999999999999999999999999999");
+        
         if (movement > movement_threshold)
-        {
+        {   
+            ROS_INFO_STREAM("GET TO HERE 777777777777777777777777777777777777777777");
             global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
             global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
             global_leader_state_last_ = global_leader_state;
         }
+        ROS_INFO_STREAM("GET TO HERE 9999999999999999999999999999999999999");
 
         // Publish global leader states
         const int last = global_leader_states_.rows() - 1;
