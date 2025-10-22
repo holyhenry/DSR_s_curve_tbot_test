@@ -72,6 +72,9 @@ while not rospy.is_shutdown():
         W = 5 
         detection_data = [0 for i in range(W*len(detections))]
 
+        # Set up one-frame history per tag (reinitilized every frame)
+        next_state = {}
+
         for i, detection in enumerate(detections):
             # Convert detected corners to proper format
             image_points = np.array(detection.corners, dtype=np.float32)
@@ -100,15 +103,12 @@ while not rospy.is_shutdown():
                 pitch = np.arctan2(-R[2, 0], sy)
                 #yaw = 0
 
-            # Low-pass filter tvec per tag
+            # Low-pass filter tvec per tag (only if seen in previous frame)
             tid = int(detection.tag_id)
             tvec = tvec.flatten().astype(float)
-            if tid in tvec_lp_state:
-                # tvec_f = _low_pass(tvec, tvec_lp_state[tid], lp_gain=float(LP_GAIN))
-                tvec_f = tvec
-            else:
-                tvec_f = tvec
-            tvec_lp_state[tid] = tvec_f
+            prev = tvec_lp_state.get(tid)
+            tvec_f = _low_pass(tvec, prev, float(LP_GAIN)) if prev is not None else tvec
+            next_state[tid] = tvec_f
             
             # Fill payload with FILTERED translation (x,y,z) + pitch
             base = i*W
@@ -118,7 +118,8 @@ while not rospy.is_shutdown():
             detection_data[base + 3] = float(tvec_f[2])  # tag_z: actual robot frame - foreward(+) & backward(-)
             detection_data[base + 4] = float(pitch)      # tag_yaw: rotate about tag_y 
 
-        # print(detection_data)
+        # Update one-frame history (drop tags not seen this frame)
+        tvec_lp_state = next_state
 
         # Publishers
         msg = Float32ArrayStamped()
