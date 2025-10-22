@@ -106,7 +106,7 @@ void TrackingNode::aprilTagFilter()
         bool isCorrectID = static_cast<int>(tag_multi_raw_[i] - id_offset) / num_tag == follower_indx_;
         if (i % tag_space == 0 && isCorrectID)
         {   
-            int id = static_cast<int>(tag_multi_raw_[i] - id_offset);
+            int id = static_cast<int>(tag_multi_raw_[i]);
             double x   =   tag_multi_raw_[i + 3];
             double y   = -(tag_multi_raw_[i + 1] - cam_pos_offset);
             double phi =  -tag_multi_raw_[i + 4];
@@ -131,6 +131,8 @@ void TrackingNode::aprilTagFilter()
             }
         }
     }
+
+    ROS_INFO_STREAM("GET TO HERE +++++++++++++++++++++++++++++++++++++++++++");
 
     if (count > 0)
     {
@@ -164,8 +166,8 @@ void TrackingNode::aprilTagFilter()
         global_leader_pub_.publish(msg);
 
         // Log current tag position
-        // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
-        // ROS_INFO_STREAM_THROTTLE(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
+        ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
+        ROS_INFO_STREAM_THROTTLE(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
     }
 }
 

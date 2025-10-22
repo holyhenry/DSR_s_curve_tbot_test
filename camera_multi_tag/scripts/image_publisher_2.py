@@ -10,6 +10,7 @@ from common_msgs.msg import Float32ArrayStamped
 
 rospy.init_node('image_publisher')
 r             = rospy.Rate(30) # 10hz
+TAG_ID_OFFSET = 100 # Publish tag_id >= offset
 LP_GAIN       = rospy.get_param('~tag_lp_gain', 0.2)
 ns            = rospy.get_namespace()
 image_pub     = rospy.Publisher(ns + 'camera/color/image_raw', Image, queue_size=2)
@@ -105,6 +106,9 @@ while not rospy.is_shutdown():
 
             # Low-pass filter tvec per tag (only if seen in previous frame)
             tid = int(detection.tag_id)
+            if tid < TAG_ID_OFFSET:
+                 continue # process and publish only IDs >= TAG_ID_OFFSET
+            
             tvec = tvec.flatten().astype(float)
             prev = tvec_lp_state.get(tid)
             tvec_f = _low_pass(tvec, prev, float(LP_GAIN)) if prev is not None else tvec
