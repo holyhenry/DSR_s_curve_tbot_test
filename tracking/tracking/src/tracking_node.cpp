@@ -146,7 +146,7 @@ void TrackingNode::aprilTagFilter()
         // Transform to global frame
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
         double movement = (global_leader_state - global_leader_state_last_).norm();
-
+        ROS_INFO_STREAM("GET TO HERE 9999999999999999999999999999999999999");
         if (movement > movement_threshold)
         {
             global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
@@ -167,8 +167,6 @@ void TrackingNode::aprilTagFilter()
         // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         // ROS_INFO_STREAM_THROTTLE(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
     }
-
-    ROS_INFO_STREAM("GET TO HERE 9999999999999999999999999999999999999");
 }
 
 void TrackingNode::runControlStep()
