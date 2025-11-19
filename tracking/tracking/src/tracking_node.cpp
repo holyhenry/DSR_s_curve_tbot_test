@@ -77,9 +77,10 @@ void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     Eigen::Vector3d disp_over_tau = res.second;
 
     // Update displacement
-    // odom_displacement_ = odom_state - odom_state_last_;
-    odom_displacement_ = disp_over_tau;
-    odom_state_last_   = odom_state_f;
+    odom_displacement_ = odom_state - odom_state_last_;
+    odom_state_last_   = odom_state;
+    // odom_displacement_ = disp_over_tau;
+    // odom_state_last_   = odom_state_f;
 }
 
 void TrackingNode::tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg)
