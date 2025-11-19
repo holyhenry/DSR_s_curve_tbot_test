@@ -8,6 +8,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <common_msgs/Float32ArrayStamped.h>
+#include <deque>
 #include "controller.hpp"
 
 class TrackingNode
@@ -59,6 +60,11 @@ private:
     ros::Publisher global_leader_pub_;
     ros::Publisher controllr_log_pub_;
 
+    // Least squares filter state
+    int lsq_buffer_ = 10;
+    std::deque<double>          lsq_t_;
+    std::deque<Eigen::Vector3d> lsq_y_;
+
     // =============================Internal functions=============================
 
     // Callback functions
@@ -66,6 +72,8 @@ private:
     void tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg);
 
     // Helper functions
+    std::pair<Eigen::Vector3d, Eigen::Vector3d> leastSquareFilter(const Eigen::Vector3d& y_now, 
+                                                                  const double t_now);
     Eigen::Vector3d transformTag2Middle(double x, double y, double alpha, 
                                         int id, int num_tag = 3, double d = 0.043);
     Eigen::Vector2d homoTrans2BotCenter(const Eigen::Vector3d& state);

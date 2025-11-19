@@ -14,3 +14,11 @@
 10/16 setup mocap marker:
     1. to get rostopic of rigid object pose:
         $ roslaunch vrpn_client_ros sample.launch server:=192.168.0.175
+
+10/24 varying time system (instead of fix tau) - work plan: 
+    1. odom (self state memory)
+        modify TrackingNode::odomCallback()
+    2. camera (predecessor state memory)
+        modify TrackingNode::tagCallback() and TrackingNode::aprilTagFilter()
+        then, modify Controller::setObservations() and Controller::getTarget()
+        (add time stamps array along side with observations_)

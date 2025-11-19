@@ -50,6 +50,9 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
 
 void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
+    const ros::Time& stamp = msg->header.stamp;
+    double t_sec = stamp.toSec();
+
     // Extract pose & velocity
     double x = msg->pose.pose.position.x;
     double y = msg->pose.pose.position.y;
@@ -62,14 +65,21 @@ void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
         msg->pose.pose.orientation.z,
         msg->pose.pose.orientation.w
     );
-    tf::Matrix3x3 m(q);
     double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
+    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+
+    // Filter odom readings
+    Eigen::Vector3d odom_state(x, y, yaw);
+    
+    // least_square_filter here 
+    auto res = leastSquareFilter(odom_state, t_sec);
+    Eigen::Vector3d odom_state_f  = res.first;
+    Eigen::Vector3d disp_over_tau = res.second;
 
     // Update displacement
-    Eigen::Vector3d odom_state(x, y, yaw);
-    odom_displacement_ = odom_state - odom_state_last_;
-    odom_state_last_ = odom_state;
+    // odom_displacement_ = odom_state - odom_state_last_;
+    odom_displacement_ = disp_over_tau;
+    odom_state_last_   = odom_state_f;
 }
 
 void TrackingNode::tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg)
@@ -132,8 +142,6 @@ void TrackingNode::aprilTagFilter()
         }
     }
 
-    ROS_INFO_STREAM("GET TO HERE +++++++++++++++++++++++++++++++++++++++++++");
-
     if (count > 0)
     {
         tag_x /= count;
@@ -143,18 +151,18 @@ void TrackingNode::aprilTagFilter()
         Eigen::Vector3d tag_raw(tag_x, tag_y, tag_phi);
         tag_leader_state_ = homoTrans2BotCenter(tag_raw);
 
-        // Transform to global frame
+        // Least square filter (add here)
+
+        // Transform to global frame ()
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
         double movement = (global_leader_state - global_leader_state_last_).norm();
         
         if (movement > movement_threshold)
         {   
-            ROS_INFO_STREAM("GET TO HERE 777777777777777777777777777777777777777777");
             global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
             global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
             global_leader_state_last_ = global_leader_state;
         }
-        ROS_INFO_STREAM("GET TO HERE 9999999999999999999999999999999999999");
 
         // Publish global leader states
         const int last = global_leader_states_.rows() - 1;
@@ -227,6 +235,46 @@ void TrackingNode::runControlStep()
 }
 
 // ==============================Helper functions==============================
+
+std::pair<Eigen::Vector3d, Eigen::Vector3d> 
+TrackingNode::leastSquareFilter(const Eigen::Vector3d& y_now, const double t_now)
+{   
+    // add current sample
+    lsq_t_.push_back(t_now);
+    lsq_y_.push_back(y_now);
+
+    // chack window size
+    while (static_cast<int>(lsq_t_.size()) > lsq_buffer_)
+    {
+        lsq_t_.pop_front();
+        lsq_y_.pop_front();
+    }
+    const size_t m = lsq_t_.size();
+    if (m < 4) return { y_now, Eigen::Vector3d::Zero() };
+
+    // Build least square matrix
+    Eigen::MatrixXd A(m, 2);
+    Eigen::MatrixXd Y(m, 3);
+    for (size_t i = 0; i < m; ++i)
+    {
+        A(i, 0) = lsq_t_[i];
+        A(i, 1) = 1.0;
+        Y.row(i) = lsq_y_[i].transpose();
+    }
+
+    // Solve A*x = Y (x is 2x3: slopes & intercepts for x,y,yaw)
+    Eigen::Matrix<double, 2, 3> x = A.colPivHouseholderQr().solve(Y);
+
+    // Evaluate at t_now & t_now - tau_
+    Eigen::Vector2d a(t_now, 1.0);
+    Eigen::Vector2d a_delay(t_now - tau_, 1.0);
+
+    Eigen::Vector3d y_now_f = x.transpose() * a;  // (3x2) * (2x1) = 3x1
+    Eigen::Vector3d y_delay = x.transpose() * a_delay;
+
+    Eigen::Vector3d disp = y_now_f - y_delay;
+    return { y_now_f, disp };
+}
 
 Eigen::Vector3d TrackingNode::transformTag2Middle(double x, double y, double alpha,
                                                       int id, int num_tag, double d)
