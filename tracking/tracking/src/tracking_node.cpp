@@ -157,7 +157,7 @@ void TrackingNode::aprilTagFilter()
 
         // LSQ filter 
         double t_sec = tag_stamp_.toSec();
-        auto res = odomLSQFilter(global_leader_state, t_sec);
+        auto res = camLSQFilter(global_leader_state, t_sec);
         Eigen::Vector2d global_leader_state_f = res.first;
         Eigen::Vector2d disp_over_tau         = res.second;
 
@@ -313,7 +313,7 @@ TrackingNode::camLSQFilter(const Eigen::Vector2d& y_now, const double t_now){
     cam_lsq_y_.push_back(y_now);
 
     // Enforce window size
-    while (static_cast<int>(cam_lsq_t_.size()) > cam_lsq_buffer){
+    while (static_cast<int>(cam_lsq_t_.size()) > cam_lsq_buffer_){
         cam_lsq_t_.pop_front();
         cam_lsq_y_.pop_front();
     }
