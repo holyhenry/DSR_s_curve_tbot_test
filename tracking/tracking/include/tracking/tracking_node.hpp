@@ -62,12 +62,17 @@ private:
     ros::Publisher global_leader_pub_;
     ros::Publisher controllr_log_pub_;
 
-    // Least squares filter state
+    // Odom LSQ filter state
     int lsq_buffer_ = 10;
     std::deque<double>          lsq_t_;
     std::deque<Eigen::Vector3d> lsq_y_;
 
-    // yaw unwrapping state
+    // Camera LSQ state (2D)
+    int cam_lsq_buffer_ = 7;
+    std::deque<double>           cam_lsq_t_;
+    std::deque<Eigen::Vector2d>  cam_lsq_y_;
+
+    // Odom yaw unwrapping state
     bool have_last_yaw_  = false;
     double last_yaw_raw_ = 0.0;
     double yaw_unwrap_   = 0.0;
@@ -89,7 +94,9 @@ private:
     }
 
     // Helper functions
-    std::pair<Eigen::Vector3d, Eigen::Vector3d> leastSquareFilter(const Eigen::Vector3d& y_now, 
+    std::pair<Eigen::Vector3d, Eigen::Vector3d> odomLSQFilter(const Eigen::Vector3d& y_now, 
+                                                                  const double t_now);
+    std::pair<Eigen::Vector2d, Eigen::Vector2d> camLSQFilter(const Eigen::Vector2d& y_now, 
                                                                   const double t_now);
     Eigen::Vector3d transformTag2Middle(double x, double y, double alpha, 
                                         int id, int num_tag = 3, double d = 0.043);

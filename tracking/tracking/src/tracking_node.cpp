@@ -68,11 +68,11 @@ void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     double roll, pitch, yaw;
     tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
-    // Filter odom readings
+    // Create odom readings
     Eigen::Vector3d odom_state(x, y, yaw);
     
-    // least_square_filter here 
-    auto res = leastSquareFilter(odom_state, t_sec);
+    // LSQ filter 
+    auto res = odomLSQFilter(odom_state, t_sec);
     Eigen::Vector3d odom_state_f  = res.first;
     Eigen::Vector3d disp_over_tau = res.second;
 
@@ -152,17 +152,28 @@ void TrackingNode::aprilTagFilter()
         Eigen::Vector3d tag_raw(tag_x, tag_y, tag_phi);
         tag_leader_state_ = homoTrans2BotCenter(tag_raw);
 
-        // Least square filter (add here)
-
-        // Transform to global frame ()
+        // Transform to global frame
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
-        double movement = (global_leader_state - global_leader_state_last_).norm();
+
+        // LSQ filter 
+        double t_sec = tag_stamp_.toSec();
+        auto res = odomLSQFilter(global_leader_state, t_sec);
+        Eigen::Vector2d global_leader_state_f = res.first;
+        Eigen::Vector2d disp_over_tau         = res.second;
+
+        // [TODO]: old code below, delete later
+        // double movement = (global_leader_state - global_leader_state_last_).norm();
+        double movement = disp_over_tau.norm();
         
         if (movement > movement_threshold)
         {   
+            // [TODO]: old code below, delete later
+            // global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
+            // global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
+            // global_leader_state_last_ = global_leader_state;
             global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
-            global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
-            global_leader_state_last_ = global_leader_state;
+            global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state_f.transpose();
+            global_leader_state_last_ = global_leader_state_f;
         }
 
         // Publish global leader states
@@ -238,7 +249,7 @@ void TrackingNode::runControlStep()
 // ==============================Helper functions==============================
 
 std::pair<Eigen::Vector3d, Eigen::Vector3d> 
-TrackingNode::leastSquareFilter(const Eigen::Vector3d& y_now, const double t_now)
+TrackingNode::odomLSQFilter(const Eigen::Vector3d& y_now, const double t_now)
 {   
     // Unwarp yaw (-pi, pi] to continuous euler value for LSQ
     const double yaw_raw = y_now[2];
@@ -252,24 +263,22 @@ TrackingNode::leastSquareFilter(const Eigen::Vector3d& y_now, const double t_now
     }
     Eigen::Vector3d y_now_unwrap(y_now[0], y_now[1], yaw_unwrap_);
 
-    // add current sample
+    // Add current sample
     lsq_t_.push_back(t_now);
     lsq_y_.push_back(y_now_unwrap);
 
-    // chack window size
-    while (static_cast<int>(lsq_t_.size()) > lsq_buffer_)
-    {
+    // Enforce window size
+    while (static_cast<int>(lsq_t_.size()) > lsq_buffer_){
         lsq_t_.pop_front();
         lsq_y_.pop_front();
     }
     const size_t m = lsq_t_.size();
     if (m < 4) return { y_now, Eigen::Vector3d::Zero() };
 
-    // Build least square matrix
+    // Build LSQ matrix
     Eigen::MatrixXd A(m, 2);
     Eigen::MatrixXd Y(m, 3);
-    for (size_t i = 0; i < m; ++i)
-    {
+    for (size_t i = 0; i < m; ++i){
         A(i, 0) = lsq_t_[i];
         A(i, 1) = 1.0;
         Y.row(i) = lsq_y_[i].transpose();
@@ -282,6 +291,7 @@ TrackingNode::leastSquareFilter(const Eigen::Vector3d& y_now, const double t_now
     Eigen::Vector2d a(t_now, 1.0);
     Eigen::Vector2d a_delay(t_now - tau_, 1.0);
 
+    // Make prediction at t_now & t_now - tau_
     Eigen::Vector3d y_now_f_unwrap = x.transpose() * a;  // (3x2) * (2x1) = 3x1
     Eigen::Vector3d y_delay_unwrap = x.transpose() * a_delay;
 
@@ -292,6 +302,45 @@ TrackingNode::leastSquareFilter(const Eigen::Vector3d& y_now, const double t_now
     y_now_f[2] = wrapPi(y_now_f[2]);
     disp[2] = wrapPi(disp[2]);
 
+    return { y_now_f, disp };
+}
+
+std::pair<Eigen::Vector2d, Eigen::Vector2d> 
+TrackingNode::camLSQFilter(const Eigen::Vector2d& y_now, const double t_now){
+
+    // Add current sample
+    cam_lsq_t_.push_back(t_now);
+    cam_lsq_y_.push_back(y_now);
+
+    // Enforce window size
+    while (static_cast<int>(cam_lsq_t_.size()) > cam_lsq_buffer){
+        cam_lsq_t_.pop_front();
+        cam_lsq_y_.pop_front();
+    }
+    const size_t m = cam_lsq_t_.size();
+    if (m < 4) return { y_now, Eigen::Vector2d::Zero() };
+
+    // Build LSQ matrix 
+    Eigen::MatrixXd A(m, 2);
+    Eigen::MatrixXd Y(m, 2);
+    for (size_t i = 0; i < m; ++i){
+        A(i, 0) = cam_lsq_t_[i];
+        A(i, 1) = 1.0;
+        Y.row(i) = cam_lsq_y_[i].transpose();
+    }
+
+    // Solve A*x = Y (x is 2x2: slopes & intercepts for x,y,yaw)
+    Eigen::Matrix<double, 2, 2> x = A.colPivHouseholderQr().solve(Y);
+
+    // Evaluate at t_now & t_now - tau_
+    Eigen::Vector2d a(t_now, 1.0);
+    Eigen::Vector2d a_delay(t_now - tau_, 1.0);
+
+    // Make prediction at t_now & t_now - tau_
+    Eigen::Vector2d y_now_f = x.transpose() * a;  // (2x2) * (2x1) = 2x1
+    Eigen::Vector2d y_delay = x.transpose() * a_delay;
+
+    Eigen::Vector2d disp = y_now_f - y_delay;
     return { y_now_f, disp };
 }
 
