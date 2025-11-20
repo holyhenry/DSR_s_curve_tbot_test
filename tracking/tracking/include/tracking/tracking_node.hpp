@@ -1,5 +1,8 @@
 #pragma once
 
+#include <deque>
+#include <utility>
+#include <cmath>
 #include <tf/tf.h>  // for quaternion to yaw conversion
 #include <ros/ros.h>
 #include <geometry_msgs/Pose2D.h>
@@ -8,7 +11,6 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <common_msgs/Float32ArrayStamped.h>
-#include <deque>
 #include "controller.hpp"
 
 class TrackingNode
@@ -65,11 +67,26 @@ private:
     std::deque<double>          lsq_t_;
     std::deque<Eigen::Vector3d> lsq_y_;
 
+    // yaw unwrapping state
+    bool have_last_yaw_  = false;
+    double last_yaw_raw_ = 0.0;
+    double yaw_unwrap_   = 0.0;
+
     // =============================Internal functions=============================
 
     // Callback functions
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
     void tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg);
+
+    // Static helper functions
+    static double wrapPi(double a){
+        a = std::fmod(a + M_PI, 2.0*M_PI);
+        if (a < 0) a += 2.0*M_PI;
+        return a - M_PI;
+    }
+    static double angDiff(double a, double b){
+        return wrapPi(a - b);
+    }
 
     // Helper functions
     std::pair<Eigen::Vector3d, Eigen::Vector3d> leastSquareFilter(const Eigen::Vector3d& y_now, 

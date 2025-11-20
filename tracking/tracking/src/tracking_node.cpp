@@ -77,10 +77,10 @@ void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     Eigen::Vector3d disp_over_tau = res.second;
 
     // Update displacement
-    odom_displacement_ = odom_state - odom_state_last_;
-    odom_state_last_   = odom_state;
-    // odom_displacement_ = disp_over_tau;
-    // odom_state_last_   = odom_state_f;
+    // odom_displacement_ = odom_state - odom_state_last_;
+    // odom_state_last_   = odom_state;
+    odom_displacement_ = disp_over_tau;
+    odom_state_last_   = odom_state_f;
 }
 
 void TrackingNode::tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg)
@@ -240,9 +240,21 @@ void TrackingNode::runControlStep()
 std::pair<Eigen::Vector3d, Eigen::Vector3d> 
 TrackingNode::leastSquareFilter(const Eigen::Vector3d& y_now, const double t_now)
 {   
+    // Unwarp yaw (-pi, pi] to continuous euler value for LSQ
+    const double yaw_raw = y_now[2];
+    if (!have_last_yaw_){
+        have_last_yaw_ = true;
+        yaw_unwrap_ = yaw_raw;
+        last_yaw_raw_ = yaw_raw;
+    } else {
+        yaw_unwrap_ += angDiff(yaw_raw, last_yaw_raw_);
+        last_yaw_raw_ = yaw_raw;
+    }
+    Eigen::Vector3d y_now_unwrap(y_now[0], y_now[1], yaw_unwrap_);
+
     // add current sample
     lsq_t_.push_back(t_now);
-    lsq_y_.push_back(y_now);
+    lsq_y_.push_back(y_now_unwrap);
 
     // chack window size
     while (static_cast<int>(lsq_t_.size()) > lsq_buffer_)
@@ -270,10 +282,16 @@ TrackingNode::leastSquareFilter(const Eigen::Vector3d& y_now, const double t_now
     Eigen::Vector2d a(t_now, 1.0);
     Eigen::Vector2d a_delay(t_now - tau_, 1.0);
 
-    Eigen::Vector3d y_now_f = x.transpose() * a;  // (3x2) * (2x1) = 3x1
-    Eigen::Vector3d y_delay = x.transpose() * a_delay;
+    Eigen::Vector3d y_now_f_unwrap = x.transpose() * a;  // (3x2) * (2x1) = 3x1
+    Eigen::Vector3d y_delay_unwrap = x.transpose() * a_delay;
 
-    Eigen::Vector3d disp = y_now_f - y_delay;
+    Eigen::Vector3d disp = y_now_f_unwrap - y_delay_unwrap;
+
+    // Wrap yaw outputs back to (-pi, pi]
+    Eigen::Vector3d y_now_f = y_now_f_unwrap;
+    y_now_f[2] = wrapPi(y_now_f[2]);
+    disp[2] = wrapPi(disp[2]);
+
     return { y_now_f, disp };
 }
 
