@@ -189,7 +189,7 @@ void TrackingNode::aprilTagFilter()
         ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         ROS_INFO_STREAM("global_leader_state: " << global_leader_state[0] << ", " << global_leader_state[1] << ")");
         ROS_INFO_STREAM("global_leader_state_f: " << global_leader_state_f[0] << ", " << global_leader_state_f[1] << ")");
-        ROS_INFO_STREAM(2.0, "global_leader_states_ size: " << global_leader_states_.rows());
+        ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.size());
     }
 }
 
