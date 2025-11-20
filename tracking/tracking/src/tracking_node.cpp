@@ -43,7 +43,8 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
 
     // Initialize global leader state
     global_leader_state_last_ = Eigen::Vector2d(spacing_, 0.0);
-    global_leader_states_ = Eigen::MatrixXd(0, 2);
+    global_leader_states_ = Eigen::MatrixXd(1, 2);
+    global_leader_states_.row(0) << spacing_, 0.0;
 
 }
 // =============================Callback functions=============================
@@ -178,11 +179,9 @@ void TrackingNode::aprilTagFilter()
 
         // Publish global leader states
         const int last = global_leader_states_.rows() - 1;
-
         geometry_msgs::Pose2D msg;
         msg.x = global_leader_states_(last, 0);  // coordinate x
         msg.y = global_leader_states_(last, 1);  // coordinate y
-
         global_leader_pub_.publish(msg);
 
         // Log current tag position
