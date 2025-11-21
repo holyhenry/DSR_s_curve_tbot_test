@@ -163,8 +163,8 @@ void TrackingNode::aprilTagFilter()
         Eigen::Vector2d disp_over_tau         = res.second;
 
         // [TODO]: old code below, delete later
-        // double movement = (global_leader_state - global_leader_state_last_).norm();
-        double movement = disp_over_tau.norm();
+        double movement = (global_leader_state - global_leader_state_last_).norm();
+        // double movement = disp_over_tau.norm();
 
         ROS_INFO_STREAM("??????????????????");
         
