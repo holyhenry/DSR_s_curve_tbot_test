@@ -165,9 +165,12 @@ void TrackingNode::aprilTagFilter()
         // [TODO]: old code below, delete later
         // double movement = (global_leader_state - global_leader_state_last_).norm();
         double movement = disp_over_tau.norm();
+
+        ROS_INFO_STREAM("??????????????????");
         
         if (movement > movement_threshold)
         {   
+            ROS_INFO_STREAM("YAS!!!!!!!!!");
             // [TODO]: old code below, delete later
             // global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
             // global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
@@ -338,8 +341,6 @@ TrackingNode::camLSQFilter(const Eigen::Vector2d& y_now, const double t_now){
     // Evaluate at t_now & t_now - tau_
     Eigen::Vector2d a(t_now, 1.0);
     Eigen::Vector2d a_delay(t_now - tau_, 1.0);
-
-    ROS_INFO_STREAM("delay!!!!!!!!!!!!" << (a - a_delay)[0]);
 
     // Make prediction at t_now & t_now - tau_
     Eigen::Vector2d y_now_f = x.transpose() * a;  // (2x2) * (2x1) = 2x1
