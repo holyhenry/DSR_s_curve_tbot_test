@@ -163,18 +163,18 @@ void TrackingNode::aprilTagFilter()
         Eigen::Vector2d disp_over_tau         = res.second;
 
         // [TODO]: old code below, delete later
-        // double movement = (global_leader_state - global_leader_state_last_).norm();
-        double movement = disp_over_tau.norm();
+        double movement = (global_leader_state - global_leader_state_last_).norm();
+        // double movement = disp_over_tau.norm();
         
         if (movement > movement_threshold)
         {   
             // [TODO]: old code below, delete later
-            // global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
-            // global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
-            // global_leader_state_last_ = global_leader_state;
             global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
-            global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state_f.transpose();
-            global_leader_state_last_ = global_leader_state_f;
+            global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
+            global_leader_state_last_ = global_leader_state;
+            // global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
+            // global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state_f.transpose();
+            // global_leader_state_last_ = global_leader_state_f;
         }
 
         // Publish global leader states
