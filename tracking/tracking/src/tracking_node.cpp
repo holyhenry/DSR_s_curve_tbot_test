@@ -52,7 +52,7 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
 void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
     const ros::Time& stamp = msg->header.stamp;
-    double t_sec = stamp.toSec();
+    double t_sec = normalizeOdomTime(stamp);
 
     // Extract pose & velocity
     double x = msg->pose.pose.position.x;
@@ -88,6 +88,7 @@ void TrackingNode::tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr&
 {   
     // Data format: {id, tag_x, tag_y, tag_z, tag_yaw}
     tag_stamp_     = msg->header.stamp;
+    normalizeTagTime(tag_stamp_);  // ensure anchor is set
     tag_multi_raw_ = msg->data.data;
 }
 
@@ -157,14 +158,14 @@ void TrackingNode::aprilTagFilter()
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
 
         // LSQ filter 
-        double t_sec = tag_stamp_.toSec();
+        double t_sec = normalizeTagTime(tag_stamp_);
         auto res = camLSQFilter(global_leader_state, t_sec);
         Eigen::Vector2d global_leader_state_f = res.first;
         Eigen::Vector2d disp_over_tau         = res.second;
 
         // [TODO]: old code below, delete later
-        double movement = (global_leader_state - global_leader_state_last_).norm();
-        // double movement = disp_over_tau.norm();
+        // double movement = (global_leader_state - global_leader_state_last_).norm();
+        double movement = disp_over_tau.norm();
 
         ROS_INFO_STREAM("??????????????????");
         
@@ -349,6 +350,24 @@ TrackingNode::camLSQFilter(const Eigen::Vector2d& y_now, const double t_now){
     Eigen::Vector2d disp = y_now_f - y_delay;
 
     return { y_now_f, disp };
+}
+
+double TrackingNode::normalizeTagTime(const ros::Time& t)
+{
+    if (!have_tag_time0_) {
+        have_tag_time0_ = true;
+        tag_time0_ = t.toSec();
+    }
+    return t.toSec() - tag_time0_;
+}
+
+double TrackingNode::normalizeOdomTime(const ros::Time& t)
+{
+    if (!have_odom_time0_) {
+        have_odom_time0_ = true;
+        odom_time0_ = t.toSec();
+    }
+    return t.toSec() - odom_time0_;
 }
 
 Eigen::Vector3d TrackingNode::transformTag2Middle(double x, double y, double alpha,
