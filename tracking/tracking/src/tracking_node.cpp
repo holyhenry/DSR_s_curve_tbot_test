@@ -102,7 +102,7 @@ void TrackingNode::aprilTagFilter()
     const int id_offset = 100;
     const double cam_pos_offset = 0.025;
     const double outlier_threshold = 0.04;
-    const double movement_threshold = 0.0004; // min speed 0.01 m/s * 0.04 delay = 
+    const double movement_threshold = 0.0004; // min speed 0.01 m/s * 0.04 delay = 0.0004
 
     double tag_x = 0.0;
     double tag_y = 0.0;
