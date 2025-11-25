@@ -34,7 +34,7 @@ public:
     double DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement);
 
     std::pair<Eigen::Vector2d, double> getTarget(bool memory_mode = true);
-    void Controller::setNodeTime(double node_t_sec);
+    void setNodeTime(double node_t_sec);
     void setObservations(const Eigen::MatrixXd& observations,
                          const std::deque<double>& cam_t_secs);
     std::vector<double> step(double linear_update, double angular_update);

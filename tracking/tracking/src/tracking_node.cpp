@@ -189,7 +189,7 @@ void TrackingNode::aprilTagFilter()
 
         // Log current tag position
         ROS_INFO_STREAM("cam_t_sec " << cam_t_sec);
-        ROS_INFO_STREAM("movement " << movement);
+        // ROS_INFO_STREAM("movement " << movement);
         // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         // ROS_INFO_STREAM("global_leader_state: " << global_leader_state[0] << ", " << global_leader_state[1] << ")");
         ROS_INFO_STREAM("global_leader_state_f: " << global_leader_state_f[0] << ", " << global_leader_state_f[1] << ")");
@@ -200,8 +200,7 @@ void TrackingNode::aprilTagFilter()
 void TrackingNode::runControlStep()
 {   
     // 0. Get node current time 
-    double node_t_sec = normalizeNodeTime(ros::Time::now());
-    controller_.setNodeTime(node_t_sec);
+    controller_.setNodeTime(normalizeNodeTime(ros::Time::now()));
 
     // 1. Compute predecessor states in current local frame
     Eigen::MatrixXd local_leader_states = homoInvTransMulti2Local(getGlobalLeaderStates());        
@@ -212,7 +211,9 @@ void TrackingNode::runControlStep()
 
     // 3. Compute the tracking target point
     bool MEMORY_MODE = true;
-    Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
+    auto target_info = controller_.getTarget(MEMORY_MODE);
+    Eigen::Vector2d target = target_info.first;
+    double target_t = target_info.second;
 
     // 4. Run control logic 
     double linear_controller;
