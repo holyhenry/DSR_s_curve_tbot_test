@@ -52,6 +52,7 @@ private:
     // Robot tag transformed global leader states (GLOBAL frame)
     Eigen::Vector2d global_leader_state_last_; // [x, y]
     Eigen::MatrixXd global_leader_states_;     // Nx2 matrix
+    std::deque<double> cam_t_secs_;            // matching timestamps for camera detections
 
     // ROS interface & timer 
     ros::Publisher cmd_vel_pub_;
@@ -76,8 +77,10 @@ private:
     bool have_last_yaw_  = false;
     double last_yaw_raw_ = 0.0;
     double yaw_unwrap_   = 0.0;
-    
+
     // Time normalization anchors
+    bool have_node_time0_ = false;
+    double node_time0_    = 0.0;
     bool have_tag_time0_  = false;
     double tag_time0_     = 0.0;
     bool have_odom_time0_ = false;
@@ -88,8 +91,6 @@ private:
     // Callback functions
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
     void tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg);
-    double normalizeTagTime(const ros::Time& t);
-    double normalizeOdomTime(const ros::Time& t);
 
     // Static helper functions
     static double wrapPi(double a){
@@ -102,6 +103,9 @@ private:
     }
 
     // Helper functions
+    double normalizeNodeTime(const ros::Time& t);
+    double normalizeCamTime(const ros::Time& t);
+    double normalizeOdomTime(const ros::Time& t);
     std::pair<Eigen::Vector3d, Eigen::Vector3d> odomLSQFilter(const Eigen::Vector3d& y_now, 
                                                                   const double t_now);
     std::pair<Eigen::Vector2d, Eigen::Vector2d> camLSQFilter(const Eigen::Vector2d& y_now, 

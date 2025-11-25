@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include <numeric>
 #include <vector>
+#include <deque>
 #include <utility>
 #include <cmath>
 #include <algorithm>
@@ -32,8 +33,10 @@ public:
     double PUpdate(const Eigen::Vector2d& target);
     double DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement);
 
-    Eigen::Vector2d getTarget(bool memory_mode = true);
-    void setObservations(const Eigen::MatrixXd& observations);
+    std::pair<Eigen::Vector2d, double> getTarget(bool memory_mode = true);
+    void Controller::setNodeTime(double node_t_sec);
+    void setObservations(const Eigen::MatrixXd& observations,
+                         const std::deque<double>& cam_t_secs);
     std::vector<double> step(double linear_update, double angular_update);
 
     // ==========================Debug Helper functions==========================
@@ -58,7 +61,9 @@ private:
     double const omega_min_ = -1.0;
     // Controller memories
     double error_;
+    double node_t_sec_;
     Eigen::MatrixXd observations_;     // N rows × 2 columns
+    std::deque<double> obs_t_secs_;     // matching timestamps for observations_
     // DSR specific memories
     Eigen::Vector2d target_last_;
     double t_d_last_;                  // Target delayed term 

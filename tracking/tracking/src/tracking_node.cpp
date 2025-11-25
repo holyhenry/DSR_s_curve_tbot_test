@@ -45,6 +45,7 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
     global_leader_state_last_ = Eigen::Vector2d(spacing_, 0.0);
     global_leader_states_ = Eigen::MatrixXd(1, 2);
     global_leader_states_.row(0) << spacing_, 0.0;
+    cam_t_secs_.push_back(0.0);
 
 }
 // =============================Callback functions=============================
@@ -52,7 +53,7 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
 void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
     const ros::Time& stamp = msg->header.stamp;
-    double t_sec = normalizeOdomTime(stamp);
+    double odom_t_sec = normalizeOdomTime(stamp);
 
     // Extract pose & velocity
     double x = msg->pose.pose.position.x;
@@ -73,7 +74,7 @@ void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     Eigen::Vector3d odom_state(x, y, yaw);
     
     // LSQ filter 
-    auto res = odomLSQFilter(odom_state, t_sec);
+    auto res = odomLSQFilter(odom_state, odom_t_sec);
     Eigen::Vector3d odom_state_f  = res.first;
     Eigen::Vector3d disp_over_tau = res.second;
 
@@ -88,7 +89,7 @@ void TrackingNode::tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr&
 {   
     // Data format: {id, tag_x, tag_y, tag_z, tag_yaw}
     tag_stamp_     = msg->header.stamp;
-    normalizeTagTime(tag_stamp_);  // ensure anchor is set
+    normalizeCamTime(tag_stamp_);
     tag_multi_raw_ = msg->data.data;
 }
 
@@ -158,27 +159,25 @@ void TrackingNode::aprilTagFilter()
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
 
         // LSQ filter 
-        double t_sec = normalizeTagTime(tag_stamp_);
-        auto res = camLSQFilter(global_leader_state, t_sec);
+        double cam_t_sec = normalizeCamTime(tag_stamp_);
+        auto res = camLSQFilter(global_leader_state, cam_t_sec);
         Eigen::Vector2d global_leader_state_f = res.first;
         Eigen::Vector2d disp_over_tau         = res.second;
 
         // [TODO]: old code below, delete later
         // double movement = (global_leader_state - global_leader_state_last_).norm();
         double movement = disp_over_tau.norm();
-
-        ROS_INFO_STREAM("??????????????????");
         
         if (movement > movement_threshold)
         {   
-            ROS_INFO_STREAM("YAS!!!!!!!!!");
-            // [TODO]: old code below, delete later
-            // global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
-            // global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
-            // global_leader_state_last_ = global_leader_state;
+            ROS_INFO_STREAM("YAS!!!!!!!!! (movement > threshold)");
+            cam_t_secs_.push_back(cam_t_sec);
             global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
             global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state_f.transpose();
             global_leader_state_last_ = global_leader_state_f;
+            // [TODO]: old code below, delete later
+            // global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
+            // global_leader_state_last_ = global_leader_state;
         }
 
         // Publish global leader states
@@ -189,9 +188,9 @@ void TrackingNode::aprilTagFilter()
         global_leader_pub_.publish(msg);
 
         // Log current tag position
-        ROS_INFO_STREAM("t_sec" << t_sec);
-        ROS_INFO_STREAM("movement" << movement);
-        ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
+        ROS_INFO_STREAM("cam_t_sec " << cam_t_sec);
+        ROS_INFO_STREAM("movement " << movement);
+        // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         // ROS_INFO_STREAM("global_leader_state: " << global_leader_state[0] << ", " << global_leader_state[1] << ")");
         ROS_INFO_STREAM("global_leader_state_f: " << global_leader_state_f[0] << ", " << global_leader_state_f[1] << ")");
         ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.size());
@@ -200,12 +199,16 @@ void TrackingNode::aprilTagFilter()
 
 void TrackingNode::runControlStep()
 {   
+    // 0. Get node current time 
+    double node_t_sec = normalizeNodeTime(ros::Time::now());
+    controller_.setNodeTime(node_t_sec);
+
     // 1. Compute predecessor states in current local frame
     Eigen::MatrixXd local_leader_states = homoInvTransMulti2Local(getGlobalLeaderStates());        
     // ROS_INFO_STREAM_THROTTLE(1.0, "local_leader_states:\n" << local_leader_states);
 
     // 2. Feed predecessor trajectory into the controller's buffer
-    controller_.setObservations(local_leader_states);
+    controller_.setObservations(local_leader_states, cam_t_secs_);
 
     // 3. Compute the tracking target point
     bool MEMORY_MODE = true;
@@ -352,7 +355,16 @@ TrackingNode::camLSQFilter(const Eigen::Vector2d& y_now, const double t_now){
     return { y_now_f, disp };
 }
 
-double TrackingNode::normalizeTagTime(const ros::Time& t)
+double TrackingNode::normalizeNodeTime(const ros::Time& t) 
+{
+    if (!have_node_time0_) {
+        have_node_time0_ = true;
+        node_time0_ = t.toSec();
+    }
+    return t.toSec() - node_time0_;
+}
+
+double TrackingNode::normalizeCamTime(const ros::Time& t)
 {
     if (!have_tag_time0_) {
         have_tag_time0_ = true;

@@ -67,13 +67,13 @@ double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2
     return checkLimits(linear_fb, vel_min_, vel_max_);
 }
 
-Eigen::Vector2d Controller::getTarget(bool memory_mode)
+std::pair<Eigen::Vector2d, double> Controller::getTarget(bool memory_mode)
 {
     if (observations_.rows() == 0)  
     {
         ROS_WARN("[getTarget]: No observations.");
         
-        return Eigen::Vector2d::Zero();
+        return { Eigen::Vector2d::Zero(), 0.0 };
     }
 
     Eigen::Vector2d leader_current_state = observations_.row(observations_.rows() - 1);
@@ -96,24 +96,36 @@ Eigen::Vector2d Controller::getTarget(bool memory_mode)
         {
             int indx = valid_indicies.back();
             Eigen::RowVectorXd target = observations_.row(indx);  // (1 × 2) row
+            double target_cam_t_sec = obs_t_secs_[indx];
+
+            ROS_INFO_STREAM("target indx: " << indx <<", time: " << target_cam_t_sec);
             
-            return target;
+            return { target, target_cam_t_sec };
         }
     }
 
     // Fallback: non memory_mode or no valid target found
-    ROS_INFO_STREAM_THROTTLE(1.0, "[getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.");
+    ROS_INFO_STREAM("[getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.");
 
     Eigen::Vector2d direction = - leader_current_state;
     double theta = std::atan2(direction[1], direction[0]);
     Eigen::Vector2d fallback = leader_current_state + spacing_ * Eigen::Vector2d(std::cos(theta), std::sin(theta));
     
-    return fallback;
+    ROS_INFO_STREAM("fallback time: " << node_t_sec_);
+
+    return { fallback, node_t_sec_ };
 }
 
-void Controller::setObservations(const Eigen::MatrixXd& observations)
+void Controller::setNodeTime(double node_t_sec)
+{
+    node_t_sec_ = node_t_sec;
+}
+
+void Controller::setObservations(const Eigen::MatrixXd& observations,
+                                 const std::deque<double>& obs_t_secs)
 {
     observations_ = observations;
+    obs_t_secs_ = obs_t_secs;
 }
 
 std::vector<double> Controller::step(double linear_update, double anguler_update)
