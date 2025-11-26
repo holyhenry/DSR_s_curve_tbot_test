@@ -52,6 +52,7 @@ private:
     // Robot tag transformed global leader states (GLOBAL frame)
     Eigen::Vector2d global_leader_state_last_; // [x, y]
     Eigen::MatrixXd global_leader_states_;     // Nx2 matrix
+    double cam_t_sec_;
     std::deque<double> cam_t_secs_;            // matching timestamps for camera detections
 
     // ROS interface & timer 

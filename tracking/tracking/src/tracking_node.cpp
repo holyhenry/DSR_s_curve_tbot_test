@@ -45,6 +45,9 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
     global_leader_state_last_ = Eigen::Vector2d(spacing_, 0.0);
     global_leader_states_ = Eigen::MatrixXd(1, 2);
     global_leader_states_.row(0) << spacing_, 0.0;
+
+    // Initialize camera time stamp
+    cam_t_sec_ = 0.0;
     cam_t_secs_.push_back(0.0);
 
 }
@@ -159,8 +162,8 @@ void TrackingNode::aprilTagFilter()
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
 
         // LSQ filter 
-        double cam_t_sec = normalizeCamTime(tag_stamp_);
-        auto res = camLSQFilter(global_leader_state, cam_t_sec);
+        cam_t_sec_ = normalizeCamTime(tag_stamp_);
+        auto res = camLSQFilter(global_leader_state, cam_t_sec_);
         Eigen::Vector2d global_leader_state_f = res.first;
         Eigen::Vector2d disp_over_tau         = res.second;
 
@@ -170,8 +173,7 @@ void TrackingNode::aprilTagFilter()
         
         if (movement > movement_threshold)
         {   
-            ROS_INFO_STREAM("YAS!!!!!!!!! (movement > threshold)");
-            cam_t_secs_.push_back(cam_t_sec);
+            cam_t_secs_.push_back(cam_t_sec_);
             global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
             global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state_f.transpose();
             global_leader_state_last_ = global_leader_state_f;
@@ -188,7 +190,7 @@ void TrackingNode::aprilTagFilter()
         global_leader_pub_.publish(msg);
 
         // Log current tag position
-        ROS_INFO_STREAM("cam_t_sec " << cam_t_sec);
+        ROS_INFO_STREAM("cam_t_sec " << cam_t_sec_);
         // ROS_INFO_STREAM("movement " << movement);
         // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         // ROS_INFO_STREAM("global_leader_state: " << global_leader_state[0] << ", " << global_leader_state[1] << ")");
@@ -210,10 +212,8 @@ void TrackingNode::runControlStep()
     controller_.setObservations(local_leader_states, cam_t_secs_);
 
     // 3. Compute the tracking target point
-    bool MEMORY_MODE = true;
-    auto target_info = controller_.getTarget(MEMORY_MODE);
-    Eigen::Vector2d target = target_info.first;
-    double target_t = target_info.second;
+    bool MEMORY_MODE = false;
+    Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
 
     // 4. Run control logic 
     double linear_controller;
@@ -223,7 +223,7 @@ void TrackingNode::runControlStep()
             linear_controller = controller_.PUpdate(target);
             break;
         case ControllerMode::DSR:
-            linear_controller = controller_.DSRUpdate(target, odom_displacement_.head<2>());
+            linear_controller = controller_.DSRUpdate(target, cam_t_sec_, odom_displacement_.head<2>());
             break;
     }
     double angular_controller = controller_.angularUpdate(target); // or TrajAngularUpdate()

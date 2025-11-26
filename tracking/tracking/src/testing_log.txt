@@ -1,0 +1,381 @@
+11/25: Do not use current memory mode when time stamp is considered
+
+[Quick note:] This is the log showing the issue when using MEMORY_MODE = ture.
+              Using time from memory can be problematic. 
+              1. Transition between fallback & memory mode time sync is HARD 
+              2. If leader moves very slow, memory is not stored 
+                 and time info is therefore MISSING
+
+[ INFO] [1764113185.228728429]: global_leader_states_ size: 352
+[ INFO] [1764113185.230077775]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.230221661]: fallback time: 34.6061
+[ INFO] [1764113185.266969412]: Filtered tag ID:102
+[ INFO] [1764113185.267488088]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.267719121]: cam_t_sec 30.8955
+[ INFO] [1764113185.267813841]: global_leader_state_f: 0.457826, -0.0220065)
+[ INFO] [1764113185.267917191]: global_leader_states_ size: 354
+[ INFO] [1764113185.268679714]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.269190242]: fallback time: 34.6448
+[ INFO] [1764113185.307178007]: Filtered tag ID:102
+[ INFO] [1764113185.307655017]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.307841643]: cam_t_sec 30.9575
+[ INFO] [1764113185.307938216]: global_leader_state_f: 0.464399, -0.0206341)
+[ INFO] [1764113185.308017788]: global_leader_states_ size: 356
+[ INFO] [1764113185.308620111]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.308738757]: fallback time: 34.6848
+/tmp/pip-install-u9y8lxzm/apriltag/core/contrib/apriltag_quad_contour.c:467: warning: count < 8 :(
+[ INFO] [1764113185.346607784]: Filtered tag ID:102
+[ INFO] [1764113185.347199736]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.347408047]: cam_t_sec 30.9849
+[ INFO] [1764113185.347570877]: global_leader_state_f: 0.46647, -0.020777)
+[ INFO] [1764113185.347748818]: global_leader_states_ size: 358
+[ INFO] [1764113185.348524712]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.348697708]: fallback time: 34.7246
+[ INFO] [1764113185.386952284]: Filtered tag ID:102
+[ INFO] [1764113185.387398905]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.387606531]: cam_t_sec 31.0395
+[ INFO] [1764113185.387695678]: global_leader_state_f: 0.471745, -0.0209572)
+[ INFO] [1764113185.387774769]: global_leader_states_ size: 360
+[ INFO] [1764113185.388396924]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.388529236]: fallback time: 34.7646
+[ INFO] [1764113185.426898643]: Filtered tag ID:102
+[ INFO] [1764113185.427426597]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.427634871]: cam_t_sec 31.0769
+[ INFO] [1764113185.427718258]: global_leader_state_f: 0.475155, -0.020638)
+[ INFO] [1764113185.427780405]: global_leader_states_ size: 362
+[ INFO] [1764113185.428478096]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.428709129]: fallback time: 34.8046
+[ INFO] [1764113185.467050203]: Filtered tag ID:102
+[ INFO] [1764113185.467670617]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.468243773]: cam_t_sec 31.1056
+[ INFO] [1764113185.468341012]: global_leader_state_f: 0.478271, -0.0198047)
+[ INFO] [1764113185.468417900]: global_leader_states_ size: 364
+[ INFO] [1764113185.469530194]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.469742820]: fallback time: 34.8454
+[ INFO] [1764113185.506993710]: Filtered tag ID:102
+[ INFO] [1764113185.507525608]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.507748826]: cam_t_sec 31.1318
+[ INFO] [1764113185.507833139]: global_leader_state_f: 0.479738, -0.0193484)
+[ INFO] [1764113185.507909638]: global_leader_states_ size: 366
+[ INFO] [1764113185.508650050]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.508850287]: fallback time: 34.8847
+[ INFO] [1764113185.547695389]: Filtered tag ID:102
+[ INFO] [1764113185.548245286]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.548470838]: cam_t_sec 31.1675
+[ INFO] [1764113185.548583521]: global_leader_state_f: 0.483877, -0.018353)
+[ INFO] [1764113185.549401710]: global_leader_states_ size: 368
+[ INFO] [1764113185.550265990]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.550619928]: fallback time: 34.9263
+[ INFO] [1764113185.587343883]: Filtered tag ID:102
+[ INFO] [1764113185.587833208]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.588296422]: cam_t_sec 31.2186
+[ INFO] [1764113185.588674766]: global_leader_state_f: 0.489055, -0.0170741)
+[ INFO] [1764113185.588990205]: global_leader_states_ size: 370
+[ INFO] [1764113185.589639064]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.589842634]: fallback time: 34.9658
+[ INFO] [1764113185.626921268]: Filtered tag ID:102
+[ INFO] [1764113185.627336279]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.627526609]: cam_t_sec 31.2805
+[ INFO] [1764113185.627637996]: global_leader_state_f: 0.493915, -0.0166046)
+[ INFO] [1764113185.627827640]: global_leader_states_ size: 372
+[ INFO] [1764113185.628391778]: [getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.
+[ INFO] [1764113185.628531479]: fallback time: 35.0046
+[ INFO] [1764113185.667046272]: Filtered tag ID:102
+[ INFO] [1764113185.667744500]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.667978774]: cam_t_sec 31.3095
+[ INFO] [1764113185.668208344]: global_leader_state_f: 0.496861, -0.0166835)
+[ INFO] [1764113185.668321434]: global_leader_states_ size: 374
+[ INFO] [1764113185.669240139]: target indx: 43, time: 7.55614
+[ INFO] [1764113185.707286460]: Filtered tag ID:102
+[ INFO] [1764113185.707746710]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.707989928]: cam_t_sec 31.3371
+[ INFO] [1764113185.708100445]: global_leader_state_f: 0.4994, -0.0240105)
+[ INFO] [1764113185.708182702]: global_leader_states_ size: 376
+[ INFO] [1764113185.709256016]: target indx: 116, time: 19.5708
+[ INFO] [1764113185.746971731]: Filtered tag ID:102
+[ INFO] [1764113185.747474926]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.747656645]: cam_t_sec 31.3974
+[ INFO] [1764113185.747906047]: global_leader_state_f: 0.504392, -0.0302691)
+[ INFO] [1764113185.747983231]: global_leader_states_ size: 378
+[ INFO] [1764113185.748822345]: target indx: 120, time: 27.3541
+[ INFO] [1764113185.787671392]: Filtered tag ID:102
+[ INFO] [1764113185.789067107]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.789562672]: cam_t_sec 31.4338
+[ INFO] [1764113185.789954831]: global_leader_state_f: 0.507082, -0.0335354)
+[ INFO] [1764113185.791847593]: global_leader_states_ size: 380
+[ INFO] [1764113185.792975035]: target indx: 127, time: 27.4907
+[ INFO] [1764113185.827025484]: Filtered tag ID:102
+[ INFO] [1764113185.827559789]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.827761878]: cam_t_sec 31.4647
+[ INFO] [1764113185.827857728]: global_leader_state_f: 0.510381, -0.0349231)
+[ INFO] [1764113185.827931190]: global_leader_states_ size: 382
+[ INFO] [1764113185.828645010]: target indx: 128, time: 27.4907
+[ INFO] [1764113185.867038583]: Filtered tag ID:102
+[ INFO] [1764113185.867642683]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.867831809]: cam_t_sec 31.518
+[ INFO] [1764113185.867921196]: global_leader_state_f: 0.514146, -0.0384873)
+[ INFO] [1764113185.867983232]: global_leader_states_ size: 384
+[ INFO] [1764113185.868640516]: target indx: 128, time: 27.4907
+[ INFO] [1764113185.907161458]: Filtered tag ID:102
+[ INFO] [1764113185.908173624]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.908473026]: cam_t_sec 31.552
+[ INFO] [1764113185.908602616]: global_leader_state_f: 0.517607, -0.0391076)
+[ INFO] [1764113185.908669837]: global_leader_states_ size: 386
+[ INFO] [1764113185.911038016]: target indx: 128, time: 27.4907
+[ INFO] [1764113185.946624548]: Filtered tag ID:102
+[ INFO] [1764113185.947173297]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.947410163]: cam_t_sec 31.5847
+[ INFO] [1764113185.947523494]: global_leader_state_f: 0.521025, -0.0364161)
+[ INFO] [1764113185.947594734]: global_leader_states_ size: 388
+[ INFO] [1764113185.948391830]: target indx: 128, time: 27.4907
+[ INFO] [1764113185.986988733]: Filtered tag ID:102
+[ INFO] [1764113185.987847310]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113185.988064454]: cam_t_sec 31.6174
+[ INFO] [1764113185.988144490]: global_leader_state_f: 0.523993, -0.0384911)
+[ INFO] [1764113185.988198674]: global_leader_states_ size: 390
+[ INFO] [1764113185.988858476]: target indx: 129, time: 28.9702
+[ INFO] [1764113186.026937111]: Filtered tag ID:102
+[ INFO] [1764113186.027457009]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.027651432]: cam_t_sec 31.6492
+[ INFO] [1764113186.027790614]: global_leader_state_f: 0.527544, -0.0398225)
+[ INFO] [1764113186.027860002]: global_leader_states_ size: 392
+[ INFO] [1764113186.028529341]: target indx: 129, time: 28.9702
+[ INFO] [1764113186.067008080]: Filtered tag ID:102
+[ INFO] [1764113186.067529534]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.067729530]: cam_t_sec 31.7173
+[ INFO] [1764113186.067818288]: global_leader_state_f: 0.533736, -0.0402758)
+[ INFO] [1764113186.067887583]: global_leader_states_ size: 394
+[ INFO] [1764113186.068523923]: target indx: 129, time: 28.9702
+[ INFO] [1764113186.107228028]: Filtered tag ID:102
+[ INFO] [1764113186.109878998]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.110651114]: cam_t_sec 31.7493
+[ INFO] [1764113186.110841981]: global_leader_state_f: 0.536786, -0.041521)
+[ INFO] [1764113186.110926849]: global_leader_states_ size: 396
+[ INFO] [1764113186.111748057]: target indx: 129, time: 28.9702
+[ INFO] [1764113186.147704471]: Filtered tag ID:102
+[ INFO] [1764113186.148300238]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.148502142]: cam_t_sec 31.7846
+[ INFO] [1764113186.148580400]: global_leader_state_f: 0.540482, -0.0413775)
+[ INFO] [1764113186.148637528]: global_leader_states_ size: 398
+[ INFO] [1764113186.149361608]: target indx: 129, time: 28.9702
+[ INFO] [1764113186.186987770]: Filtered tag ID:102
+[ INFO] [1764113186.187485705]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.187686220]: cam_t_sec 31.8175
+[ INFO] [1764113186.187769293]: global_leader_state_f: 0.543811, -0.0426921)
+[ INFO] [1764113186.187838254]: global_leader_states_ size: 400
+[ INFO] [1764113186.188489353]: target indx: 129, time: 28.9702
+[ INFO] [1764113186.227316179]: Filtered tag ID:102
+[ INFO] [1764113186.227970056]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.228193107]: cam_t_sec 31.85
+[ INFO] [1764113186.228274605]: global_leader_state_f: 0.548456, -0.0418728)
+[ INFO] [1764113186.228376196]: global_leader_states_ size: 402
+[ INFO] [1764113186.229074443]: target indx: 130, time: 29.0381
+[ INFO] [1764113186.267104208]: Filtered tag ID:102
+[ INFO] [1764113186.267743493]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.268013155]: cam_t_sec 31.8819
+[ INFO] [1764113186.268181059]: global_leader_state_f: 0.552438, -0.0420923)
+[ INFO] [1764113186.268251058]: global_leader_states_ size: 404
+[ INFO] [1764113186.269017840]: target indx: 130, time: 29.0381
+[ INFO] [1764113186.307731390]: Filtered tag ID:102
+[ INFO] [1764113186.309695354]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.313286343]: cam_t_sec 31.9557
+[ INFO] [1764113186.313450100]: global_leader_state_f: 0.559257, -0.0424118)
+[ INFO] [1764113186.313553912]: global_leader_states_ size: 406
+[ INFO] [1764113186.314472970]: target indx: 132, time: 29.1054
+[ INFO] [1764113186.347361367]: Filtered tag ID:102
+[ INFO] [1764113186.348774841]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.349055910]: cam_t_sec 31.9846
+[ INFO] [1764113186.349189037]: global_leader_state_f: 0.561698, -0.0408299)
+[ INFO] [1764113186.349263258]: global_leader_states_ size: 408
+[ INFO] [1764113186.350320479]: target indx: 132, time: 29.1054
+[ INFO] [1764113186.387053639]: Filtered tag ID:102
+[ INFO] [1764113186.387536167]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.387714923]: cam_t_sec 32.0195
+[ INFO] [1764113186.387802496]: global_leader_state_f: 0.564532, -0.0414299)
+[ INFO] [1764113186.387858532]: global_leader_states_ size: 410
+[ INFO] [1764113186.388505316]: target indx: 133, time: 29.1348
+[ INFO] [1764113186.426959111]: Filtered tag ID:102
+[ INFO] [1764113186.427365363]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.427552600]: cam_t_sec 32.0803
+[ INFO] [1764113186.427640562]: global_leader_state_f: 0.570038, -0.0399414)
+[ INFO] [1764113186.427708153]: global_leader_states_ size: 412
+[ INFO] [1764113186.428387826]: target indx: 135, time: 29.2042
+[ INFO] [1764113186.466958730]: Filtered tag ID:102
+[ INFO] [1764113186.467411073]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.467614125]: cam_t_sec 32.0803
+[ INFO] [1764113186.467720697]: global_leader_state_f: 0.570887, -0.0400161)
+[ INFO] [1764113186.467806122]: global_leader_states_ size: 414
+[ INFO] [1764113186.468619940]: target indx: 135, time: 29.2042
+[ INFO] [1764113186.506999533]: Filtered tag ID:102
+[ INFO] [1764113186.507532449]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.507754482]: cam_t_sec 32.0803
+[ INFO] [1764113186.507867980]: global_leader_state_f: 0.572312, -0.0397601)
+[ INFO] [1764113186.507964404]: global_leader_states_ size: 416
+[ INFO] [1764113186.509159364]: target indx: 135, time: 29.2042
+[ INFO] [1764113186.547145834]: Filtered tag ID:102
+[ INFO] [1764113186.547855210]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.548077187]: cam_t_sec 32.0803
+[ INFO] [1764113186.548160537]: global_leader_state_f: 0.574019, -0.039631)
+[ INFO] [1764113186.548216703]: global_leader_states_ size: 418
+[ INFO] [1764113186.548961486]: target indx: 135, time: 29.2042
+[ INFO] [1764113186.587051639]: Filtered tag ID:102
+[ INFO] [1764113186.587619944]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.587842495]: cam_t_sec 32.2163
+[ INFO] [1764113186.588024566]: global_leader_state_f: 0.584828, -0.0373769)
+[ INFO] [1764113186.588106768]: global_leader_states_ size: 420
+[ INFO] [1764113186.589004900]: target indx: 138, time: 29.3363
+[ INFO] [1764113186.627276828]: Filtered tag ID:102
+[ INFO] [1764113186.627855928]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.628118812]: cam_t_sec 32.2163
+[ INFO] [1764113186.628239643]: global_leader_state_f: 0.585058, -0.0366711)
+[ INFO] [1764113186.628337216]: global_leader_states_ size: 422
+[ INFO] [1764113186.629268088]: target indx: 138, time: 29.3363
+[ INFO] [1764113186.666951860]: Filtered tag ID:102
+[ INFO] [1764113186.667469239]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.667690735]: cam_t_sec 32.2163
+[ INFO] [1764113186.667803085]: global_leader_state_f: 0.585785, -0.0365523)
+[ INFO] [1764113186.667882787]: global_leader_states_ size: 424
+[ INFO] [1764113186.668700272]: target indx: 139, time: 29.372
+[ INFO] [1764113186.706953682]: Filtered tag ID:102
+[ INFO] [1764113186.707376915]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.707548856]: cam_t_sec 32.36
+[ INFO] [1764113186.707627762]: global_leader_state_f: 0.592862, -0.0361466)
+[ INFO] [1764113186.707696872]: global_leader_states_ size: 426
+[ INFO] [1764113186.708387785]: target indx: 141, time: 29.4708
+[ INFO] [1764113186.747003040]: Filtered tag ID:102
+[ INFO] [1764113186.747536197]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.747746860]: cam_t_sec 32.3905
+[ INFO] [1764113186.747849562]: global_leader_state_f: 0.594062, -0.0363948)
+[ INFO] [1764113186.747925857]: global_leader_states_ size: 428
+[ INFO] [1764113186.748764675]: target indx: 142, time: 29.5033
+[ INFO] [1764113186.787025714]: Filtered tag ID:102
+[ INFO] [1764113186.787571019]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.787824422]: cam_t_sec 32.3905
+[ INFO] [1764113186.787928531]: global_leader_state_f: 0.594533, -0.0365306)
+[ INFO] [1764113186.788018011]: global_leader_states_ size: 430
+[ INFO] [1764113186.788961753]: target indx: 142, time: 29.5033
+[ INFO] [1764113186.826980833]: Filtered tag ID:102
+[ INFO] [1764113186.827535119]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.827770523]: cam_t_sec 32.3905
+[ INFO] [1764113186.827971204]: global_leader_state_f: 0.59542, -0.0367199)
+[ INFO] [1764113186.828072628]: global_leader_states_ size: 432
+[ INFO] [1764113186.829043888]: target indx: 142, time: 29.5033
+[ INFO] [1764113186.867012674]: Filtered tag ID:102
+[ INFO] [1764113186.867540942]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.867745012]: cam_t_sec 32.3905
+[ INFO] [1764113186.867843806]: global_leader_state_f: 0.596466, -0.0364532)
+[ INFO] [1764113186.867920194]: global_leader_states_ size: 434
+[ INFO] [1764113186.868720179]: target indx: 143, time: 29.5419
+[ INFO] [1764113186.907056513]: Filtered tag ID:102
+[ INFO] [1764113186.907587133]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.907815648]: cam_t_sec 32.534
+[ INFO] [1764113186.907938145]: global_leader_state_f: 0.60438, -0.0340605)
+[ INFO] [1764113186.908027292]: global_leader_states_ size: 436
+[ INFO] [1764113186.908874647]: target indx: 145, time: 29.6136
+[ INFO] [1764113186.947226999]: Filtered tag ID:102
+[ INFO] [1764113186.947748545]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.947989208]: cam_t_sec 32.534
+[ INFO] [1764113186.948091039]: global_leader_state_f: 0.607518, -0.0315706)
+[ INFO] [1764113186.948181537]: global_leader_states_ size: 438
+[ INFO] [1764113186.949058392]: target indx: 145, time: 29.6136
+[ INFO] [1764113186.987000270]: Filtered tag ID:102
+[ INFO] [1764113186.987561889]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113186.987776830]: cam_t_sec 32.534
+[ INFO] [1764113186.987876865]: global_leader_state_f: 0.608619, -0.0311184)
+[ INFO] [1764113186.987956123]: global_leader_states_ size: 440
+[ INFO] [1764113186.988834348]: target indx: 147, time: 29.6695
+[ INFO] [1764113187.026985167]: Filtered tag ID:102
+[ INFO] [1764113187.027501250]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.027686210]: cam_t_sec 32.534
+[ INFO] [1764113187.027805134]: global_leader_state_f: 0.609983, -0.030644)
+[ INFO] [1764113187.027867392]: global_leader_states_ size: 442
+[ INFO] [1764113187.028673692]: target indx: 147, time: 29.6695
+[ INFO] [1764113187.067059008]: Filtered tag ID:102
+[ INFO] [1764113187.067643849]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.067871770]: cam_t_sec 32.6832
+[ INFO] [1764113187.068091118]: global_leader_state_f: 0.61906, -0.0274489)
+[ INFO] [1764113187.068257504]: global_leader_states_ size: 444
+[ INFO] [1764113187.069325855]: target indx: 148, time: 29.7823
+[ INFO] [1764113187.107118256]: Filtered tag ID:102
+[ INFO] [1764113187.108038942]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.108519748]: cam_t_sec 32.6832
+[ INFO] [1764113187.108641672]: global_leader_state_f: 0.619118, -0.0279544)
+[ INFO] [1764113187.108742263]: global_leader_states_ size: 446
+[ INFO] [1764113187.110082312]: target indx: 148, time: 29.7823
+[ INFO] [1764113187.147440814]: Filtered tag ID:102
+[ INFO] [1764113187.148240817]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.148462165]: cam_t_sec 32.6832
+[ INFO] [1764113187.148605496]: global_leader_state_f: 0.620762, -0.0281138)
+[ INFO] [1764113187.149106653]: global_leader_states_ size: 448
+[ INFO] [1764113187.150487591]: target indx: 149, time: 29.8332
+[ INFO] [1764113187.186653207]: Filtered tag ID:102
+[ INFO] [1764113187.187313602]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.187554561]: cam_t_sec 32.8263
+[ INFO] [1764113187.187714928]: global_leader_state_f: 0.627766, -0.0270134)
+[ INFO] [1764113187.187858592]: global_leader_states_ size: 450
+[ INFO] [1764113187.189170198]: target indx: 153, time: 29.9544
+[ INFO] [1764113187.227090337]: Filtered tag ID:102
+[ INFO] [1764113187.227783824]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.228015597]: cam_t_sec 32.8263
+[ INFO] [1764113187.228152947]: global_leader_state_f: 0.627879, -0.0271542)
+[ INFO] [1764113187.228239575]: global_leader_states_ size: 452
+[ INFO] [1764113187.229465960]: target indx: 153, time: 29.9544
+[ INFO] [1764113187.267301582]: Filtered tag ID:102
+[ INFO] [1764113187.267909052]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.268435857]: cam_t_sec 32.8263
+[ INFO] [1764113187.268908349]: global_leader_state_f: 0.629203, -0.0269359)
+[ INFO] [1764113187.269021273]: global_leader_states_ size: 454
+[ INFO] [1764113187.270169455]: target indx: 153, time: 29.9544
+[ INFO] [1764113187.308149464]: Filtered tag ID:102
+[ INFO] [1764113187.309002300]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.309275665]: cam_t_sec 32.8263
+[ INFO] [1764113187.309399181]: global_leader_state_f: 0.630948, -0.0266289)
+[ INFO] [1764113187.309485791]: global_leader_states_ size: 456
+[ INFO] [1764113187.311046077]: target indx: 153, time: 29.9544
+[ INFO] [1764113187.347028548]: Filtered tag ID:102
+[ INFO] [1764113187.347584223]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.347819311]: cam_t_sec 32.9824
+[ INFO] [1764113187.348052492]: global_leader_state_f: 0.640478, -0.025612)
+[ INFO] [1764113187.348154527]: global_leader_states_ size: 458
+[ INFO] [1764113187.349528447]: target indx: 157, time: 30.1604
+[ INFO] [1764113187.386982205]: Filtered tag ID:102
+[ INFO] [1764113187.387490233]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.387704414]: cam_t_sec 32.9824
+[ INFO] [1764113187.387850356]: global_leader_state_f: 0.640954, -0.0256391)
+[ INFO] [1764113187.387939558]: global_leader_states_ size: 460
+[ INFO] [1764113187.388949929]: target indx: 157, time: 30.1604
+[ INFO] [1764113187.427076082]: Filtered tag ID:102
+[ INFO] [1764113187.428161692]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.428515500]: cam_t_sec 33.069
+[ INFO] [1764113187.428766181]: global_leader_state_f: 0.647684, -0.0256089)
+[ INFO] [1764113187.428906901]: global_leader_states_ size: 462
+[ INFO] [1764113187.430651184]: target indx: 160, time: 30.2516
+[ INFO] [1764113187.467353586]: Filtered tag ID:102
+[ INFO] [1764113187.468008333]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.468235440]: cam_t_sec 33.069
+[ INFO] [1764113187.468376771]: global_leader_state_f: 0.649144, -0.0254972)
+[ INFO] [1764113187.468491398]: global_leader_states_ size: 464
+[ INFO] [1764113187.469546879]: target indx: 160, time: 30.2516
+[ INFO] [1764113187.506951286]: Filtered tag ID:102
+[ INFO] [1764113187.507573997]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.507829715]: cam_t_sec 33.069
+[ INFO] [1764113187.507985360]: global_leader_state_f: 0.650406, -0.0253758)
+[ INFO] [1764113187.508073784]: global_leader_states_ size: 466
+[ INFO] [1764113187.509039619]: target indx: 162, time: 30.3504
+[ INFO] [1764113187.547004572]: Filtered tag ID:102
+[ INFO] [1764113187.547630912]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.547885148]: cam_t_sec 33.069
+[ INFO] [1764113187.547981998]: global_leader_state_f: 0.651768, -0.0252084)
+[ INFO] [1764113187.548062608]: global_leader_states_ size: 468
+[ INFO] [1764113187.549020127]: target indx: 162, time: 30.3504
+[ INFO] [1764113187.587007395]: Filtered tag ID:102
+[ INFO] [1764113187.587588866]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.587855527]: cam_t_sec 33.069
+[ INFO] [1764113187.587975970]: global_leader_state_f: 0.654113, -0.0249393)
+[ INFO] [1764113187.588050487]: global_leader_states_ size: 470
+[ INFO] [1764113187.588875249]: target indx: 163, time: 30.3818
+[ INFO] [1764113187.627017310]: Filtered tag ID:102
+[ INFO] [1764113187.627939793]: YAS!!!!!!!!! (movement > threshold)
+[ INFO] [1764113187.628421081]: cam_t_sec 33.2758
+[ INFO] [1764113187.628524746]: global_leader_state_f: 0.671328, -0.0219996)
+

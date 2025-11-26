@@ -31,9 +31,10 @@ public:
     // ==============================Core functions==============================
     double angularUpdate(const Eigen::Vector2d& target) const;
     double PUpdate(const Eigen::Vector2d& target);
-    double DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement);
+    double DSRUpdate(const Eigen::Vector2d& target, const double target_t_sec,
+                     const Eigen::Vector2d& displacement);
 
-    std::pair<Eigen::Vector2d, double> getTarget(bool memory_mode = true);
+    Eigen::Vector2d getTarget(bool memory_mode = true);
     void setNodeTime(double node_t_sec);
     void setObservations(const Eigen::MatrixXd& observations,
                          const std::deque<double>& cam_t_secs);
@@ -61,11 +62,12 @@ private:
     double const omega_min_ = -1.0;
     // Controller memories
     double error_;
-    double node_t_sec_;
+    double node_t_sec_ = 0.0;
     Eigen::MatrixXd observations_;     // N rows × 2 columns
     std::deque<double> obs_t_secs_;     // matching timestamps for observations_
     // DSR specific memories
     Eigen::Vector2d target_last_;
+    double target_t_sec_last_ = 0.0;
     double t_d_last_;                  // Target delayed term 
     double s_d_last_;                  // Self delayed term
     double r_t_last_;                  // Reinforce term
