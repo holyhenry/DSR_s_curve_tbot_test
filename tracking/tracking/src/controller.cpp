@@ -51,7 +51,7 @@ double Controller::DSRUpdate(const Eigen::Vector2d& target, const double target_
     // Low-pass derivative terms
     const double lp_gain = 0.5;
     double target_tau = target_t_sec - target_t_sec_last_;
-    double t_d = lowPass(delta_target / (target_tau), t_d_last_, lp_gain);
+    double t_d = lowPass(delta_target / tau_, t_d_last_, lp_gain);
     double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
     ROS_INFO_STREAM("target_tau: " << target_tau);
 
