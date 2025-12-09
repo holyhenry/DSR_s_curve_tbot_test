@@ -16,7 +16,8 @@ struct ControllerDebug
     Eigen::Vector2d target_last;
     double t_d_last;
     double s_d_last;
-    double reinforce_term;
+    double e_d_last;
+    double r_t_last;
 };
 
 class Controller{
@@ -31,8 +32,7 @@ public:
     // ==============================Core functions==============================
     double angularUpdate(const Eigen::Vector2d& target) const;
     double PUpdate(const Eigen::Vector2d& target);
-    double DSRUpdate(const Eigen::Vector2d& target, const double target_t_sec,
-                     const Eigen::Vector2d& displacement);
+    double DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement);
 
     Eigen::Vector2d getTarget(bool memory_mode = true);
     void setNodeTime(double node_t_sec);
@@ -61,7 +61,7 @@ private:
     double const omega_max_ = 1.0;
     double const omega_min_ = -1.0;
     // Controller memories
-    double error_;
+    double error_last_;
     double node_t_sec_ = 0.0;
     Eigen::MatrixXd observations_;     // N rows × 2 columns
     std::deque<double> obs_t_secs_;     // matching timestamps for observations_
@@ -70,6 +70,7 @@ private:
     double target_t_sec_last_ = 0.0;
     double t_d_last_;                  // Target delayed term 
     double s_d_last_;                  // Self delayed term
+    double e_d_last_;                  // Error delayed term
     double r_t_last_;                  // Reinforce term
 
     // =============================Helper functions=============================

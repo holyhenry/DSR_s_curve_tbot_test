@@ -223,7 +223,7 @@ void TrackingNode::runControlStep()
             linear_controller = controller_.PUpdate(target);
             break;
         case ControllerMode::DSR:
-            linear_controller = controller_.DSRUpdate(target, cam_t_sec_, odom_displacement_.head<2>());
+            linear_controller = controller_.DSRUpdate(target, odom_displacement_.head<2>());
             break;
     }
     double angular_controller = controller_.angularUpdate(target); // or TrajAngularUpdate()
@@ -241,19 +241,20 @@ void TrackingNode::runControlStep()
     Eigen::Vector3d odom_disp = odom_displacement_;
 
     std_msgs::Float32MultiArray msg;
-    msg.data.push_back(dbg.error);
-    msg.data.push_back(dbg.target_last[0]);   // x of target_last
-    msg.data.push_back(dbg.target_last[1]);   // y of target_last
-    msg.data.push_back(dbg.t_d_last);
-    msg.data.push_back(dbg.s_d_last);
-    msg.data.push_back(dbg.reinforce_term);
-    msg.data.push_back(odom_vel_x_);
-    msg.data.push_back(odom_state[0]);        // odom x
-    msg.data.push_back(odom_state[1]);        // odom y
-    msg.data.push_back(odom_state[2]);        // odom yaw
-    msg.data.push_back(odom_disp[0]);         // dx
-    msg.data.push_back(odom_disp[1]);         // dy
-    msg.data.push_back(odom_disp[2]);         // dyaw
+    msg.data.push_back(dbg.error);            // 0  - 
+    msg.data.push_back(dbg.target_last[0]);   // 1  - x of target_last
+    msg.data.push_back(dbg.target_last[1]);   // 2  - y of target_last
+    msg.data.push_back(dbg.t_d_last);         // 3  -         
+    msg.data.push_back(dbg.s_d_last);         // 4  - 
+    msg.data.push_back(dbg.e_d_last);         // 5  - 
+    msg.data.push_back(dbg.r_t_last);         // 6  - 
+    msg.data.push_back(odom_vel_x_);          // 7  - 
+    msg.data.push_back(odom_state[0]);        // 8  - odom x
+    msg.data.push_back(odom_state[1]);        // 9  - odom y
+    msg.data.push_back(odom_state[2]);        // 10 - odom yaw
+    msg.data.push_back(odom_disp[0]);         // 11 - dx
+    msg.data.push_back(odom_disp[1]);         // 12 - dy
+    msg.data.push_back(odom_disp[2]);         // 13 - dyaw
     controllr_log_pub_.publish(msg);
 }
 

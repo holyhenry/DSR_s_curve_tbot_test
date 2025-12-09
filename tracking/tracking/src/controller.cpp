@@ -8,10 +8,10 @@ Controller::Controller(double alpha,
                        double spacing)
     : alpha_(alpha), alpha_angle_(alpha_angle),
       beta1_(beta1), beta2_(beta2), tau_(tau), spacing_(spacing),
-      error_(0.0), t_d_last_(0.0), s_d_last_(0.0), r_t_last_(0.0)
+      error_last_(0.0), t_d_last_(0.0), s_d_last_(0.0), e_d_last_(0.0), r_t_last_(0.0)
 {   
     // System memories
-    error_ = 0.0;                             // controller logitudinal error
+    error_last_ = 0.0;                        // controller logitudinal error
     observations_ = Eigen::MatrixXd(0, 2);    // local predecessor trajectory
     input_        = Eigen::Vector2d::Zero();  // controller command
     target_last_  = Eigen::Vector2d::Zero();
@@ -35,37 +35,44 @@ double Controller::angularUpdate(const Eigen::Vector2d& target) const
 
 double Controller::PUpdate(const Eigen::Vector2d& target) 
 {
-    error_ = signedError(target);
-    double linear_fb = alpha_ * error_;
+    double error = signedError(target);
+    double linear_fb = alpha_ * error;
+
+    double error_last_ = error;
 
     return checkLimits(linear_fb, vel_min_, vel_max_);
 }
 
-double Controller::DSRUpdate(const Eigen::Vector2d& target, const double target_t_sec,
-                             const Eigen::Vector2d& displacement) 
+double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement) 
 {   
-    error_ = signedError(target);
+    double error = signedError(target);
     double delta_target = signedError(target - target_last_);
     double delta_state = signedError(displacement); 
 
     // Low-pass derivative terms
-    const double lp_gain = 0.9;
-    double target_tau = target_t_sec - target_t_sec_last_;
-    double t_d = lowPass(delta_target / tau_, t_d_last_, lp_gain);
-    double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
-    ROS_INFO_STREAM("target_tau: " << target_tau);
+    const double lp_gain = 0.5;
 
-    // Compute reinforce term
-    double reinforce = beta1_ * t_d  + (beta2_ - beta1_) * s_d; 
+    // Implementation 1 
+    double t_d = lowPass(delta_target / tau_, t_d_last_, lp_gain);
+    // double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
+    // double reinforce = beta1_ * t_d  + (beta2_ - beta1_) * s_d; 
+
+    // Implementation 2
+    double delta_error = error - error_last_;
+    double e_d = lowPass(delta_error / tau_, e_d_last_, lp_gain);
+    double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
+    double reinforce = beta1_ * e_d  + beta2_ * s_d; 
+    
     double r_t = lowPass(reinforce, r_t_last_, lp_gain);
 
-    double linear_fb = alpha_ * beta1_ * error_ + r_t;
+    double linear_fb = alpha_ * error + r_t;
 
     // Update controller memories
-    target_t_sec_last_ = target_t_sec;
-    target_last_       = target;
+    target_last_ = target;
+    error_last_ = error;
     t_d_last_ = t_d;
     s_d_last_ = s_d;
+    e_d_last_ = e_d;
     r_t_last_ = r_t;
 
     return checkLimits(linear_fb, vel_min_, vel_max_);
@@ -162,5 +169,5 @@ std::vector<double> Controller::toStdVector(const Eigen::Vector2d& v) const
 
 ControllerDebug Controller::getDebugData() const
 {
-    return { error_, target_last_, t_d_last_, s_d_last_, r_t_last_ };
+    return { error_last_, target_last_, t_d_last_, s_d_last_, e_d_last_, r_t_last_ };
 }
