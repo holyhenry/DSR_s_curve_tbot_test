@@ -46,11 +46,11 @@ double Controller::PUpdate(const Eigen::Vector2d& target)
 double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement) 
 {   
     double error = signedError(target);
-    double delta_target = signedError(target - target_last_);
-    double delta_state = signedError(displacement); 
+    double delta_target = (target - target_last_).norm();
+    double delta_state = displacement.norm(); 
 
     // Low-pass derivative terms
-    const double lp_gain = 0.5;
+    const double lp_gain = 1.0;
 
     // Implementation 1 
     double t_d = lowPass(delta_target / tau_, t_d_last_, lp_gain);
