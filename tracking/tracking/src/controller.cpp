@@ -64,7 +64,6 @@ double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2
     double reinforce = beta1_ * e_d  + beta2_ * s_d; 
     
     double r_t = lowPass(reinforce, r_t_last_, lp_gain);
-
     double linear_fb = alpha_ * error + r_t;
 
     // Update controller memories
@@ -109,7 +108,7 @@ Eigen::Vector2d Controller::getTarget(bool memory_mode)
     }
 
     // Fallback: non memory_mode or no valid target found
-    ROS_INFO_STREAM("[getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.");
+    ROS_WARN("[getTarget]: MEMORIZED TARGET NOT FOUND. Using fallback.");
 
     Eigen::Vector2d direction = - leader_current_state;
     double theta = std::atan2(direction[1], direction[0]);
