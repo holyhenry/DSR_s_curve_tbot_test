@@ -37,7 +37,7 @@ public:
     Eigen::Vector2d getTarget(bool memory_mode = true);
     void setNodeTime(double node_t_sec);
     void setObservations(const Eigen::MatrixXd& observations,
-                         const std::deque<double>& cam_t_secs);
+                         double cam_t_sec);
     std::vector<double> step(double linear_update, double angular_update);
 
     // ==========================Debug Helper functions==========================
@@ -64,7 +64,7 @@ private:
     double error_last_;
     double node_t_sec_ = 0.0;
     Eigen::MatrixXd observations_;     // N rows × 2 columns
-    std::deque<double> obs_t_secs_;     // matching timestamps for observations_
+    double obs_t_sec_;                 // current timestamp for observations_
     // DSR specific memories
     Eigen::Vector2d target_last_;
     double target_t_sec_last_ = 0.0;
@@ -72,11 +72,17 @@ private:
     double s_d_last_;                  // Self delayed term
     double e_d_last_;                  // Error delayed term
     double r_t_last_;                  // Reinforce term
+    // Error LSQ filter state (2D)
+    int err_lsq_buffer_ = 10;
+    std::deque<double> err_lsq_t_;
+    std::deque<double> err_lsq_y_;
 
     // =============================Helper functions=============================
     double lowPass(double x, double x_last, double gain) const;
     double checkLimits(double u, double min, double max) const;
     double signedError(const Eigen::Vector2d& target) const;
     std::vector<double> toStdVector(const Eigen::Vector2d& v) const;
+    std::pair<double, double> errorLSQFilter(const double y_now, 
+                                             const double t_now);
 
 };

@@ -52,8 +52,7 @@ private:
     // Robot tag transformed global leader states (GLOBAL frame)
     Eigen::Vector2d global_leader_state_last_; // [x, y]
     Eigen::MatrixXd global_leader_states_;     // Nx2 matrix
-    double cam_t_sec_;
-    std::deque<double> cam_t_secs_;            // matching timestamps for camera detections
+    double cam_t_sec_;                         // camera detection timestamp
 
     // ROS interface & timer 
     ros::Publisher cmd_vel_pub_;
@@ -64,12 +63,12 @@ private:
     ros::Publisher global_leader_pub_;
     ros::Publisher controllr_log_pub_;
 
-    // Odom LSQ filter state
+    // Odom LSQ filter state (3D)
     int lsq_buffer_ = 10;
     std::deque<double>          lsq_t_;
     std::deque<Eigen::Vector3d> lsq_y_;
 
-    // Camera LSQ state (2D)
+    // Camera LSQ filter state (2D)
     int cam_lsq_buffer_ = 7;
     std::deque<double>           cam_lsq_t_;
     std::deque<Eigen::Vector2d>  cam_lsq_y_;

@@ -58,17 +58,20 @@ double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2
     // double reinforce = beta1_ * t_d  + (beta2_ - beta1_) * s_d; 
 
     // Implementation 2
-    double delta_error = error - error_last_;
+    auto res = errorLSQFilter(error, obs_t_sec_);
+    double error_f = res.first;
+    double delta_error = res.second;
+    // double delta_error = error - error_last_;
     double e_d = lowPass(delta_error / tau_, e_d_last_, lp_gain);
     double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
     double reinforce = beta1_ * e_d  + beta2_ * s_d; 
     
     double r_t = lowPass(reinforce, r_t_last_, lp_gain);
-    double linear_fb = alpha_ * error + r_t;
+    double linear_fb = alpha_ * error_f + r_t;
 
     // Update controller memories
     target_last_ = target;
-    error_last_ = error;
+    error_last_ = error_f;
     t_d_last_ = t_d;
     s_d_last_ = s_d;
     e_d_last_ = e_d;
@@ -123,10 +126,10 @@ void Controller::setNodeTime(double node_t_sec)
 }
 
 void Controller::setObservations(const Eigen::MatrixXd& observations,
-                                 const std::deque<double>& obs_t_secs)
+                                 double cam_t_sec)
 {
     observations_ = observations;
-    obs_t_secs_ = obs_t_secs;
+    obs_t_sec_ = cam_t_sec;
 }
 
 std::vector<double> Controller::step(double linear_update, double anguler_update)
@@ -162,6 +165,49 @@ double Controller::signedError(const Eigen::Vector2d& target) const
 std::vector<double> Controller::toStdVector(const Eigen::Vector2d& v) const
 {
     return std::vector<double>(v.data(), v.data() + v.size());
+}
+
+std::pair<double, double> 
+Controller::errorLSQFilter(const double y_now, const double t_now){
+
+    // Add current sample
+    err_lsq_t_.push_back(t_now);
+    err_lsq_y_.push_back(y_now);
+
+    // Enforce window size
+    while (static_cast<int>(err_lsq_t_.size()) > err_lsq_buffer_){
+        err_lsq_t_.pop_front();
+        err_lsq_y_.pop_front();
+    }
+    const size_t m = err_lsq_t_.size();
+    if (m < 4) return { y_now, 0.0 };
+
+    // Build LSQ system: A * x = Y, where
+    // A = [ t_i  1 ]
+    // x = [ slope, intercept ]^T
+    // Y = [ y_i ]
+    Eigen::MatrixXd A(m, 2);
+    Eigen::VectorXd Y(m);
+    for (size_t i = 0; i < m; ++i){
+        A(i, 0) = err_lsq_t_[i];
+        A(i, 1) = 1.0;
+        Y(i) = err_lsq_y_[i];
+    }
+
+    // Solve A*x = Y (x is 2x1: slope & intercept)
+    Eigen::Vector2d x = A.colPivHouseholderQr().solve(Y);
+
+    // Evaluate at t_now & t_now - tau_
+    Eigen::Vector2d a(t_now, 1.0);
+    Eigen::Vector2d a_delay(t_now - tau_, 1.0);
+
+    // Make prediction at t_now & t_now - tau_
+    const double y_now_f = x.dot(a);        // x^T * a
+    const double y_delay = x.dot(a_delay);  // x^T * a_delay
+
+    const double disp = y_now_f - y_delay;
+
+    return { y_now_f, disp };
 }
 
 // ==========================Debug Helper functions==========================

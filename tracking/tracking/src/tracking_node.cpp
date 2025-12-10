@@ -48,7 +48,6 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
 
     // Initialize camera time stamp
     cam_t_sec_ = 0.0;
-    cam_t_secs_.push_back(0.0);
 
 }
 // =============================Callback functions=============================
@@ -173,7 +172,6 @@ void TrackingNode::aprilTagFilter()
         
         if (movement > movement_threshold)
         {   
-            cam_t_secs_.push_back(cam_t_sec_);
             global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
             global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state_f.transpose();
             global_leader_state_last_ = global_leader_state_f;
@@ -209,10 +207,10 @@ void TrackingNode::runControlStep()
     // ROS_INFO_STREAM_THROTTLE(1.0, "local_leader_states:\n" << local_leader_states);
 
     // 2. Feed predecessor trajectory into the controller's buffer
-    controller_.setObservations(local_leader_states, cam_t_secs_);
+    controller_.setObservations(local_leader_states, cam_t_sec_);
 
     // 3. Compute the tracking target point
-    bool MEMORY_MODE = true;
+    bool MEMORY_MODE = false;
     Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
 
     // 4. Run control logic 
