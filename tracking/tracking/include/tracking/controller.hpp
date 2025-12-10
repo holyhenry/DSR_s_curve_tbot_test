@@ -73,7 +73,7 @@ private:
     double e_d_last_;                  // Error delayed term
     double r_t_last_;                  // Reinforce term
     // Error LSQ filter state (2D)
-    int err_lsq_buffer_ = 10;
+    int err_lsq_buffer_ = 15;
     std::deque<double> err_lsq_t_;
     std::deque<double> err_lsq_y_;
 
