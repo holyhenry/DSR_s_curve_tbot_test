@@ -66,7 +66,7 @@ double Controller::DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2
     double s_d = lowPass(delta_state / tau_, s_d_last_, lp_gain);
     double reinforce = beta1_ * e_d  + beta2_ * s_d; 
     
-    double r_t = lowPass(reinforce, r_t_last_, lp_gain);
+    double r_t = lowPass(reinforce, r_t_last_, 1.0);
     double linear_fb = alpha_ * error_f + r_t;
 
     // Update controller memories
