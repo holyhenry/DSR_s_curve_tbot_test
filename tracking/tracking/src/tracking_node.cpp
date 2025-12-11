@@ -134,6 +134,10 @@ void TrackingNode::aprilTagFilter()
             double norm_diff = (inferred_bot - tag_leader_state_).norm();
             bool isOutlier = norm_diff > outlier_threshold;
 
+            ROS_INFO_STREAM("[debug] ID" << id << "inferred_bot_fromtag: (" << inferred_bot[0] 
+                                                                    << ", " << inferred_bot[1] << ")");
+            ROS_INFO_STREAM("norm_diff: " << tag_leader_state_);
+
             if (!isOutlier)
             {
                 count++;
@@ -188,12 +192,12 @@ void TrackingNode::aprilTagFilter()
         global_leader_pub_.publish(msg);
 
         // Log current tag position
-        ROS_INFO_STREAM("cam_t_sec " << cam_t_sec_);
+        // ROS_INFO_STREAM("cam_t_sec " << cam_t_sec_);
         // ROS_INFO_STREAM("movement " << movement);
-        // ROS_INFO_STREAM("tag_leader_state_: " << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
+        ROS_INFO_STREAM("tag_leader_state_: (" << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         // ROS_INFO_STREAM("global_leader_state: " << global_leader_state[0] << ", " << global_leader_state[1] << ")");
-        ROS_INFO_STREAM("global_leader_state_f: " << global_leader_state_f[0] << ", " << global_leader_state_f[1] << ")");
-        ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.size());
+        // ROS_INFO_STREAM("global_leader_state_f: (" << global_leader_state_f[0] << ", " << global_leader_state_f[1] << ")");
+        // ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.size());
     }
 }
 
