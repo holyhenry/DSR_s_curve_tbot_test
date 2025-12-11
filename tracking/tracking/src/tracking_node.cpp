@@ -127,7 +127,7 @@ void TrackingNode::aprilTagFilter()
             double y   = -(tag_multi_raw_[i + 1] - cam_pos_offset);
             double phi =  -tag_multi_raw_[i + 4];
 
-            Eigen::Vector3d infered = transformTag2Middle(x, y, phi, id);
+            Eigen::Vector3d infered = transformTag2Middle(x, y, phi, (id - id_offset));
             Eigen::Vector2d inferred_bot = homoTrans2BotCenter(infered);
 
             // Filter the outliers
