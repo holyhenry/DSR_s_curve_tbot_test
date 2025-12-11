@@ -134,9 +134,9 @@ void TrackingNode::aprilTagFilter()
             double norm_diff = (inferred_bot - tag_leader_state_).norm();
             bool isOutlier = norm_diff > outlier_threshold;
 
-            ROS_INFO_STREAM("[debug] ID" << id << "inferred_bot_fromtag: (" << inferred_bot[0] 
-                                                                    << ", " << inferred_bot[1] << ")");
-            ROS_INFO_STREAM("norm_diff: " << tag_leader_state_);
+            ROS_INFO_STREAM("[debug] ID: " << id << " inferred_bot_from_tag: (" << inferred_bot[0] 
+                                                                      << ", " << inferred_bot[1] << ")");
+            ROS_INFO_STREAM("norm_diff: " << norm_diff);
 
             if (!isOutlier)
             {
