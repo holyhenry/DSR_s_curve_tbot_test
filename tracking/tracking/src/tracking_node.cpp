@@ -214,7 +214,7 @@ void TrackingNode::runControlStep()
     controller_.setObservations(local_leader_states, cam_t_sec_);
 
     // 3. Compute the tracking target point
-    bool MEMORY_MODE = true;
+    bool MEMORY_MODE = false;
     Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
 
     // 4. Run control logic 
