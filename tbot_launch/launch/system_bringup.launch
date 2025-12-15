@@ -20,7 +20,7 @@
   </include>
 
   <!-- EKF for pose estimation -->
-  <!-- <include file="$(find robot_pose_ekf)/launch/robot_pose_ekf.launch" /> -->
+  <include file="$(find robot_pose_ekf)/launch/robot_pose_ekf.launch" />
 
   <!-- Tracking node -->
   <include file="$(find tracking)/launch/tracking.launch">
