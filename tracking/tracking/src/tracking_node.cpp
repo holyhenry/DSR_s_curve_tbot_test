@@ -148,7 +148,7 @@ void TrackingNode::aprilTagFilter()
                 tag_phi += infered[2];
             }
             else{   // Log outlier detection
-                ROS_WARN("[aprilTagFilter] Filtered tag ID:" << id);
+                ROS_INFO_STREAM("[aprilTagFilter] Filtered tag ID:" << id);
             }
         }
     }
