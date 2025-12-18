@@ -137,9 +137,9 @@ void TrackingNode::aprilTagFilter()
             double norm_diff = (inferred_bot - tag_leader_state_).norm();
             bool isOutlier = norm_diff > outlier_threshold;
 
-            ROS_INFO_STREAM("[debug] ID: " << id << " inferred_bot_from_tag: (" << inferred_bot[0] 
-                                                                        << ", " << inferred_bot[1] << ")");
-            ROS_INFO_STREAM("norm_diff: " << norm_diff);
+            // ROS_INFO_STREAM("[debug] ID: " << id << " inferred_bot_from_tag: (" << inferred_bot[0] 
+            //                                                             << ", " << inferred_bot[1] << ")");
+            // ROS_INFO_STREAM("norm_diff: " << norm_diff);
 
             if (!isOutlier){
                 count++;
@@ -148,7 +148,7 @@ void TrackingNode::aprilTagFilter()
                 tag_phi += infered[2];
             }
             else{   // Log outlier detection
-                ROS_INFO_STREAM("Filtered tag ID:" << id);
+                ROS_WARN("[aprilTagFilter] Filtered tag ID:" << id);
             }
         }
     }
@@ -214,7 +214,7 @@ void TrackingNode::runControlStep()
     controller_.setObservations(local_leader_states, cam_t_sec_);
 
     // 3. Compute the tracking target point
-    bool MEMORY_MODE = true;
+    bool MEMORY_MODE = false;
     Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
 
     // 4. Run control logic 
