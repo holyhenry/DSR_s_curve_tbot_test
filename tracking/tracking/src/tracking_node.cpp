@@ -47,7 +47,7 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
     // Initialize global leader state
     // [Note]: the first gloabl aligns with local 
     global_leader_state_last_ = Eigen::Vector2d(spacing_, 0.0);
-    global_leader_states_ = controller.getObservations();
+    global_leader_states_ = controller_.getObservations();
 
     // Initialize camera time stamp
     cam_t_sec_ = 0.0;
@@ -198,7 +198,7 @@ void TrackingNode::aprilTagFilter()
         ROS_INFO_STREAM("tag_leader_state_: (" << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         // ROS_INFO_STREAM("global_leader_state: " << global_leader_state[0] << ", " << global_leader_state[1] << ")");
         // ROS_INFO_STREAM("global_leader_state_f: (" << global_leader_state_f[0] << ", " << global_leader_state_f[1] << ")");
-        // ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.size());
+        ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.size());
     }
 }
 
@@ -214,7 +214,7 @@ void TrackingNode::runControlStep()
     controller_.setObservations(local_leader_states, cam_t_sec_);
 
     // 3. Compute the tracking target point
-    bool MEMORY_MODE = false;
+    bool MEMORY_MODE = true;
     Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
 
     // 4. Run control logic 
