@@ -25,3 +25,8 @@
 
 11/25: Do not use current memory mode when time stamp for controller is considered 
     (See testing_log.txt for more detail)
+
+12/15: Tasks:
+    1. Try the largest beta2 
+    2. Record new test bag
+    3. Try 4 robot platoon

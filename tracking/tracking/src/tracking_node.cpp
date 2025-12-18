@@ -41,10 +41,13 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
     // Initialize apriltag local measurement 
     tag_leader_state_ = Eigen::Vector2d(spacing_, 0.0);
 
+    // Interp virtual start trajectory 
+    controller_.interpTraj(tag_leader_state_, 300);
+
     // Initialize global leader state
+    // [Note]: the first gloabl aligns with local 
     global_leader_state_last_ = Eigen::Vector2d(spacing_, 0.0);
-    global_leader_states_ = Eigen::MatrixXd(1, 2);
-    global_leader_states_.row(0) << spacing_, 0.0;
+    global_leader_states_ = controller.getObservations();
 
     // Initialize camera time stamp
     cam_t_sec_ = 0.0;
@@ -81,10 +84,11 @@ void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     Eigen::Vector3d disp_over_tau = res.second;
 
     // Update displacement
-    // odom_displacement_ = odom_state - odom_state_last_;
-    // odom_state_last_   = odom_state;
     odom_displacement_ = disp_over_tau;
     odom_state_last_   = odom_state_f;
+    // [TODO]: old code below, delete later
+    // odom_displacement_ = odom_state - odom_state_last_;
+    // odom_state_last_   = odom_state;
 }
 
 void TrackingNode::tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg)
@@ -120,8 +124,7 @@ void TrackingNode::aprilTagFilter()
     for (size_t i = 0; i < tag_multi_raw_.size(); ++i)
     {   
         bool isCorrectID = static_cast<int>(tag_multi_raw_[i] - id_offset) / num_tag == follower_indx_;
-        if (i % tag_space == 0 && isCorrectID)
-        {   
+        if (i % tag_space == 0 && isCorrectID){   
             int id = static_cast<int>(tag_multi_raw_[i]);
             double x   =   tag_multi_raw_[i + 3];
             double y   = -(tag_multi_raw_[i + 1] - cam_pos_offset);
@@ -135,18 +138,16 @@ void TrackingNode::aprilTagFilter()
             bool isOutlier = norm_diff > outlier_threshold;
 
             ROS_INFO_STREAM("[debug] ID: " << id << " inferred_bot_from_tag: (" << inferred_bot[0] 
-                                                                      << ", " << inferred_bot[1] << ")");
+                                                                        << ", " << inferred_bot[1] << ")");
             ROS_INFO_STREAM("norm_diff: " << norm_diff);
 
-            if (!isOutlier)
-            {
+            if (!isOutlier){
                 count++;
                 tag_x += infered[0];
                 tag_y += infered[1];
                 tag_phi += infered[2];
             }
-            else
-            {   // Log outlier detection
+            else{   // Log outlier detection
                 ROS_INFO_STREAM("Filtered tag ID:" << id);
             }
         }
@@ -208,7 +209,6 @@ void TrackingNode::runControlStep()
 
     // 1. Compute predecessor states in current local frame
     Eigen::MatrixXd local_leader_states = homoInvTransMulti2Local(getGlobalLeaderStates());        
-    // ROS_INFO_STREAM_THROTTLE(1.0, "local_leader_states:\n" << local_leader_states);
 
     // 2. Feed predecessor trajectory into the controller's buffer
     controller_.setObservations(local_leader_states, cam_t_sec_);

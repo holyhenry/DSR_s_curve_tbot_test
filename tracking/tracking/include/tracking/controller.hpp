@@ -2,6 +2,7 @@
 
 #include <ros/ros.h>
 #include <numeric>
+#include <limits>
 #include <vector>
 #include <deque>
 #include <utility>
@@ -9,8 +10,7 @@
 #include <algorithm>
 #include <Eigen/Dense>
 
-struct ControllerDebug
-{
+struct ControllerDebug{
     // From DSRUpdate()
     double error;
     Eigen::Vector2d target_last;
@@ -18,6 +18,13 @@ struct ControllerDebug
     double s_d_last;
     double e_d_last;
     double r_t_last;
+};
+
+struct TrajDerivatives2D{
+    double dx_dt;
+    double ddx_dt;
+    double dy_dt;
+    double ddy_dt;
 };
 
 class Controller{
@@ -30,15 +37,23 @@ public:
                double spacing);
 
     // ==============================Core functions==============================
-    double angularUpdate(const Eigen::Vector2d& target) const;
+    void interpTraj(const Eigen::Vector2d& predecessor_state, int pts = 300);
+
     double PUpdate(const Eigen::Vector2d& target);
     double DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement);
+
+    double angularUpdate(const Eigen::Vector2d& target) const;
+    double trajAngularUpdate(double v_current, double yaw_current = 0.0, int degree = 3,
+                             double weight_factor = 10.0, int stabilizing_tail = 10);
 
     Eigen::Vector2d getTarget(bool memory_mode = true);
     void setNodeTime(double node_t_sec);
     void setObservations(const Eigen::MatrixXd& observations,
                          double cam_t_sec);
     std::vector<double> step(double linear_update, double angular_update);
+
+    // =============================Getter functions=============================
+    const Eigen::MatrixXd& getObservations() const { return observations_; }
 
     // ==========================Debug Helper functions==========================
     ControllerDebug getDebugData() const;
@@ -78,11 +93,27 @@ private:
     std::deque<double> err_lsq_y_;
 
     // =============================Helper functions=============================
-    double lowPass(double x, double x_last, double gain) const;
-    double checkLimits(double u, double min, double max) const;
+    double lowPass(double x,
+                   double x_last, 
+                   double gain) const;
+    double checkLimits(double u, 
+                       double min, 
+                       double max) const;
     double signedError(const Eigen::Vector2d& target) const;
     std::vector<double> toStdVector(const Eigen::Vector2d& v) const;
     std::pair<double, double> errorLSQFilter(const double y_now, 
                                              const double t_now);
+    static double wrapToPi(double a);
+    double angularGainMap(double velocity,
+                          double threshold) const;
+    Eigen::MatrixXd getFitStates(const Eigen::MatrixXd& predecessor_states,
+                                 const Eigen::Vector2d& state,
+                                 int stabilizing_tail,
+                                 int* query_idx);
+    TrajDerivatives2D fitPolyTrajectory(const Eigen::MatrixXd& predecessor_states,
+                                        const Eigen::Vector2d& state,
+                                        int degree,
+                                        double weight_factor,
+                                        int stabilizing_tail);
 
 };

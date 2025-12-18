@@ -19,13 +19,29 @@ Controller::Controller(double alpha,
 
 // ==============================Core functions==============================
 
+void Controller::interpTraj(const Eigen::Vector2d& predecessor_state, int pts)
+{
+    pts = std::max(2, pts);
+
+    // Self-state is always zeros in current local frame
+    const Eigen::Vector2d start = Eigen::Vector2d::Zero();  
+    const Eigen::Vector2d end   = predecessor_state;
+    const Eigen::Vector2d start2 = 2.0 * start - end; // mirrored start pt for virtual tail traj
+
+    observations_.resize(pts, 2);
+    for (int i = 0; i < pts; ++i){
+        const double s = static_cast<double>(i) / static_cast<double>(pts - 1);
+        const Eigen::Vector2d p = (1.0 - s) * start2 + s * end;
+        observations_.row(i) = p.transpose();
+    }
+}
+
 double Controller::angularUpdate(const Eigen::Vector2d& target) const
 {
     double theta = std::atan2(target[1], target[0]);
 
     // Stop rotating if the angular error is too large (±60 deg)
-    if (std::abs(theta) > M_PI / 3.0)
-    {
+    if (std::abs(theta) > M_PI / 3.0){
         return 0.0;
     }
 
@@ -149,6 +165,18 @@ double Controller::lowPass(double x, double x_last, double gain) const
 double Controller::checkLimits(double u, double min, double max) const 
 {
     return std::max(min, std::min(max, u));
+}
+
+double Controller::wrapToPi(double a)
+{
+    if (a > M_PI) a -= 2.0 * M_PI;
+    if (a < -M_PI) a += 2.0 * M_PI;
+    return a;
+}
+
+double Controller::angularGainMap(double velocity, double threshold) const
+{
+    return (std::abs(velocity) <= threshold) ? 0.0 : alpha_angle_;
 }
 
 double Controller::signedError(const Eigen::Vector2d& target) const 
