@@ -238,6 +238,43 @@ Controller::errorLSQFilter(const double y_now, const double t_now){
     return { y_now_f, disp };
 }
 
+Eigen::MatrixXd Controller::getFitStates(int* query_idx, 
+                                       int stabilizing_tail)
+{
+    const int N = static_cast<int>(observations_.rows());
+    if (N <= 0){
+        ROS_WARN("[getFitStates] observations_ is empty");
+        if (query_idx) *query_idx = 0;
+        return Eigen::MatrixXd(0, 2);
+    }
+
+    // 1) Vectorized distance-to-origin argmin: d2 = x^2 + y^2
+    const Eigen::ArrayXd d2 = observations_.col(0).array().square() +
+                              observations_.col(1).array().square();
+
+    Eigen::Index idx = 0;
+    double min_d2 = d2.minCoeff(&idx);
+    const int argmin = static_cast<int>(idx);
+
+    // 2) Fit window start (stabilizing_tail points behind the closest point)
+    const int start_idx = std::max(argmin - stabilizing_tail, 0); 
+    const int n_fit = N - start_idx;
+    Eigen::MatrixXd fit_states = observations_.block(start_idx, 0, n_fit, 2);
+
+    // Query index inside fit window (clamped, techniqucally = stabilizing_tail)
+    if (query_idx) *query_idx = std::max(std::min(stabilizing_tail, n_fit - 1), 0);
+    ROS_INFO_STREAM("query_idx !!!: " << *query_idx 
+                                      << " fit_states: " << fit_states.rows());
+
+    // 3) MEMORY TRIMMING ([deprecated] move trimming part to tracking_node.cpp)
+    // if (start_idx > 50){
+    //     const int keep_from = start_idx - 50;
+    //     observations_ = observations_.block(keep_from, 0, N - keep_from, 2);
+    // }
+
+    return fit_states;
+}
+
 // ==========================Debug Helper functions==========================
 
 ControllerDebug Controller::getDebugData() const

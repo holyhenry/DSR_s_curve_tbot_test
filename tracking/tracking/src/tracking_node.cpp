@@ -171,25 +171,30 @@ void TrackingNode::aprilTagFilter()
         Eigen::Vector2d global_leader_state_f = res.first;
         Eigen::Vector2d disp_over_tau         = res.second;
 
-        // [TODO]: old code below, delete later
-        // double movement = (global_leader_state - global_leader_state_last_).norm();
-        double movement = disp_over_tau.norm();
-        
+        // Add new state into system memory
+        const int n = static_cast<int>(global_leader_states_.rows());
+        double movement = disp_over_tau.norm();       
         if (movement > movement_threshold)
-        {   
-            global_leader_states_.conservativeResize(global_leader_states_.rows() + 1, 2);
-            global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state_f.transpose();
+        {
+            constexpr int kMaxStates = 2000;
+
+            if (n < kMaxStates) {
+                global_leader_states_.conservativeResize(n + 1, 2);
+                global_leader_states_.row(n) = global_leader_state_f.transpose();
+            } else {
+                // At capacity - drop oldest by shifting up 1 row, then write new sample at end.
+                global_leader_states_.topRows(kMaxStates - 1) =
+                    global_leader_states_.bottomRows(kMaxStates - 1).eval();
+
+                global_leader_states_.row(kMaxStates - 1) = global_leader_state_f.transpose();
+            }
             global_leader_state_last_ = global_leader_state_f;
-            // [TODO]: old code below, delete later
-            // global_leader_states_.row(global_leader_states_.rows() - 1) = global_leader_state.transpose();
-            // global_leader_state_last_ = global_leader_state;
         }
 
         // Publish global leader states
-        const int last = global_leader_states_.rows() - 1;
         geometry_msgs::Pose2D msg;
-        msg.x = global_leader_states_(last, 0);  // coordinate x
-        msg.y = global_leader_states_(last, 1);  // coordinate y
+        msg.x = global_leader_states_(n - 1, 0);  // coordinate x
+        msg.y = global_leader_states_(n - 1, 1);  // coordinate y
         global_leader_pub_.publish(msg);
 
         // Log current tag position
@@ -198,7 +203,7 @@ void TrackingNode::aprilTagFilter()
         ROS_INFO_STREAM("tag_leader_state_: (" << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         // ROS_INFO_STREAM("global_leader_state: " << global_leader_state[0] << ", " << global_leader_state[1] << ")");
         // ROS_INFO_STREAM("global_leader_state_f: (" << global_leader_state_f[0] << ", " << global_leader_state_f[1] << ")");
-        ROS_INFO_STREAM("global_leader_states_ size: " << global_leader_states_.size());
+        ROS_INFO_STREAM("global_leader_states_ size: " << n);
     }
 }
 
@@ -214,7 +219,7 @@ void TrackingNode::runControlStep()
     controller_.setObservations(local_leader_states, cam_t_sec_);
 
     // 3. Compute the tracking target point
-    bool MEMORY_MODE = true;
+    bool MEMORY_MODE = false;
     Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
 
     // 4. Run control logic 

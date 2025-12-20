@@ -106,10 +106,8 @@ private:
     static double wrapToPi(double a);
     double angularGainMap(double velocity,
                           double threshold) const;
-    Eigen::MatrixXd getFitStates(const Eigen::MatrixXd& predecessor_states,
-                                 const Eigen::Vector2d& state,
-                                 int stabilizing_tail,
-                                 int* query_idx);
+    Eigen::MatrixXd getFitStates(int* query_idx,
+                                 int stabilizing_tail = 20);
     TrajDerivatives2D fitPolyTrajectory(const Eigen::MatrixXd& predecessor_states,
                                         const Eigen::Vector2d& state,
                                         int degree,
