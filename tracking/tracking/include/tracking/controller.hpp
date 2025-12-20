@@ -55,6 +55,10 @@ public:
     // =============================Getter functions=============================
     const Eigen::MatrixXd& getObservations() const { return observations_; }
 
+    // testing (move back to private helper later)
+    Eigen::MatrixXd getFitStates(int* query_idx,
+                                 int stabilizing_tail = 20);
+
     // ==========================Debug Helper functions==========================
     ControllerDebug getDebugData() const;
 
@@ -106,8 +110,7 @@ private:
     static double wrapToPi(double a);
     double angularGainMap(double velocity,
                           double threshold) const;
-    Eigen::MatrixXd getFitStates(int* query_idx,
-                                 int stabilizing_tail = 20);
+
     TrajDerivatives2D fitPolyTrajectory(const Eigen::MatrixXd& predecessor_states,
                                         const Eigen::Vector2d& state,
                                         int degree,

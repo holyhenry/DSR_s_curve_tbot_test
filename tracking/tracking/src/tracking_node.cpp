@@ -182,7 +182,7 @@ void TrackingNode::aprilTagFilter()
                 global_leader_states_.conservativeResize(n + 1, 2);
                 global_leader_states_.row(n) = global_leader_state_f.transpose();
             } else {
-                // At capacity - drop oldest by shifting up 1 row, then write new sample at end.
+                // Drop oldest by shifting up 1 row, then write new sample at end
                 global_leader_states_.topRows(kMaxStates - 1) =
                     global_leader_states_.bottomRows(kMaxStates - 1).eval();
 
@@ -217,6 +217,9 @@ void TrackingNode::runControlStep()
 
     // 2. Feed predecessor trajectory into the controller's buffer
     controller_.setObservations(local_leader_states, cam_t_sec_);
+    // testing
+    int q = 0;
+    controller_.getFitStates(&q);
 
     // 3. Compute the tracking target point
     bool MEMORY_MODE = false;
