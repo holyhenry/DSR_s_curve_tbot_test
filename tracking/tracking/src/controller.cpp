@@ -56,7 +56,7 @@ double Controller::trajAngularUpdate(double v_current, int degree,
         ROS_WARN("[trajAngularUpdate] Not enough observations for poly fit.");
         return 0.0;
     }
-
+    ROS_INFO_STREAM("trajAngularUpdate is running...");
     const TrajDerivatives2D d = fitPolyTrajectory(degree, weight_factor, stabilizing_tail);
 
     const double dx_dt = d.dx_dt;
@@ -376,6 +376,7 @@ TrajDerivatives2D Controller::fitPolyTrajectory(int degree, double weight_factor
     out.dy_dt  = eval_d1(coeffs_y, t_query);
     out.ddy_dt = eval_d2(coeffs_y, t_query);
 
+    ROS_INFO_STREAM("fitPolyTrajectory is running...");
     return out;
 }
 

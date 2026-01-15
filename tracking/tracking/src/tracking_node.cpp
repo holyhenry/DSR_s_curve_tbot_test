@@ -243,14 +243,14 @@ void TrackingNode::runControlStep()
             break;
     }
     double angular_controller;
-    double v_current = odom_displacement_(0) / tau_;
-    ROS_INFO_STREAM("v_current: " << v_current);
     switch (ang_mode_)
     {
         case AngControllerMode::LOS:
             angular_controller = controller_.angularUpdate(target);
             break;
         case AngControllerMode::PC:
+            double v_current = odom_displacement_(0) / tau_;
+            ROS_INFO_STREAM("v_current: " << v_current);
             angular_controller = controller_.trajAngularUpdate(v_current);
             break;
     }
