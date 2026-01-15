@@ -16,14 +16,19 @@
 class TrackingNode
 {
 public:
-    TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::string mode_str,
+    TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, 
+                 std::string mode_str, std::string ang_mode_str,
                  double alpha, double alpha_angle,
                  double beta1, double beta2,
                  double tau, double spacing,
                  int follower_indx);
     
+    // P - Proportional, DSR - Delayed Self-Reinforcement
     enum class ControllerMode { P, DSR };
     ControllerMode mode_;
+    // LOS - Line of Sight, PC - Path Curvature
+    enum class AngControllerMode { LOS, PC }; 
+    AngControllerMode ang_mode_;
 
     // =============================Core functions=============================
     Eigen::MatrixXd getGlobalLeaderStates() const;

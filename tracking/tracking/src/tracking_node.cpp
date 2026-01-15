@@ -1,7 +1,8 @@
 #include <ros/ros.h>
 #include "tracking/tracking_node.hpp"
 
-TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::string mode_str,
+TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, 
+                           std::string mode_str, std::string ang_mode_str,
                            double alpha, double alpha_angle,
                            double beta1, double beta2,
                            double tau, double spacing,
@@ -32,6 +33,14 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh, std::strin
     if (mode_str == "DSR") 
     {  
         mode_ = ControllerMode::DSR;
+    }
+    if (ang_mode_str == "LOS") 
+    {   
+        ang_mode_ = AngControllerMode::LOS;
+    }
+    if (ang_mode_str == "PC") 
+    {  
+        ang_mode_ = AngControllerMode::PC;
     }
 
     // Initialize odom state 
@@ -217,9 +226,6 @@ void TrackingNode::runControlStep()
 
     // 2. Feed predecessor trajectory into the controller's buffer
     controller_.setObservations(local_leader_states, cam_t_sec_);
-    // testing
-    int q = 0;
-    controller_.getFitStates(&q);
 
     // 3. Compute the tracking target point
     bool MEMORY_MODE = false;
@@ -236,7 +242,19 @@ void TrackingNode::runControlStep()
             linear_controller = controller_.DSRUpdate(target, odom_displacement_.head<2>());
             break;
     }
-    double angular_controller = controller_.angularUpdate(target); // or TrajAngularUpdate()
+    double angular_controller;
+    double v_current = odom_displacement_(0) / tau_;
+    ROS_INFO_STREAM("v_current: " << v_current);
+    switch (ang_mode_)
+    {
+        case AngControllerMode::LOS:
+            angular_controller = controller_.angularUpdate(target);
+            break;
+        case AngControllerMode::PC:
+            angular_controller = controller_.trajAngularUpdate(v_current);
+            break;
+    }
+    // double angular_controller = controller_.angularUpdate(target); // or TrajAngularUpdate()
     std::vector<double> cmd = controller_.step(linear_controller,
                                                angular_controller);
 
@@ -474,12 +492,14 @@ int main(int argc, char** argv) {
     ros::Rate rate(25.0);
 
     // Platoon parameters
-    std::string controller_mode;
+    std::string ctrl_mode;
+    std::string ang_ctrl_mode;
     double alpha, alpha_angle, beta1, beta2, tau, spacing;
     int follower_indx;
 
     // Load ROS parameters
-    pnh.param<std::string>("mode", controller_mode, "DSR");
+    pnh.param<std::string>("ctrl_mode", ctrl_mode, "DSR");
+    pnh.param<std::string>("ang_ctrl_mode", ang_ctrl_mode, "LOS");
     pnh.param<double>("alpha", alpha, 0.3);
     pnh.param<double>("alpha_angle", alpha_angle, 3.0);
     pnh.param<double>("beta1", beta1, 0.8);
@@ -489,7 +509,12 @@ int main(int argc, char** argv) {
     pnh.param<int>("follower_indx", follower_indx, 0);
 
     // Call the node constructor
-    TrackingNode node(nh, pnh, controller_mode, alpha, alpha_angle, beta1, beta2, tau, spacing, follower_indx);
+    TrackingNode node(nh, pnh, 
+                      ctrl_mode, ang_ctrl_mode,
+                      alpha, alpha_angle, 
+                      beta1, beta2, 
+                      tau, spacing, 
+                      follower_indx);
 
     ROS_INFO("Tracking node is running...");
 

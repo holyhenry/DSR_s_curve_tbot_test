@@ -43,8 +43,8 @@ public:
     double DSRUpdate(const Eigen::Vector2d& target, const Eigen::Vector2d& displacement);
 
     double angularUpdate(const Eigen::Vector2d& target) const;
-    double trajAngularUpdate(double v_current, double yaw_current = 0.0, int degree = 3,
-                             double weight_factor = 10.0, int stabilizing_tail = 10);
+    double trajAngularUpdate(double v_current, int degree = 4,
+                             double weight_factor = 100.0, int stabilizing_tail = 20);
 
     Eigen::Vector2d getTarget(bool memory_mode = true);
     void setNodeTime(double node_t_sec);
@@ -57,7 +57,12 @@ public:
 
     // testing (move back to private helper later)
     Eigen::MatrixXd getFitStates(int* query_idx,
-                                 int stabilizing_tail = 20);
+                                 int stabilizing_tail);
+
+    TrajDerivatives2D fitPolyTrajectory(int degree,
+                                        double weight_factor,
+                                        int stabilizing_tail);
+    // testing (move back to private helper later)
 
     // ==========================Debug Helper functions==========================
     ControllerDebug getDebugData() const;
@@ -111,10 +116,6 @@ private:
     double angularGainMap(double velocity,
                           double threshold) const;
 
-    TrajDerivatives2D fitPolyTrajectory(const Eigen::MatrixXd& predecessor_states,
-                                        const Eigen::Vector2d& state,
-                                        int degree,
-                                        double weight_factor,
-                                        int stabilizing_tail);
+    
 
 };

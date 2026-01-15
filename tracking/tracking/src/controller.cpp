@@ -45,8 +45,38 @@ double Controller::angularUpdate(const Eigen::Vector2d& target) const
         return 0.0;
     }
 
-    double angle_fb = alpha_angle_ * theta;
-    return checkLimits(angle_fb, omega_min_, omega_max_);
+    double omega_fb = alpha_angle_ * theta;
+    return checkLimits(omega_fb, omega_min_, omega_max_);
+}
+
+double Controller::trajAngularUpdate(double v_current, int degree,
+                                     double weight_factor, int stabilizing_tail)
+{
+    if (observations_.rows() < (degree + 1)) {
+        ROS_WARN("[trajAngularUpdate] Not enough observations for poly fit.");
+        return 0.0;
+    }
+
+    const TrajDerivatives2D d = fitPolyTrajectory(degree, weight_factor, stabilizing_tail);
+
+    const double dx_dt = d.dx_dt;
+    const double dy_dt = d.dy_dt;
+    const double ddx_dt = d.ddx_dt;
+    const double ddy_dt = d.ddy_dt;
+
+    // Compute feedforward
+    const double v_tau2 = dx_dt * dx_dt + dy_dt * dy_dt;
+    if (v_tau2 < 1e-10) { return 0.0; }
+    const double v_tau = std::sqrt(v_tau2);
+    const double curvature_numerator = dx_dt * ddy_dt - dy_dt * ddx_dt;
+    const double omega_ff = v_current * curvature_numerator / (v_tau2 * v_tau);
+
+    // Compute feedback
+    const double traj_yaw = std::atan2(dy_dt, dx_dt);
+    const double yaw_err = wrapToPi(traj_yaw);
+    const double omega_fb = angularGainMap(v_current, 0.01) * yaw_err;
+
+    return checkLimits(omega_ff + omega_fb, omega_min_, omega_max_);
 }
 
 double Controller::PUpdate(const Eigen::Vector2d& target) 
@@ -238,8 +268,7 @@ Controller::errorLSQFilter(const double y_now, const double t_now){
     return { y_now_f, disp };
 }
 
-Eigen::MatrixXd Controller::getFitStates(int* query_idx, 
-                                       int stabilizing_tail)
+Eigen::MatrixXd Controller::getFitStates(int* query_idx, int stabilizing_tail)
 {
     const int N = static_cast<int>(observations_.rows());
     if (N <= 0){
@@ -261,7 +290,7 @@ Eigen::MatrixXd Controller::getFitStates(int* query_idx,
     const int n_fit = N - start_idx;
     Eigen::MatrixXd fit_states = observations_.block(start_idx, 0, n_fit, 2);
 
-    // Query index inside fit window (clamped, techniqucally = stabilizing_tail)
+    // Query index inside fit window (clamped, technically = stabilizing_tail)
     if (query_idx) *query_idx = std::max(std::min(stabilizing_tail, n_fit - 1), 0);
     ROS_INFO_STREAM("query_idx !!!: " << *query_idx 
                                       << " fit_states: " << fit_states.rows());
@@ -273,6 +302,81 @@ Eigen::MatrixXd Controller::getFitStates(int* query_idx,
     // }
 
     return fit_states;
+}
+
+TrajDerivatives2D Controller::fitPolyTrajectory(int degree, double weight_factor,
+                                                int stabilizing_tail)
+{
+    TrajDerivatives2D out;
+
+    int query_idx;
+    const Eigen::MatrixXd fit_states = getFitStates(&query_idx, stabilizing_tail);
+
+    // Set up the weighted least squares problem & Vandermonde matrix
+    const int n = static_cast<int>(fit_states.rows());
+    if (n < degree + 1) {
+        ROS_WARN_STREAM("[fitPolyTrajectory] Not enough points for poly fit: n="
+                        << n << ", degree=" << degree);
+        return out;
+    }
+
+    Eigen::VectorXd t(n);  // Time grid t in [0, 1]
+    const double inv = 1.0 / static_cast<double>(n - 1);
+    for (int i = 0; i < n; ++i) t(i) = static_cast<double>(i) * inv;
+    const double t_query = t(query_idx);
+
+    Eigen::MatrixXd V(n, degree + 1);  // Build Vandermonde V (increasing powers)
+    V.col(0).setOnes();
+    for (int k = 1; k <= degree; ++k) {
+        V.col(k) = V.col(k - 1).cwiseProduct(t);
+    }
+
+    // Create weights: higher weight for the closest state
+    Eigen::VectorXd w = Eigen::VectorXd::Ones(n);
+    w(query_idx) = weight_factor;  // w(0) = weight_factor;
+
+    // Solve (W @ V) @ coeffs = W @ observed_values  
+    // Apply weights row-wise to avoid forming a diagonal matrix.
+    Eigen::MatrixXd WV = V;
+    Eigen::VectorXd Wx(n), Wy(n);
+    for (int i = 0; i < n; ++i) {
+        const double wi = w(i);
+        WV.row(i) *= wi;
+        Wx(i) = wi * fit_states(i, 0);  // x
+        Wy(i) = wi * fit_states(i, 1);  // y
+    }
+    const Eigen::VectorXd coeffs_x = WV.colPivHouseholderQr().solve(Wx);
+    const Eigen::VectorXd coeffs_y = WV.colPivHouseholderQr().solve(Wy);
+
+    // Evaluate derivatives at tq without building extra polynomial objects.
+    // For coefficients c0..cd:
+    // dx/dt  = sum_{k=1..d} k*c_k*t^(k-1)
+    // d2x/dt2= sum_{k=2..d} k*(k-1)*c_k*t^(k-2)
+    auto eval_d1 = [](const Eigen::VectorXd& c, double x) {
+        double s = 0.0;
+        double xpow = 1.0; // x^(k-1), starts at k=1 -> x^0
+        for (int k = 1; k < c.size(); ++k) {
+            s += static_cast<double>(k) * c(k) * xpow;
+            xpow *= x;
+        }
+        return s;
+    };
+    auto eval_d2 = [](const Eigen::VectorXd& c, double x) {
+        double s = 0.0;
+        double xpow = 1.0; // x^(k-2), starts at k=2 -> x^0
+        for (int k = 2; k < c.size(); ++k) {
+            s += static_cast<double>(k) * static_cast<double>(k - 1) * c(k) * xpow;
+            xpow *= x;
+        }
+        return s;
+    };
+
+    out.dx_dt  = eval_d1(coeffs_x, t_query);
+    out.ddx_dt = eval_d2(coeffs_x, t_query);
+    out.dy_dt  = eval_d1(coeffs_y, t_query);
+    out.ddy_dt = eval_d2(coeffs_y, t_query);
+
+    return out;
 }
 
 // ==========================Debug Helper functions==========================
