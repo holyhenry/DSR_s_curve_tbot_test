@@ -333,7 +333,7 @@ TrajDerivatives2D Controller::fitPolyTrajectory(int degree, double weight_factor
 
     // Create weights: higher weight for the closest state
     Eigen::VectorXd w = Eigen::VectorXd::Ones(n);
-    w(query_idx) = weight_factor;  // w(0) = weight_factor;
+    w(0) = weight_factor;  // w(0) = weight_factor;
 
     // Solve (W @ V) @ coeffs = W @ observed_values  
     // Apply weights row-wise to avoid forming a diagonal matrix.
