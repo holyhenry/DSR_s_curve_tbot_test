@@ -25,8 +25,8 @@
 
   <!-- Tracking node -->
   <include file="$(find tracking)/launch/tracking.launch">
-    <arg name="ctrl_mode" default="DSR"/>
-    <arg name="ang_ctrl_mode" default="LOS"/>
+    <arg name="ctrl_mode" value="$(arg ctrl_mode)"/>
+    <arg name="ang_ctrl_mode" value="$(arg ang_ctrl_mode)"/>
     <arg name="alpha" value="$(arg alpha)"/>
     <arg name="alpha_angle" value="$(arg alpha_angle)"/>
     <arg name="beta1" value="$(arg beta1)"/>
