@@ -44,7 +44,7 @@ public:
 
     double angularUpdate(const Eigen::Vector2d& target) const;
     double trajAngularUpdate(double v_current, int degree = 4,
-                             double weight_factor = 100.0, int stabilizing_tail = 20);
+                             double weight_factor = 100.0, int stabilizing_tail = 50);
 
     Eigen::Vector2d getTarget(bool memory_mode = true);
     void setNodeTime(double node_t_sec);
