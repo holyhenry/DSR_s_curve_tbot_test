@@ -249,7 +249,7 @@ void TrackingNode::runControlStep()
             angular_controller = controller_.angularUpdate(target);
             break;
         case AngControllerMode::PC:
-            double v_current = odom_displacement_(0) / tau_;
+            const double v_current = getVelocity();
             ROS_INFO_STREAM("v_current: " << v_current);
             angular_controller = controller_.trajAngularUpdate(v_current);
             break;
@@ -482,6 +482,19 @@ Eigen::MatrixXd TrackingNode::homoInvTransMulti2Local(const Eigen::MatrixXd& glo
 }
 
 Eigen::MatrixXd TrackingNode::getGlobalLeaderStates() const { return global_leader_states_; }
+
+double TrackingNode::getVelocity() const
+{
+    // Velocity from odmetry can be noisy. 
+    // This is instead created from smoothed odometry global displacement
+
+    // Planar global velocity dot heading unit vector gives signed forward speed
+    const Eigen::Vector2d v_xy = odom_displacement_.head<2>() / tau_;
+    const double yaw = odom_state_last_[2];
+    const Eigen::Vector2d forward(std::cos(yaw), std::sin(yaw));
+
+    return v_xy.dot(forward);
+}
 
 // ==================================Main loop=================================
 

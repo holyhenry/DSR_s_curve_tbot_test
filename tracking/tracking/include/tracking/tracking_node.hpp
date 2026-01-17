@@ -35,6 +35,9 @@ public:
     void aprilTagFilter();
     void runControlStep();
 
+    // =============================Getter functions=============================
+    double getVelocity() const;
+
 private:
     // Platoon parameters
     double alpha_, alpha_angle_, beta1_, beta2_;
