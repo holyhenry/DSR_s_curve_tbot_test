@@ -31,7 +31,7 @@ class lighting_node:
     def angleDataCallback(self, msg):
 
         # self.angle = np.abs((msg.angular.z)*180/np.pi)  # deprecated
-        self.angle = np.abs((msg.data[10])*180/np.pi)
+        self.angle = np.abs((msg.data[7])*180/np.pi)
         rospy.loginfo(self.angle)
 
     def run(self):
