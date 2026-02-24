@@ -11,7 +11,10 @@ class lighting_node:
     def __init__(self) -> None:
 
         self.bright = 0
-        self.angle = 0.0
+
+        # From predecessor
+        self.angle = 0.0  # relative bearing 
+        self.error = 0.0  # spacing error
 
         self.mode = 0
         self.mode_last = 0
@@ -25,14 +28,13 @@ class lighting_node:
         self.pixels = neopixel.NeoPixel(board.D10, 64, brightness=self.bright)
         # pixels = neopixel.NeoPixel(board.D18, 64, brightness=bright)
 
-        # rospy.Subscriber(ns + "data", Twist, self.angleDataCallback, queue_size=1)  # deprecated
         rospy.Subscriber("controller_log_info", Float32MultiArray, self.angleDataCallback, queue_size=1)
 
     def angleDataCallback(self, msg):
 
-        # self.angle = np.abs((msg.angular.z)*180/np.pi)  # deprecated
+        self.error = np.abs((msg.data[0]))
         self.angle = np.abs((msg.data[7])*180/np.pi)
-        rospy.loginfo(self.angle)
+        rospy.loginfo("[lighting] angle:", self.angle, " spacing err:", self.error)
 
     def run(self):
 
@@ -44,7 +46,7 @@ class lighting_node:
         neutral_face = [2,13,18,21,22,29,34,41,42,45,50,61]
 
         while not rospy.is_shutdown():
-            if self.angle < 45:
+            if self.angle < 45 or self.error < 0.25:
                 self.mode = 1
                 if self.mode != self.mode_last:
                     self.pixels.fill((0,0,0))
@@ -52,7 +54,7 @@ class lighting_node:
                 for i in smile_face:
                     self.pixels[i] = (0, 255, 0) # green
 
-            elif 45 <= self.angle and self.angle < 60:
+            elif (45 <= self.angle and self.angle < 60) or (0.25 <= self.error and self.error < 0.4):
                 self.mode = 2
                 if self.mode != self.mode_last:
                     self.pixels.fill((0,0,0))
