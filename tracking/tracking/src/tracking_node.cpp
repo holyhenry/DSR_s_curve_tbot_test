@@ -171,6 +171,7 @@ void TrackingNode::aprilTagFilter()
 
         Eigen::Vector3d tag_raw(tag_x, tag_y, tag_phi);
         tag_leader_state_ = homoTrans2BotCenter(tag_raw);
+        tag_phi_ = tag_phi;
 
         // Transform to global frame
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
@@ -275,7 +276,7 @@ void TrackingNode::runControlStep()
     msg.data.push_back(dbg.s_d_last);         // 4  - 
     msg.data.push_back(dbg.e_d_last);         // 5  - 
     msg.data.push_back(dbg.r_t_last);         // 6  - 
-    msg.data.push_back(odom_vel_x_);          // 7  - 
+    msg.data.push_back(tag_phi_);             // 7  - relative bearing
     msg.data.push_back(odom_state[0]);        // 8  - odom x
     msg.data.push_back(odom_state[1]);        // 9  - odom y
     msg.data.push_back(odom_state[2]);        // 10 - odom yaw

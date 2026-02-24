@@ -56,6 +56,7 @@ private:
     ros::Time          tag_stamp_; 
     std::vector<float> tag_multi_raw_;  // raw apriltag detection
     Eigen::Vector2d tag_leader_state_;  // [x, y] - filtered apriltag detection
+    double tag_phi_ = 0.0;              // averaged relative raw bearing (USAGE: lighting node)
     
     // Robot tag transformed global leader states (GLOBAL frame)
     Eigen::Vector2d global_leader_state_last_; // [x, y]
