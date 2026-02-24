@@ -38,6 +38,6 @@
 
   <!-- LED pad lighting -->
   <include file="$(find lighting)/launch/lighting.launch">
-    <arg name="brightness" value="$(arg brightness)">
+    <arg name="brightness" value="$(arg brightness)"/>
   </include>
 </launch>
