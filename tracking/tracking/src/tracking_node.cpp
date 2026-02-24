@@ -167,7 +167,6 @@ void TrackingNode::aprilTagFilter()
         tag_x /= count;
         tag_y /= count;
         tag_phi /= count;
-        ROS_INFO_STREAM("tag_phi---------------------:" << tag_phi * 180 / M_PI);
 
         Eigen::Vector3d tag_raw(tag_x, tag_y, tag_phi);
         tag_leader_state_ = homoTrans2BotCenter(tag_raw);
