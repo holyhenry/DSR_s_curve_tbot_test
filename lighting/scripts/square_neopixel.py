@@ -34,7 +34,7 @@ class lighting_node:
 
         self.error = np.abs((msg.data[0]))
         self.angle = np.abs((msg.data[7])*180/np.pi)
-        rospy.loginfo("[lighting] angle:", self.angle, " spacing err:", self.error)
+        rospy.loginfo("[lighting] angle: %.3f spacing err: %.3f", self.angle, self.error)
 
     def run(self):
 
