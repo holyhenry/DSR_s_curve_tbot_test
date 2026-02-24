@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="brightness" default="0.05"/>
+    <arg name="brightness" default="0.02"/>
 
     <node pkg="lighting" name="lighting" type="square_neopixel.py" output="screen"> 
         <param name="brightness" value="$(arg brightness)"/>

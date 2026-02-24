@@ -4,6 +4,7 @@ import neopixel
 import rospy
 import numpy as np
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Float32MultiArray
 
 class lighting_node:
     
@@ -24,11 +25,14 @@ class lighting_node:
         self.pixels = neopixel.NeoPixel(board.D10, 64, brightness=self.bright)
         # pixels = neopixel.NeoPixel(board.D18, 64, brightness=bright)
 
-        rospy.Subscriber(ns + "data", Twist, self.angleDataCallback, queue_size=1)
+        # rospy.Subscriber(ns + "data", Twist, self.angleDataCallback, queue_size=1)  # deprecated
+        rospy.Subscriber("controller_log_info", Float32MultiArray, self.angleDataCallback, queue_size=1)
 
     def angleDataCallback(self, msg):
 
-        self.angle = np.abs((msg.angular.z)*180/np.pi)
+        # self.angle = np.abs((msg.angular.z)*180/np.pi)  # deprecated
+        self.angle = np.abs((msg.data[10])*180/np.pi)
+        rospy.loginfo(self.angle)
 
     def run(self):
 
