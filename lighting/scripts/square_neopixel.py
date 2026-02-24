@@ -45,30 +45,79 @@ class lighting_node:
         cry_face     = [0,14,18,21,22,28,35,41,42,45,49,63]
         neutral_face = [2,13,18,21,22,29,34,41,42,45,50,61]
 
+        # while not rospy.is_shutdown():
+        #     if self.angle < 45:
+        #         self.mode = 1
+        #         if self.mode != self.mode_last:
+        #             self.pixels.fill((0,0,0))
+        #             print('mode change!',self.mode, self.mode_last) 
+        #         for i in smile_face:
+        #             self.pixels[i] = (0, 255, 0) # green
+
+        #     elif (45 <= self.angle and self.angle < 60):
+        #         self.mode = 2
+        #         if self.mode != self.mode_last:
+        #             self.pixels.fill((0,0,0))
+        #             print('mode change!',self.mode, self.mode_last) 
+        #         for i in neutral_face:
+        #             self.pixels[i] = (255, 69, 0) # yellow
+
+        #     else:
+        #         self.mode = 3
+        #         if self.mode != self.mode_last:
+        #             self.pixels.fill((0,0,0))
+        #             print('mode change!',self.mode, self.mode_last) 
+        #         for i in cry_face:
+        #             self.pixels[i] = (255, 0, 0) # red
+
         while not rospy.is_shutdown():
-            if self.angle < 45 or self.error < 0.25:
-                self.mode = 1
-                if self.mode != self.mode_last:
-                    self.pixels.fill((0,0,0))
-                    print('mode change!',self.mode, self.mode_last) 
-                for i in smile_face:
-                    self.pixels[i] = (0, 255, 0) # green
-
-            elif (45 <= self.angle and self.angle < 60) or (0.25 <= self.error and self.error < 0.4):
-                self.mode = 2
-                if self.mode != self.mode_last:
-                    self.pixels.fill((0,0,0))
-                    print('mode change!',self.mode, self.mode_last) 
-                for i in neutral_face:
-                    self.pixels[i] = (255, 69, 0) # yellow
-
+            # ---------------------------
+            # 1. Evaluate angle severity
+            # ---------------------------
+            if self.angle < 45:
+                angle_level = 1      # green
+            elif self.angle < 60:
+                angle_level = 2      # yellow
             else:
-                self.mode = 3
-                if self.mode != self.mode_last:
-                    self.pixels.fill((0,0,0))
-                    print('mode change!',self.mode, self.mode_last) 
-                for i in cry_face:
-                    self.pixels[i] = (255, 0, 0) # red
+                angle_level = 3      # red
+
+            # ---------------------------
+            # 2. Evaluate error severity
+            # ---------------------------
+            if self.error < 0.25:
+                error_level = 1
+            elif self.error < 0.4:
+                error_level = 2
+            else:
+                error_level = 3
+
+            # ---------------------------
+            # 3. Priority fusion
+            # ---------------------------
+            self.mode = max(angle_level, error_level)
+
+            # ---------------------------
+            # 4. Handle mode change
+            # ---------------------------
+            if self.mode != self.mode_last:
+                self.pixels.fill((0, 0, 0))
+                print('mode change!', self.mode, self.mode_last)
+                self.mode_last = self.mode
+
+            # ---------------------------
+            # 5. Display face + color
+            # ---------------------------
+            if self.mode == 1:
+                color = (0, 255, 0)      # green
+                face = smile_face
+            elif self.mode == 2:
+                color = (255, 69, 0)     # yellow/orange
+                face = neutral_face
+            else:
+                color = (255, 0, 0)      # red
+                face = cry_face
+            for i in face:
+                self.pixels[i] = color
 
             self.mode_last = self.mode
             rate.sleep()
