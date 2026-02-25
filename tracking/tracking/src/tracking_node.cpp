@@ -249,7 +249,7 @@ void TrackingNode::runControlStep()
             break;
         case AngControllerMode::PC:
             const double v_current = getVelocity();
-            ROS_INFO_STREAM("v_current: " << v_current);
+            // ROS_INFO_STREAM("v_current: " << v_current);
             angular_controller = controller_.trajAngularUpdate(v_current);
             break;
     }
