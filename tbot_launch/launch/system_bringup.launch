@@ -37,7 +37,7 @@
   </include>
 
   <!-- LED pad lighting -->
-  <include file="$(find lighting)/launch/lighting.launch">
+  <!-- <include file="$(find lighting)/launch/lighting.launch">
     <arg name="brightness" value="$(arg brightness)"/>
-  </include>
+  </include> -->
 </launch>
