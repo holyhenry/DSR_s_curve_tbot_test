@@ -18,6 +18,8 @@ This repository accompanies the paper:
 
 ## 🏗️ System Architecture
 
+![System setups](assets/hardware/hardware.png)
+
 - **Mobile Robot:** TurtleBot3 ([document](https://emanual.robotis.com/docs/en/platform/turtlebot3/overview/))
 - **Requirements:** Ubuntu 20.04, ROS Noetic, C++, Python
 - **Leader:** Human-controlled robot (manual keyboard / joystick)
