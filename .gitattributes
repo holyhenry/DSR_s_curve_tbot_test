@@ -1,0 +1,2 @@
+testing/*.ipynb linguist-detectable=false
+testing/**/*.ipynb linguist-detectable=false
