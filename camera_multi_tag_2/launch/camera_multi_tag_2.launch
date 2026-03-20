@@ -1,5 +1,0 @@
-<launch>
-
-    <node pkg="camera_multi_tag_2" name="camera_multi_tag_2" type="cam_multi_tag_2.py" output="screen"/> 
-
-</launch>

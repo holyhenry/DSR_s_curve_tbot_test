@@ -45,31 +45,6 @@ class lighting_node:
         cry_face     = [0,14,18,21,22,28,35,41,42,45,49,63]
         neutral_face = [2,13,18,21,22,29,34,41,42,45,50,61]
 
-        # while not rospy.is_shutdown():
-        #     if self.angle < 45:
-        #         self.mode = 1
-        #         if self.mode != self.mode_last:
-        #             self.pixels.fill((0,0,0))
-        #             print('mode change!',self.mode, self.mode_last) 
-        #         for i in smile_face:
-        #             self.pixels[i] = (0, 255, 0) # green
-
-        #     elif (45 <= self.angle and self.angle < 60):
-        #         self.mode = 2
-        #         if self.mode != self.mode_last:
-        #             self.pixels.fill((0,0,0))
-        #             print('mode change!',self.mode, self.mode_last) 
-        #         for i in neutral_face:
-        #             self.pixels[i] = (255, 69, 0) # yellow
-
-        #     else:
-        #         self.mode = 3
-        #         if self.mode != self.mode_last:
-        #             self.pixels.fill((0,0,0))
-        #             print('mode change!',self.mode, self.mode_last) 
-        #         for i in cry_face:
-        #             self.pixels[i] = (255, 0, 0) # red
-
         while not rospy.is_shutdown():
             # ---------------------------
             # 1. Evaluate angle severity

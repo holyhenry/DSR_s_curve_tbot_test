@@ -95,9 +95,6 @@ void TrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     // Update displacement
     odom_displacement_ = disp_over_tau;
     odom_state_last_   = odom_state_f;
-    // [TODO]: old code below, delete later
-    // odom_displacement_ = odom_state - odom_state_last_;
-    // odom_state_last_   = odom_state;
 }
 
 void TrackingNode::tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr& msg)
@@ -145,10 +142,6 @@ void TrackingNode::aprilTagFilter()
             // Filter the outliers
             double norm_diff = (inferred_bot - tag_leader_state_).norm();
             bool isOutlier = norm_diff > outlier_threshold;
-
-            // ROS_INFO_STREAM("[debug] ID: " << id << " inferred_bot_from_tag: (" << inferred_bot[0] 
-            //                                                             << ", " << inferred_bot[1] << ")");
-            // ROS_INFO_STREAM("norm_diff: " << norm_diff);
 
             if (!isOutlier){
                 count++;
@@ -209,7 +202,7 @@ void TrackingNode::aprilTagFilter()
 
         // Log current tag position
         // ROS_INFO_STREAM("movement " << movement);
-        ROS_INFO_STREAM("tag_leader_state_: (" << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
+        // ROS_INFO_STREAM("tag_leader_state_: (" << tag_leader_state_[0] << ", " << tag_leader_state_[1] << ")");
         // ROS_INFO_STREAM("global_leader_state: " << global_leader_state[0] << ", " << global_leader_state[1] << ")");
         // ROS_INFO_STREAM("global_leader_state_f: (" << global_leader_state_f[0] << ", " << global_leader_state_f[1] << ")");
     }
@@ -249,11 +242,9 @@ void TrackingNode::runControlStep()
             break;
         case AngControllerMode::PC:
             const double v_current = getVelocity();
-            // ROS_INFO_STREAM("v_current: " << v_current);
             angular_controller = controller_.trajAngularUpdate(v_current);
             break;
     }
-    // double angular_controller = controller_.angularUpdate(target); // or TrajAngularUpdate()
     std::vector<double> cmd = controller_.step(linear_controller,
                                                angular_controller);
 

@@ -291,8 +291,6 @@ Eigen::MatrixXd Controller::getFitStates(int* query_idx, int stabilizing_tail)
 
     // Query index inside fit window (clamped, technically = stabilizing_tail)
     if (query_idx) *query_idx = std::max(std::min(stabilizing_tail, n_fit - 1), 0);
-    // ROS_INFO_STREAM("query_idx !!!: " << *query_idx 
-    //                                   << " fit_states: " << fit_states.rows());
 
     // 3) MEMORY TRIMMING ([deprecated] move trimming part to tracking_node.cpp)
     // if (start_idx > 50){
