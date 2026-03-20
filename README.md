@@ -1,7 +1,5 @@
 # Human-Led Decentralized Constant-Spacing Robot Platoons without Communication
 
-Decentralized control framework for maintaining constant-spacing platoons (CSP) led by a human operator, without inter-robot communication.
-
 ## 📌 Overview
 
 Decentralized constant-spacing platooning (CSP) typically relies on inter-robot communication to prevent string instability, where spacing errors grow along the platoon. In many scenarios, however, communication is unavailable or unreliable due to ad-hoc deployment, security, or jamming constraints.
