@@ -10,10 +10,6 @@ This repository accompanies the paper:
 
 **[🚧TODO: add paper link]**
 
-## 🎥 Demo
-
-**[🚧TODO: attach video here]**
-
 ## 🏗️ System Architecture
 
 ![System setups](assets/hardware/hardware.png)
@@ -40,6 +36,10 @@ This repository accompanies the paper:
 ## ▶️ Usage
 
   [🚧TODO: add smth]
+
+## 🎥 Demo
+
+**[🚧TODO: attach video here]**
 
 [⚠️TODO: old document below, remove later...]
 # Important rospackages
