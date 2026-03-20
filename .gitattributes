@@ -1,2 +1,2 @@
-testing/*.ipynb linguist-detectable=false
-testing/**/*.ipynb linguist-detectable=false
+assets/*.ipynb linguist-detectable=false
+assets/**/*.ipynb linguist-detectable=false
