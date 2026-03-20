@@ -1,6 +1,47 @@
-# Human-Led Communication-free Constant-spacing Robot Platoons 
-A repo for Turtlebot hardware testing
+# Human-Led Decentralized Constant-Spacing Robot Platoons without Communication
 
+Decentralized control framework for maintaining constant-spacing platoons (CSP) led by a human operator, without inter-robot communication.
+
+## 📌 Overview
+
+Decentralized constant-spacing platooning (CSP) typically relies on inter-robot communication to prevent string instability, where spacing errors grow along the platoon. In many scenarios, however, communication is unavailable or unreliable due to ad-hoc deployment, security, or jamming constraints.
+
+This work introduces a communication-free, string-stable platooning strategy using Delayed Self-Reinforcement (DSR), achieving arbitrarily small spacing errors given sufficiently high sensing rates.
+
+This repository accompanies the paper: 
+
+**[🚧TODO: add paper link]**
+
+## 🎥 Demo
+
+**[🚧TODO: attach video here]**
+
+## 🏗️ System Architecture
+
+- **Mobile Robot:** TurtleBot3 ([document](https://emanual.robotis.com/docs/en/platform/turtlebot3/overview/))
+- **Requirements:** Ubuntu 20.04, ROS Noetic, C++, Python
+- **Leader:** Human-controlled robot (manual keyboard / joystick)
+- **Follower:** Autonomous robots track predecessor using onboard camera (relative pose)
+  - **Sensing:** AprilTag pose detection through D435i camera <br> 
+    - Launch package `camera_multi_tag`               
+  - **Controller:** Track predecessor using AprilTag pose detection 
+    - Launch package `tracking` 
+    - Logitudinal control mode: `P`(CSP) or `DSR`(D-CSP)  
+    - Orientation control mode: `LOS`(line of sight) or `PC`(path curvature)
+  - **Lighting:** LED pad on the robot indicates visual contact status
+    - Launch package `lighting`
+    - Light status: <br>
+      😊(green) good for field of view (FOV) <br>
+      😐(yellow) attention needed <br>
+      😞(red) potentialFOV loss
+
+## ⚙️ Installation
+
+## ▶️ Usage
+
+  [🚧TODO: add smth]
+
+[⚠️TODO: old document below, remove later...]
 # Important rospackages
 1. camera_multi_tag: launch `image_publisher.py` and `cam_multi_tag_node` to dectect Aruco marker
 2. camera_multi_tag_2: launch `cam_multi_tag_2.py` to detect Apriltag
