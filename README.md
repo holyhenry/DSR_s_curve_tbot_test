@@ -1,4 +1,4 @@
-# DSR_s_curve_tbot_test
+# Human-Led Communication-free Constant-spacing Robot Platoons 
 A repo for Turtlebot hardware testing
 
 # Important rospackages
