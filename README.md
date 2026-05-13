@@ -39,11 +39,9 @@ This repository accompanies the paper:
 
 ## 🎥 Demo
 
-Watch the demo on YouTube:
+[Watch the demo on YouTube](https://youtu.be/_Z-6x9xi1LY)
 
 [![Demo video](https://img.youtube.com/vi/_Z-6x9xi1LY/maxresdefault.jpg)](https://youtu.be/_Z-6x9xi1LY)
-
-[Watch the demo on YouTube](https://youtu.be/_Z-6x9xi1LY)
 
 # Important rospackages
 1. camera_multi_tag: launch `image_publisher.py` and `cam_multi_tag_node` to dectect Aruco marker
