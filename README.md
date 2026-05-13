@@ -39,9 +39,12 @@ This repository accompanies the paper:
 
 ## 🎥 Demo
 
-**[🚧TODO: attach video here]**
+Watch the demo on YouTube:
 
-**[⚠️TODO: old document below, remove later...]**
+[![Demo video](https://img.youtube.com/vi/_Z-6x9xi1LY/maxresdefault.jpg)](https://youtu.be/_Z-6x9xi1LY)
+
+[Watch the demo on YouTube](https://youtu.be/_Z-6x9xi1LY)
+
 # Important rospackages
 1. camera_multi_tag: launch `image_publisher.py` and `cam_multi_tag_node` to dectect Aruco marker
 2. camera_multi_tag_2: launch `cam_multi_tag_2.py` to detect Apriltag
