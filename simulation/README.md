@@ -1,6 +1,6 @@
 # CSP Simulation
 
-This repository contains a differential-drive robot simulation for cooperative sequential pursuit and constant spacing platooning (CSP), including an enhanced DSR-based controller with trajectory feedforward.
+This repository contains a differential-drive robot simulation for constant spacing platooning (CSP), including an augmented DSR-based controller with trajectory feedforward.
 
 ## Overview
 
