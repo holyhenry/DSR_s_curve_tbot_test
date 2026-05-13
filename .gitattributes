@@ -1,3 +1,4 @@
 assets/*.ipynb linguist-detectable=false
 assets/**/*.ipynb linguist-detectable=false
 simulation/*.ipynb linguist-detectable=false
+simulation/**/*.ipynb linguist-detectable=false
