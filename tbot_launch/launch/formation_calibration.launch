@@ -1,0 +1,68 @@
+<launch>
+  <!-- Run centrally, with ROS master and robot BASE bringups already online.
+       NEVER run alongside tracking nodes or other publishers to the same cmd_vel. -->
+  <arg name="formation_type" default="platoon" />
+  <arg name="motion_mode" default="sequential" />
+  <arg name="dry_run" default="true" />
+
+  <!-- Simulation scenario 4 uses (-0.5, 0.8, -pi) for platoon;
+       V simulation uses (2.5, 0.8, -pi). Override for the real experiment. -->
+  <arg name="leader_x" default="$(eval '2.5' if arg('formation_type') == 'v_formation' else '-0.5')" />
+  <arg name="leader_y" default="0.8" />
+  <arg name="leader_yaw" default="-3.141592653589793" />
+  <arg name="spacing" default="0.25" />
+  <arg name="arrow_a" default="0.25" />
+  <arg name="arrow_b" default="0.15" />
+
+  <arg name="position_tolerance" default="0.005" />
+  <arg name="yaw_tolerance_deg" default="3.0" />
+  <arg name="max_linear_speed" default="0.08" />
+  <arg name="max_angular_speed" default="0.5" />
+  <arg name="kp_linear" default="0.8" />
+  <arg name="kp_angular" default="1.5" />
+  <arg name="control_rate" default="20.0" />
+  <arg name="mocap_timeout" default="0.5" />
+  <arg name="calibration_timeout" default="120.0" />
+  <arg name="settle_time" default="0.5" />
+  <arg name="min_separation" default="0.20" />
+  <arg name="mocap_frame" default="" />
+
+  <!-- Verify these cmd topics against `rostopic list` before setting dry_run:=false. -->
+  <arg name="f1_cmd" default="/tb3_1/cmd_vel" />
+  <arg name="f2_cmd" default="/tb3_2/cmd_vel" />
+  <arg name="f3_cmd" default="/tb3_3/cmd_vel" />
+  <arg name="f1_mocap" default="/vrpn_client_node/bot162" />
+  <arg name="f2_mocap" default="/vrpn_client_node/bot149" />
+  <arg name="f3_mocap" default="/vrpn_client_node/bot165" />
+
+  <node pkg="tbot_launch" type="formation_calibration.py"
+        name="formation_calibration" output="screen" required="true">
+    <param name="formation_type" value="$(arg formation_type)" />
+    <param name="motion_mode" value="$(arg motion_mode)" />
+    <param name="dry_run" value="$(arg dry_run)" />
+    <param name="leader_x" value="$(arg leader_x)" />
+    <param name="leader_y" value="$(arg leader_y)" />
+    <param name="leader_yaw" value="$(arg leader_yaw)" />
+    <param name="spacing" value="$(arg spacing)" />
+    <param name="arrow_a" value="$(arg arrow_a)" />
+    <param name="arrow_b" value="$(arg arrow_b)" />
+    <param name="position_tolerance" value="$(arg position_tolerance)" />
+    <param name="yaw_tolerance_deg" value="$(arg yaw_tolerance_deg)" />
+    <param name="max_linear_speed" value="$(arg max_linear_speed)" />
+    <param name="max_angular_speed" value="$(arg max_angular_speed)" />
+    <param name="kp_linear" value="$(arg kp_linear)" />
+    <param name="kp_angular" value="$(arg kp_angular)" />
+    <param name="control_rate" value="$(arg control_rate)" />
+    <param name="mocap_timeout" value="$(arg mocap_timeout)" />
+    <param name="calibration_timeout" value="$(arg calibration_timeout)" />
+    <param name="settle_time" value="$(arg settle_time)" />
+    <param name="min_separation" value="$(arg min_separation)" />
+    <param name="mocap_frame" value="$(arg mocap_frame)" />
+    <rosparam subst_value="true">
+      robots:
+        - {pose_topic: "$(arg f1_mocap)", cmd_topic: "$(arg f1_cmd)"}
+        - {pose_topic: "$(arg f2_mocap)", cmd_topic: "$(arg f2_cmd)"}
+        - {pose_topic: "$(arg f3_mocap)", cmd_topic: "$(arg f3_cmd)"}
+    </rosparam>
+  </node>
+</launch>
