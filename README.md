@@ -6,9 +6,7 @@ Decentralized constant-spacing platooning (CSP) typically relies on inter-robot 
 
 This work introduces a communication-free, string-stable platooning strategy using Delayed Self-Reinforcement (DSR), achieving arbitrarily small spacing errors given sufficiently high sensing rates.
 
-This repository accompanies the paper: 
-
-**[🚧TODO: add paper link]**
+This repository accompanies the paper: [document](https://doi.org/10.1109/LRA.2026.3726347)
 
 ## 🏗️ System Architecture
 
