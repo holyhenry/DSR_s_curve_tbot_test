@@ -43,6 +43,9 @@
   <arg name="settle_time" default="0.5" />
   <arg name="mocap_frame" default="" />
 
+  <!-- Base bringup -->
+  <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
+
   <node pkg="tbot_launch" type="formation_calibration.py"
         name="formation_calibration" output="screen" required="false">
     <param name="follower_id" value="$(arg follower_id)" />
