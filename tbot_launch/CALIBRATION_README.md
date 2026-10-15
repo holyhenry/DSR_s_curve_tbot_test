@@ -67,3 +67,25 @@ The tested practical tolerance is **0.02 m** and heading tolerance **3 degrees**
 python3 -m unittest discover -s tbot_launch/test -p 'test_formation_calibration.py'
 python3 -m py_compile tbot_launch/scripts/formation_calibration.py
 ```
+
+## Mocap frame to simulation/experiment frame (tf.pdf)
+
+The controller now converts **each received VRPN pose** before calculating
+position/bearing errors. The leader reference and formation targets remain
+expressed in the simulation/experiment frame.
+
+The drawn mocap +x axis points up, +y points left, and its origin is
+(-0.355, -0.722) in the experiment frame. Therefore
+`T_experiment_mocap = Trans(-0.355, -0.722) @ Rot(+90 deg)`; for a VRPN pose
+`(x_m, y_m, yaw_m)`, the transformed values are
+`x_e=-y_m-0.355`, `y_e=x_m-0.722`, `yaw_e=wrap(yaw_m+pi/2)`.
+The user-described clockwise rotation refers to frame axes; the numerical
+coordinate conversion is +90 degrees. The rotation can be overridden with
+`tf_rotation_deg` if frame alignment is different.
+
+All three parameters are launch arguments: `tf_horizontal_displacement:=0.355`,
+`tf_vertical_displacement:=0.722`, `tf_rotation_deg:=90.0`. The displacements
+are **positive measured distances** but are subtracted in experiment coordinates.
+Run `dry_run:=true` to confirm transformed position and target before live motion.
+The transform assumes the VRPN rigid-body axes correspond to the drawn mocap
+axes and that there is no additional marker-to-base yaw/position offset.

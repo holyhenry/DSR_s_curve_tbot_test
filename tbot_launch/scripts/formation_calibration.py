@@ -32,6 +32,25 @@ def formation_targets(mode, leader, spacing, arrow_a, arrow_b):
     return [(x+c*dx-s*dy, y+s*dx+c*dy, wrap_angle(yaw)) for dx, dy in offsets]
 
 
+def mocap_to_experiment_pose(pose, horizontal_displacement, vertical_displacement,
+                             rotation_deg=90.0):
+    """Convert (x,y,yaw) from VRPN axes to experiment/simulation axes.
+
+    In tf.pdf, mocap +x points up, mocap +y points left, and the mocap
+    origin is (-horizontal_displacement, -vertical_displacement) in the
+    experiment frame. Coordinates therefore use +90 deg (passive change
+    of axes), despite the clockwise frame alignment description.
+
+    T_experiment_mocap = Trans(-horizontal,-vertical) @ Rot(rotation_deg).
+    """
+    x, y, yaw = pose
+    angle = math.radians(rotation_deg)
+    c, s = math.cos(angle), math.sin(angle)
+    return (c*x - s*y - horizontal_displacement,
+            s*x + c*y - vertical_displacement,
+            wrap_angle(yaw + angle))
+
+
 class Robot:
     def __init__(self, index, pose_topic, cmd_topic, target):
         self.index = index
@@ -96,11 +115,16 @@ class FormationCalibration:
         self.mocap_timeout = float(get('mocap_timeout', 0.5))
         self.settle_time = float(get('settle_time', 0.5))
         self.turn_threshold = math.radians(float(get('turn_in_place_deg', 30.0)))
+        self.tf_horizontal = float(get('tf_horizontal_displacement', 0.355))
+        self.tf_vertical = float(get('tf_vertical_displacement', 0.722))
+        self.tf_rotation_deg = float(get('tf_rotation_deg', 90.0))
         self.leader = (float(get('leader_x', -0.5)), float(get('leader_y', 0.8)),
                        float(get('leader_yaw', -math.pi)))
         spacing = float(get('spacing', 0.25))
         arrow_a = float(get('arrow_a', 0.25))
         arrow_b = float(get('arrow_b', 0.15))
+        if not all(math.isfinite(n) for n in (self.tf_horizontal, self.tf_vertical, self.tf_rotation_deg)):
+            raise ValueError('Frame-transform parameters must be finite')
         numbers = [self.distance_tol, self.yaw_tol, self.max_v, self.max_w,
                    self.kp_v, self.kp_w, self.rate_hz, self.timeout,
                    self.mocap_timeout, self.settle_time, spacing, arrow_a, arrow_b]
@@ -125,6 +149,8 @@ class FormationCalibration:
         rospy.on_shutdown(self.stop)
         rospy.loginfo('Follower %d (%s): %s -> %s, goal=%s', self.follower_id,
                       self.mode, pose_topic, cmd_topic, self.robot.target)
+        rospy.loginfo('Mocap-to-experiment transform: dx=-%.3f m, dy=-%.3f m, rotation=%.2f deg',
+                      self.tf_horizontal, self.tf_vertical, self.tf_rotation_deg)
         if self.dry_run:
             rospy.logwarn('DRY RUN: zero velocity commands only')
 
@@ -140,7 +166,8 @@ class FormationCalibration:
             return None
         if self.frame and frame != self.frame:
             raise RuntimeError('Unexpected mocap frame: %r' % frame)
-        return pose
+        return mocap_to_experiment_pose(pose, self.tf_horizontal,
+                                        self.tf_vertical, self.tf_rotation_deg)
 
     def step_robot(self, robot, pose):
         x, y, theta = pose

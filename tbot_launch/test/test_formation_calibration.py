@@ -9,7 +9,7 @@ from types import SimpleNamespace
 SOURCE = Path(__file__).resolve().parents[1] / 'scripts' / 'formation_calibration.py'
 module = ast.parse(SOURCE.read_text())
 selected = [n for n in module.body if isinstance(n, ast.FunctionDef) and
-            n.name in ('wrap_angle', 'formation_targets')]
+            n.name in ('wrap_angle', 'formation_targets', 'mocap_to_experiment_pose')]
 context = {'math': math}
 exec(compile(ast.Module(body=selected, type_ignores=[]), str(SOURCE), 'exec'), context)
 
@@ -65,3 +65,35 @@ class DecentralizedSourceTest(unittest.TestCase):
         self.assertEqual(args['f2_mocap'], '/vrpn_client_node/bot149/pose')
         self.assertEqual(args['f3_mocap'], '/vrpn_client_node/bot165/pose')
         self.assertEqual(args['follower_id'], '0')
+
+
+class FrameTransformTest(unittest.TestCase):
+    def test_origin_and_axis_directions(self):
+        tf = context['mocap_to_experiment_pose']
+        x, y, th = tf((0, 0, 0), .355, .722)
+        self.assertAlmostEqual(x, -.355)
+        self.assertAlmostEqual(y, -.722)
+        self.assertAlmostEqual(th, math.pi/2)
+        x, y, _ = tf((1, 0, 0), .355, .722)
+        self.assertAlmostEqual(x, -.355)
+        self.assertAlmostEqual(y, .278)
+        x, y, _ = tf((0, 1, 0), .355, .722)
+        self.assertAlmostEqual(x, -1.355)
+        self.assertAlmostEqual(y, -.722)
+
+    def test_yaw_wrap_and_tunable_rotation(self):
+        tf = context['mocap_to_experiment_pose']
+        x, y, th = tf((.2, -.3, math.pi), .4, .5, 0)
+        self.assertAlmostEqual(x, -.2)
+        self.assertAlmostEqual(y, -.8)
+        self.assertAlmostEqual(abs(th), math.pi)
+
+    def test_launch_transform_parameters(self):
+        import xml.etree.ElementTree as ET
+        root = ET.parse(SOURCE.parents[1] / 'launch' / 'formation_calibration.launch').getroot()
+        args = {a.get('name'): a.get('default') for a in root.findall('arg')}
+        self.assertEqual(args['tf_horizontal_displacement'], '0.355')
+        self.assertEqual(args['tf_vertical_displacement'], '0.722')
+        self.assertEqual(args['tf_rotation_deg'], '90.0')
+        params = {n.get('name') for n in root.find('node').findall('param')}
+        self.assertTrue({'tf_horizontal_displacement','tf_vertical_displacement','tf_rotation_deg'} <= params)
