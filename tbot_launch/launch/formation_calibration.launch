@@ -15,7 +15,7 @@
   <arg name="arrow_a" default="0.25" />
   <arg name="arrow_b" default="0.15" />
 
-  <arg name="position_tolerance" default="0.005" />
+  <arg name="position_tolerance" default="0.02" />
   <arg name="yaw_tolerance_deg" default="3.0" />
   <arg name="max_linear_speed" default="0.08" />
   <arg name="max_angular_speed" default="0.5" />
