@@ -110,12 +110,14 @@ class FormationCalibration:
         if self.max_v > 0.08:
             raise ValueError('max_linear_speed must not exceed 0.08 m/s')
         targets = formation_targets(self.mode, self.leader, spacing, arrow_a, arrow_b)
+        
         # Allow calibration of only the first N followers
         num_followers = int(get('num_followers', len(targets)))
         if not 1 <= num_followers <= len(targets):
             raise ValueError('Invalid num_followers')
         targets = targets[:num_followers]
         config = get('robots', [])
+
         if len(config) < len(targets):
             raise ValueError('robots parameter must provide every active follower')
         active = config[:len(targets)]
