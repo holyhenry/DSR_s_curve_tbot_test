@@ -1,53 +1,69 @@
-# TurtleBot3 formation calibration
+# Decentralized TurtleBot3 formation calibration (ROS Noetic)
 
-Runs one centralized, one-shot `rospy` node to move 3 platoon or 2 V-formation followers to their global mocap-frame poses. This node must be launched **without** the existing DSR tracking publishers running.
+Each follower runs **one independent instance** of `formation_calibration.py` on its own TurtleBot3 computer. It subscribes **only to its own** `geometry_msgs/PoseStamped` VRPN topic and publishes **only to its own** velocity topic. It does not wait for, coordinate, or command another follower. The robots may run the same launch file at different times. This is one-shot initial positioning, not decentralized collision avoidance or formation tracking.
 
-## Important prerequisites
+## Install / setup
 
-1. Start the ROS master, VRPN mocap bridge, and the **robot base bringups only**. `system_bringup.launch` is *not* appropriate during calibration because it starts `tracking_node`. Do not start multiple base bringups on the same robot.
-2. Confirm `/vrpn_client_node/bot162` (follower 1), `/vrpn_client_node/bot149` (follower 2), and `/vrpn_client_node/bot165` (follower 3) are `geometry_msgs/PoseStamped` and return correct, recent, same-frame poses. For V-formation, follower 3 is ignored.
-3. Confirm each follower's actual absolute `cmd_vel` topic. The example `/tb3_1/cmd_vel`, `/tb3_2/cmd_vel`, `/tb3_3/cmd_vel` names are **placeholders**, not verified against your robots. Set `f1_cmd`, `f2_cmd`, `f3_cmd` arguments appropriately.
-4. Confirm the mocap rigid-body origin and orientation coincide with the TurtleBot3 `base_link` pose. A sensor-to-base transform must be applied upstream if they differ. The current node does not apply TF transformations.
-5. Ensure the leader is stationary at `leader_x, leader_y, leader_yaw` for this initialization. The code uses this configured pose rather than subscribing to a leader topic. Keep the area clear. Initial separation and eventual paths must be visually checked; simple distance checks are not collision-proof planning.
-
-## Calibration
-
-First run a read-only dry run (only zero velocity is published):
+Copy `tbot_launch/scripts/formation_calibration.py` and `tbot_launch/launch/formation_calibration.launch` to **each robot's** copy of the workspace; replace `tbot_launch/package.xml` and retain existing `CMakeLists.txt` (the previous patch already installs the script). If applying the complete patch, use its CMakeLists.txt too. On each TurtleBot3:
 
 ```bash
-roslaunch tbot_launch formation_calibration.launch formation_type:=platoon \
-  f1_cmd:=/ACTUAL_F1_NAMESPACE/cmd_vel f2_cmd:=/ACTUAL_F2_NAMESPACE/cmd_vel \
-  f3_cmd:=/ACTUAL_F3_NAMESPACE/cmd_vel
+chmod +x ~/catkin_ws/src/DSR_s_curve_tbot_test/tbot_launch/scripts/formation_calibration.py
+cd ~/catkin_ws && catkin_make && source devel/setup.bash
 ```
 
-Then test **one follower at a time**, with emergency stop access, before enabling multi-robot movement. For physical calibration:
+ROS master, TurtleBot3 base bringup, and VRPN bridge must be available. **Do not run `system_bringup.launch` / tracking controller while calibrating**, as that may create multiple `cmd_vel` publishers. Confirm actual cmd topic and robot physical identity first.
+
+## Identity mapping
+
+| follower_id | Robot | VRPN topic | cmd topic example |
+| --- | --- | --- | --- |
+| 1 | bot162 | `/vrpn_client_node/bot162/pose` | `/tbot162/cmd_vel` |
+| 2 | bot149 | `/vrpn_client_node/bot149/pose` | `/tbot149/cmd_vel` |
+| 3 | bot165 | `/vrpn_client_node/bot165/pose` | `/tbot165/cmd_vel` |
+
+`cmd_topic` defaults to a namespace selected from `follower_id`. Always verify it and preferably pass `cmd_topic` explicitly for every robot. The `/tbot149` and `/tbot165` topic names shown here are **assumptions**; verify them using `rostopic list` / `rostopic info` before live operation. The node defaults to a failing `follower_id=0` if not provided. Valid IDs: 1–3 in platoon, 1–2 in V-formation.
+
+## Targets
+
+Every robot computes its **own** fixed formation goal using the **same** leader reference pose and formation settings. For the simulation-based defaults, platoon leader is `(-0.5, 0.8, -pi)` and V leader is `(2.5, 0.8, -pi)`; these need verification in your physical experiment. Platoon: follower `i` has body offset `(-i*spacing,0)`. V: follower 1 has `(-arrow_a,+arrow_b)`; follower 2 `(-arrow_a,-arrow_b)`. Both modes rotate the offset into the global mocap frame using the leader reference yaw. These formulas must match the desired experiment start poses; the simulation platoon initializer should be checked separately if strict equivalence is required.
+
+## Commands: each run on the specified robot's own terminal
+
+Check mocap with `rostopic hz /vrpn_client_node/bot162/pose`, etc. Start in dry-run mode (only zero commands, does **not** complete unless manually positioned):
 
 ```bash
-roslaunch tbot_launch formation_calibration.launch formation_type:=platoon \
-  dry_run:=false f1_cmd:=/ACTUAL_F1_NAMESPACE/cmd_vel \
-  f2_cmd:=/ACTUAL_F2_NAMESPACE/cmd_vel f3_cmd:=/ACTUAL_F3_NAMESPACE/cmd_vel
+# ON bot162
+roslaunch tbot_launch formation_calibration.launch follower_id:=1 formation_type:=platoon dry_run:=true cmd_topic:=/tbot162/cmd_vel
+
+# ON bot149
+roslaunch tbot_launch formation_calibration.launch follower_id:=2 formation_type:=platoon dry_run:=true cmd_topic:=/tbot149/cmd_vel
+
+# ON bot165
+roslaunch tbot_launch formation_calibration.launch follower_id:=3 formation_type:=platoon dry_run:=true cmd_topic:=/tbot165/cmd_vel
 ```
 
-V-formation mode:
+After verifying targets, pose frame, command topics and an unobstructed path, run **one robot at a time** at reduced speed first:
 
 ```bash
-roslaunch tbot_launch formation_calibration.launch formation_type:=v_formation \
-  dry_run:=false f1_cmd:=/ACTUAL_F1_NAMESPACE/cmd_vel f2_cmd:=/ACTUAL_F2_NAMESPACE/cmd_vel
+# ON bot162 only
+roslaunch tbot_launch formation_calibration.launch follower_id:=1 formation_type:=platoon dry_run:=false max_linear_speed:=0.03 cmd_topic:=/tbot162/cmd_vel
 ```
 
-The launch selects the following **simulation-specific** reference leader poses by default: `(-0.5, 0.8, -pi)` for platoon (platoon scenario 4) and `(2.5, 0.8, -pi)` for V-formation. These are NOT measured experimental targets. Override `leader_x`, `leader_y`, `leader_yaw` as appropriate. Platoon targets follow nominal 0.25 m spacing, which is a geometry assumption and should be checked against the real experiment.
+For V-formation set `formation_type:=v_formation` on bot162 and bot149, with IDs 1 and 2. Do not run calibration on bot165 in V mode.
 
-`motion_mode:=sequential` is the default; `motion_mode:=simultaneous` is available after safety evaluation. Tolerances, gains, mocap timeout, 120-second overall deadline, and settling time are all launch parameters. Speed cannot be configured over 0.08 m/s. The script checks current pairwise positions and optionally the configured leader reference (`check_leader_clearance` parameter, default true). It does not perform path planning or predict collision along each path.
+The tested practical tolerance is **0.02 m** and heading tolerance **3 degrees**. Successful convergence is maintained over a 0.5 s settling period, followed by repeated zero commands and automatic exit. Each robot can finish separately. The launch uses `required=false`, avoiding misleading “required process died” messaging after normal completion. The ROS launch command might remain running if other nodes are included, but this calibration node exits cleanly.
 
-The node quits after all active robots hold their target pose within 5 mm and 3 degrees for the settling interval. Any failure, stale mocap observation, or ROS shutdown results in zero commands; on timeout or invalid configuration, it exits with failure. TurtleBot3 base watchdog and a physical emergency-stop procedure are still essential.
+## Safety and limitations
 
-## Handoff to tracking
+- One robot commands only its own absolute `cmd_topic`; misconfiguring that parameter could still command the wrong physical robot. Inspect `rostopic info` and verify robot namespace identity.
+- There is **no inter-robot collision avoidance or synchronizing barrier** in this decentralized version. Do not start multiple robots from potentially conflicting paths unless external coordination and collision safeguards are provided. Start sequentially for commissioning.
+- The code assumes VRPN reports the TurtleBot3 base center and base-forward yaw in the **same** global frame as configured leader pose. Verify or apply an external rigid body to base transform.
+- Mocap timestamp and reception freshness are enforced. Robot stops on stale observations, timeout, normal exit and shutdown, with zero Twist publications. Use a functioning base watchdog and accessible E-stop. The configured timeout is 120 s.
+- The launch file does not include base bringup; start it separately, without the tracking publisher. After successful calibration, ensure no calibration node remains publishing before starting your regular tracking launch.
 
-Once calibration exits successfully and no calibration node remains publishing velocity commands, start `system_bringup.launch` **on the appropriate robots**, avoiding duplicate base bringups. Bringup sequencing needs to match your existing multi-machine system. This node does not automatically start the leader navigation experiment.
-
-## Static checks (without ROS installed)
+## Static checks without ROS
 
 ```bash
-python3 -m unittest discover -s tbot_launch/test -p 'test_*.py'
+python3 -m unittest discover -s tbot_launch/test -p 'test_formation_calibration.py'
 python3 -m py_compile tbot_launch/scripts/formation_calibration.py
 ```

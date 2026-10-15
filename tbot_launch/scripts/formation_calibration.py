@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mocap-based, one-shot TurtleBot3 formation positioning (ROS Noetic)."""
+"""Decentralized one-shot TurtleBot3 follower positioning (ROS Noetic)."""
 import math
 import threading
 import time
@@ -44,8 +44,8 @@ class Robot:
         self.state = 'WAIT_FOR_MOCAP'
         self.settling_since = None
         self.pub = rospy.Publisher(cmd_topic, Twist, queue_size=1)
-        self.sub = rospy.Subscriber(pose_topic, PoseStamped, self._pose_callback, queue_size=1)
         self.lock = threading.Lock()
+        self.sub = rospy.Subscriber(pose_topic, PoseStamped, self._pose_callback, queue_size=1)
 
     def _pose_callback(self, msg):
         try:
@@ -77,14 +77,15 @@ class Robot:
 
 
 class FormationCalibration:
+    """One follower per process. No remote velocity publishers or all-robot barrier."""
     def __init__(self):
-        get = lambda name, default: rospy.get_param('~' + name, default)
+        def get(name, default):
+            return rospy.get_param('~' + name, default)
+
         self.mode = get('formation_type', 'platoon')
+        self.follower_id = int(get('follower_id', 0))
         self.dry_run = bool(get('dry_run', True))
-        self.motion_mode = get('motion_mode', 'sequential')
-        if self.motion_mode not in ('sequential', 'simultaneous'):
-            raise ValueError('motion_mode must be sequential or simultaneous')
-        self.distance_tol = float(get('position_tolerance', 0.005))
+        self.distance_tol = float(get('position_tolerance', 0.02))
         self.yaw_tol = math.radians(float(get('yaw_tolerance_deg', 3.0)))
         self.max_v = float(get('max_linear_speed', 0.08))
         self.max_w = float(get('max_angular_speed', 0.5))
@@ -94,7 +95,6 @@ class FormationCalibration:
         self.timeout = float(get('calibration_timeout', 120.0))
         self.mocap_timeout = float(get('mocap_timeout', 0.5))
         self.settle_time = float(get('settle_time', 0.5))
-        self.min_separation = float(get('min_separation', 0.20))
         self.turn_threshold = math.radians(float(get('turn_in_place_deg', 30.0)))
         self.leader = (float(get('leader_x', -0.5)), float(get('leader_y', 0.8)),
                        float(get('leader_yaw', -math.pi)))
@@ -103,74 +103,44 @@ class FormationCalibration:
         arrow_b = float(get('arrow_b', 0.15))
         numbers = [self.distance_tol, self.yaw_tol, self.max_v, self.max_w,
                    self.kp_v, self.kp_w, self.rate_hz, self.timeout,
-                   self.mocap_timeout, self.settle_time, self.min_separation,
-                   spacing, arrow_a, arrow_b]
+                   self.mocap_timeout, self.settle_time, spacing, arrow_a, arrow_b]
         if not all(math.isfinite(n) and n > 0 for n in numbers):
             raise ValueError('Positive finite gains, limits, spacings and thresholds required')
         if self.max_v > 0.08:
             raise ValueError('max_linear_speed must not exceed 0.08 m/s')
         targets = formation_targets(self.mode, self.leader, spacing, arrow_a, arrow_b)
-        
-        # Allow calibration of only the first N followers
-        num_followers = int(get('num_followers', len(targets)))
-        if not 1 <= num_followers <= len(targets):
-            raise ValueError('Invalid num_followers')
-        targets = targets[:num_followers]
-        config = get('robots', [])
-
-        if len(config) < len(targets):
-            raise ValueError('robots parameter must provide every active follower')
-        active = config[:len(targets)]
-        topics = [r['pose_topic'] for r in active]
-        commands = [r['cmd_topic'] for r in active]
-        if len(set(topics)) != len(topics) or len(set(commands)) != len(commands):
-            raise ValueError('Each follower must have distinct mocap and cmd_vel topics')
-        if any(not t.startswith('/') for t in topics + commands):
-            raise ValueError('Use absolute ROS topic names')
-        self.robots = [Robot(i+1, r['pose_topic'], r['cmd_topic'], target)
-                       for i, (r, target) in enumerate(zip(active, targets))]
+        if not 1 <= self.follower_id <= len(targets):
+            raise ValueError('follower_id must be 1..%d for %s' % (len(targets), self.mode))
+        pose_topic = get('pose_topic', '')
+        cmd_topic = get('cmd_topic', '')
+        if not pose_topic.startswith('/') or not cmd_topic.startswith('/'):
+            raise ValueError('pose_topic and cmd_topic must be absolute ROS topic names')
+        if pose_topic == cmd_topic:
+            raise ValueError('pose_topic and cmd_topic cannot be identical')
+        # Selection does NOT renumber positions: follower 2 gets target index 1.
+        self.robot = Robot(self.follower_id, pose_topic, cmd_topic,
+                           targets[self.follower_id - 1])
         self.frame = get('mocap_frame', '')
         self.started = time.monotonic()
-        rospy.on_shutdown(self.stop_all)
-        for robot in self.robots:
-            rospy.loginfo('Follower %d: %s -> %s, goal=%s', robot.index,
-                          robot.pose_topic, robot.cmd_topic, robot.target)
+        rospy.on_shutdown(self.stop)
+        rospy.loginfo('Follower %d (%s): %s -> %s, goal=%s', self.follower_id,
+                      self.mode, pose_topic, cmd_topic, self.robot.target)
         if self.dry_run:
-            rospy.logwarn('DRY RUN: no nonzero velocity will be sent')
+            rospy.logwarn('DRY RUN: zero velocity commands only')
 
-    def stop_all(self):
+    def stop(self):
+        # Several zero commands on shutdown or stale mocap, for reliability.
         for _ in range(5):
-            for robot in self.robots:
-                robot.command()
+            self.robot.command()
             time.sleep(0.05)
 
-    def checked_poses(self):
-        poses = []
-        now = time.monotonic()
-        frames = set()
-        for robot in self.robots:
-            pose, received, frame = robot.snapshot()
-            if pose is None or received is None or now-received > self.mocap_timeout:
-                return None
-            if self.frame and frame != self.frame:
-                raise RuntimeError('Unexpected mocap frame for follower %d: %r' % (robot.index, frame))
-            if frame:
-                frames.add(frame)
-            poses.append(pose)
-        if len(frames) > 1:
-            raise RuntimeError('Follower poses are reported in different coordinate frames')
-        return poses
-
-    def check_separation(self, poses):
-        # Optional leader position assumed stationary at the specified reference pose.
-        positions = [(p[0], p[1]) for p in poses]
-        if rospy.get_param('~check_leader_clearance', True):
-            positions.append(self.leader[:2])
-        for i in range(len(positions)):
-            for j in range(i+1, len(positions)):
-                if math.hypot(positions[i][0]-positions[j][0],
-                              positions[i][1]-positions[j][1]) < self.min_separation:
-                    raise RuntimeError('Robot separation under minimum clearance: %d and %d' % (i, j))
+    def checked_pose(self):
+        pose, received, frame = self.robot.snapshot()
+        if pose is None or received is None or time.monotonic() - received > self.mocap_timeout:
+            return None
+        if self.frame and frame != self.frame:
+            raise RuntimeError('Unexpected mocap frame: %r' % frame)
+        return pose
 
     def step_robot(self, robot, pose):
         x, y, theta = pose
@@ -222,33 +192,28 @@ class FormationCalibration:
         last_log = 0.0
         while not rospy.is_shutdown():
             if time.monotonic()-self.started > self.timeout:
-                raise RuntimeError('Calibration timed out')
-            poses = self.checked_poses()
-            if poses is None:
-                self.stop_all()
+                raise RuntimeError('Follower %d calibration timed out' % self.follower_id)
+            pose = self.checked_pose()
+            if pose is None:
+                self.robot.command()
                 if time.monotonic()-last_log > 2:
-                    rospy.logwarn('Waiting for fresh mocap from ALL active followers')
+                    rospy.logwarn('Follower %d waiting for fresh mocap on %s',
+                                  self.follower_id, self.robot.pose_topic)
                     last_log = time.monotonic()
                 rate.sleep()
                 continue
-            self.check_separation(poses)
-            for robot, pose in zip(self.robots, poses):
-                if self.motion_mode == 'sequential' and any(
-                        prev.state != 'COMPLETE' for prev in self.robots[:robot.index-1]):
-                    robot.command()
-                    continue
-                if self.dry_run:
-                    robot.command()
-                else:
-                    self.step_robot(robot, pose)
-            if all(r.state == 'COMPLETE' for r in self.robots):
-                self.stop_all()
-                rospy.loginfo('FORMATION CALIBRATION SUCCESS')
+            if self.dry_run:
+                self.robot.command()
+            else:
+                self.step_robot(self.robot, pose)
+            if self.robot.state == 'COMPLETE':
+                self.stop()
+                rospy.loginfo('FOLLOWER %d CALIBRATION SUCCESS', self.follower_id)
                 return True
             if time.monotonic()-last_log > 2:
-                for robot, pose in zip(self.robots, poses):
-                    err = math.hypot(robot.target[0]-pose[0],robot.target[1]-pose[1])
-                    rospy.loginfo('F%d %s: distance error %.4f m', robot.index, robot.state, err)
+                err = math.hypot(self.robot.target[0]-pose[0], self.robot.target[1]-pose[1])
+                rospy.loginfo('F%d %s: distance error %.4f m',
+                              self.follower_id, self.robot.state, err)
                 last_log = time.monotonic()
             rate.sleep()
         return False
@@ -265,7 +230,7 @@ def main():
         raise SystemExit(1)
     finally:
         if node is not None:
-            node.stop_all()
+            node.stop()
 
 
 if __name__ == '__main__':

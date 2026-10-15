@@ -42,3 +42,26 @@ class GeometryTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class DecentralizedSourceTest(unittest.TestCase):
+    def test_single_robot_instance(self):
+        classes = {n.name: n for n in module.body if isinstance(n, ast.ClassDef)}
+        cal = classes['FormationCalibration']
+        init = next(n for n in cal.body if isinstance(n, ast.FunctionDef) and n.name == '__init__')
+        src = ast.get_source_segment(SOURCE.read_text(), init)
+        self.assertIn('targets[self.follower_id - 1]', src)
+        self.assertIn("get('pose_topic', '')", src)
+        self.assertIn("get('cmd_topic', '')", src)
+        self.assertNotIn('self.robots', src)
+
+    def test_launch_one_node_and_correct_mocap_topics(self):
+        import xml.etree.ElementTree as ET
+        launch = ET.parse(SOURCE.parents[1] / 'launch' / 'formation_calibration.launch')
+        root = launch.getroot()
+        self.assertEqual(len(root.findall('node')), 1)
+        args = {x.get('name'): x.get('default') for x in root.findall('arg')}
+        self.assertEqual(args['position_tolerance'], '0.02')
+        self.assertEqual(args['f1_mocap'], '/vrpn_client_node/bot162/pose')
+        self.assertEqual(args['f2_mocap'], '/vrpn_client_node/bot149/pose')
+        self.assertEqual(args['f3_mocap'], '/vrpn_client_node/bot165/pose')
+        self.assertEqual(args['follower_id'], '0')
