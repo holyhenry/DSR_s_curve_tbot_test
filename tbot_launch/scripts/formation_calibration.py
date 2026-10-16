@@ -32,6 +32,12 @@ def formation_targets(mode, leader, spacing, arrow_a, arrow_b):
     return [(x+c*dx-s*dy, y+s*dx+c*dy, wrap_angle(yaw)) for dx, dy in offsets]
 
 
+def staging_target(final_target, spacing):
+    """One additional spacing behind the assigned final slot."""
+    x, y, yaw = final_target
+    return (x - spacing*math.cos(yaw), y - spacing*math.sin(yaw), yaw)
+
+
 def mocap_to_experiment_pose(pose, horizontal_displacement, vertical_displacement,
                              rotation_deg=90.0):
     """Convert (x,y,yaw) from VRPN axes to experiment/simulation axes.
@@ -56,7 +62,8 @@ class Robot:
         self.index = index
         self.pose_topic = pose_topic
         self.cmd_topic = cmd_topic
-        self.target = target
+        self.target = target  # final formation slot
+        self.staging_target = None
         self.pose = None
         self.last_received = None
         self.frame_id = None
@@ -136,7 +143,7 @@ class FormationCalibration:
         if not 1 <= self.follower_id <= len(targets):
             raise ValueError('follower_id must be 1..%d for %s' % (len(targets), self.mode))
         pose_topic = get('pose_topic', '')
-        cmd_topic = get('cmd_topic', '')
+        cmd_topic = get('cmd_topic', '/cmd_vel')
         if not pose_topic.startswith('/') or not cmd_topic.startswith('/'):
             raise ValueError('pose_topic and cmd_topic must be absolute ROS topic names')
         if pose_topic == cmd_topic:
@@ -144,11 +151,13 @@ class FormationCalibration:
         # Selection does NOT renumber positions: follower 2 gets target index 1.
         self.robot = Robot(self.follower_id, pose_topic, cmd_topic,
                            targets[self.follower_id - 1])
+        self.robot.staging_target = staging_target(self.robot.target, spacing)
         self.frame = get('mocap_frame', '')
         self.started = time.monotonic()
         rospy.on_shutdown(self.stop)
         rospy.loginfo('Follower %d (%s): %s -> %s, goal=%s', self.follower_id,
                       self.mode, pose_topic, cmd_topic, self.robot.target)
+        rospy.loginfo('Follower %d staging pose=%s', self.follower_id, self.robot.staging_target)
         rospy.loginfo('Mocap-to-experiment transform: dx=-%.3f m, dy=-%.3f m, rotation=%.2f deg',
                       self.tf_horizontal, self.tf_vertical, self.tf_rotation_deg)
         if self.dry_run:
@@ -171,48 +180,77 @@ class FormationCalibration:
 
     def step_robot(self, robot, pose):
         x, y, theta = pose
-        tx, ty, target_yaw = robot.target
-        dx, dy = tx-x, ty-y
-        distance = math.hypot(dx, dy)
-        final_yaw_error = wrap_angle(target_yaw-theta)
+        fx, fy, target_yaw = robot.target
+        sx, sy, _ = robot.staging_target
+        yaw_error = wrap_angle(target_yaw-theta)
+
         if robot.state == 'COMPLETE':
             robot.command()
             return
+
+        # Stage 1: navigate to the staging position (one extra spacing
+        # behind the final formation slot), using the original controller.
         if robot.state in ('WAIT_FOR_MOCAP', 'MOVE_TO_POSITION'):
             robot.state = 'MOVE_TO_POSITION'
+            dx, dy = sx-x, sy-y
+            distance = math.hypot(dx, dy)
             if distance < self.distance_tol:
                 robot.state = 'ALIGN_ORIENTATION'
                 robot.command()
                 return
             bearing_error = wrap_angle(math.atan2(dy, dx)-theta)
             w = max(-self.max_w, min(self.max_w, self.kp_w*bearing_error))
-            if abs(bearing_error) >= self.turn_threshold:
-                v = 0.0
-            else:
-                v = min(self.max_v, self.kp_v*distance)*max(0.0, math.cos(bearing_error))
+            v = (0.0 if abs(bearing_error) >= self.turn_threshold else
+                 min(self.max_v, self.kp_v*distance)*max(0.0, math.cos(bearing_error)))
             robot.command(v, w)
             return
+
+        # Stage 2: align at the staging position, before approaching
+        # the occupied formation line.
         if robot.state == 'ALIGN_ORIENTATION':
-            if distance >= self.distance_tol:
+            if math.hypot(sx-x, sy-y) >= self.distance_tol:
                 robot.state = 'MOVE_TO_POSITION'
                 robot.command()
-            elif abs(final_yaw_error) < self.yaw_tol:
+            elif abs(yaw_error) < self.yaw_tol:
+                robot.state = 'FINAL_APPROACH'
+                robot.command()
+            else:
+                robot.command(0.0, max(-self.max_w, min(self.max_w, self.kp_w*yaw_error)))
+            return
+
+        # Stage 3: drive forward, parallel to the intended final heading.
+        # Correct yaw, without turning around toward a noisy near-goal bearing.
+        if robot.state == 'FINAL_APPROACH':
+            distance = math.hypot(fx-x, fy-y)
+            if distance < self.distance_tol:
                 robot.state = 'VERIFY_POSE'
                 robot.settling_since = time.monotonic()
                 robot.command()
+                return
+            along = (fx-x)*math.cos(target_yaw) + (fy-y)*math.sin(target_yaw)
+            if along <= 0:
+                raise RuntimeError('Passed final target without reaching position tolerance')
+            if abs(yaw_error) >= self.turn_threshold:
+                robot.command(0.0, max(-self.max_w, min(self.max_w, self.kp_w*yaw_error)))
             else:
-                robot.command(0.0, max(-self.max_w, min(self.max_w, self.kp_w*final_yaw_error)))
+                v = min(self.max_v, self.kp_v*along)*max(0.0, math.cos(yaw_error))
+                w = max(-self.max_w, min(self.max_w, self.kp_w*yaw_error))
+                robot.command(v, w)
             return
+
+        # Final verification; small position drift requires a new staged
+        # approach, rather than turning toward another robot at close range.
         if robot.state == 'VERIFY_POSE':
             robot.command()
+            distance = math.hypot(fx-x, fy-y)
             if distance >= self.distance_tol:
                 robot.state = 'MOVE_TO_POSITION'
-            elif abs(final_yaw_error) >= self.yaw_tol:
+            elif abs(yaw_error) >= self.yaw_tol:
                 robot.state = 'ALIGN_ORIENTATION'
             elif time.monotonic()-robot.settling_since >= self.settle_time:
                 robot.state = 'COMPLETE'
                 rospy.loginfo('Follower %d COMPLETE: position error=%.4f m, yaw error=%.2f deg',
-                              robot.index, distance, math.degrees(final_yaw_error))
+                              robot.index, distance, math.degrees(yaw_error))
 
     def run(self):
         rate = rospy.Rate(self.rate_hz)
@@ -238,7 +276,10 @@ class FormationCalibration:
                 rospy.loginfo('FOLLOWER %d CALIBRATION SUCCESS', self.follower_id)
                 return True
             if time.monotonic()-last_log > 2:
-                err = math.hypot(self.robot.target[0]-pose[0], self.robot.target[1]-pose[1])
+                goal = (self.robot.staging_target if self.robot.state in
+                        ('WAIT_FOR_MOCAP', 'MOVE_TO_POSITION', 'ALIGN_ORIENTATION')
+                        else self.robot.target)
+                err = math.hypot(goal[0]-pose[0], goal[1]-pose[1])
                 rospy.loginfo('F%d %s: distance error %.4f m',
                               self.follower_id, self.robot.state, err)
                 last_log = time.monotonic()
