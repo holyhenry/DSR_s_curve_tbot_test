@@ -2,15 +2,15 @@
   <!-- Define arguments -->
   <arg name="ctrl_mode" default="DSR"/>
   <arg name="ang_ctrl_mode" default="LOS"/>
-  <arg name="alpha" default="0.3"/>
+  <arg name="alpha" default="0.4"/>
   <arg name="alpha_angle" default="1.5"/>
   <arg name="beta1" default="0.8"/>
   <arg name="beta2" default="0.94"/>
   <arg name="spacing" default="0.25"/>
   <arg name="tau" default="0.04"/>
-  <arg name="tag_lp_gain" default="0.15"/>
-  <arg name="brightness" default="0.02"/>
-  
+  <arg name="tag_lp_gain" default="1.0"/>
+  <arg name="brightness" default="0.05"/>
+
   <!-- User-facing robot ID: 1, 2, 3 -->
   <arg name="follower_id" default="1" />
   <!-- Internal zero-based follower index -->
