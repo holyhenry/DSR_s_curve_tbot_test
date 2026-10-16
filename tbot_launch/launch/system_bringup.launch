@@ -8,9 +8,13 @@
   <arg name="beta2" default="0.94"/>
   <arg name="spacing" default="0.25"/>
   <arg name="tau" default="0.04"/>
-  <arg name="follower_indx" default="0"/>
   <arg name="tag_lp_gain" default="0.15"/>
   <arg name="brightness" default="0.02"/>
+  
+  <!-- User-facing robot ID: 1, 2, 3 -->
+  <arg name="follower_id" default="1" />
+  <!-- Internal zero-based follower index -->
+  <arg name="follower_indx" default="$(eval int(arg('follower_id')) - 1)" />
 
   <!-- Base bringup -->
   <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
