@@ -3,7 +3,7 @@
   <!-- The robot's follower_id picks a fixed formation slot. No central controller. -->
   <arg name="follower_id" default="0" /> <!-- required: 1,2,3 for platoon; 1,2 for V -->
   <arg name="formation_type" default="platoon" />
-  <arg name="dry_run" default="true" />
+  <arg name="dry_run" default="false" />
 
   <!-- Actual mocap pose topics, verified for bot162; others use VRPN naming convention. -->
   <arg name="f1_mocap" default="/vrpn_client_node/bot162/pose" />
