@@ -11,6 +11,7 @@
   <arg name="follower_indx" default="0"/>
   <arg name="tag_lp_gain" default="0.15"/>
   <arg name="brightness" default="0.02"/>
+  <arg name="diagnostic_only" default="false"/>
 
   <!-- Base bringup -->
   <include file="$(find turtlebot3_bringup)/launch/turtlebot3_robot.launch" />
@@ -34,6 +35,7 @@
     <arg name="spacing" value="$(arg spacing)" />
     <arg name="tau" value="$(arg tau)"/>
     <arg name="follower_indx" value="$(arg follower_indx)" />
+    <arg name="diagnostic_only" value="$(arg diagnostic_only)"/>
   </include>
 
   <!-- LED pad lighting -->

@@ -9,6 +9,7 @@
   <arg name="tau" default="0.04"/>
   <arg name="spacing" default="0.35"/>
   <arg name="follower_indx" default="0"/>
+  <arg name="diagnostic_only" default="false"/>
 
   <!-- ===================== Odom Covariance Wrapper ===================== -->
   <include file="$(find tracking)/launch/odom_cov.launch" />
@@ -24,5 +25,6 @@
     <param name="tau" value="$(arg tau)"/>
     <param name="spacing" value="$(arg spacing)"/>
     <param name="follower_indx" value="$(arg follower_indx)"/>
+    <param name="diagnostic_only" value="$(arg diagnostic_only)"/>
   </node>
 </launch>

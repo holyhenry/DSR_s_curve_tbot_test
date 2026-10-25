@@ -165,6 +165,15 @@ void TrackingNode::aprilTagFilter()
         tag_leader_state_ = homoTrans2BotCenter(tag_raw);
         tag_phi_ = tag_phi;
 
+        ROS_INFO_THROTTLE(0.5,
+                         "[TAG DEBUG] leader=(%.3f, %.3f), "
+                         "tag_phi=%.2f deg, accepted_tags=%d",
+                         tag_leader_state_.x(),
+                         tag_leader_state_.y(),
+                         tag_phi_ * 180.0 / M_PI,
+                         count
+        );
+
         // Transform to global frame
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
 
@@ -511,6 +520,10 @@ int main(int argc, char** argv) {
     pnh.param<double>("spacing", spacing, 0.25);
     pnh.param<int>("follower_indx", follower_indx, 0);
 
+    // For debugging purposes, allow the node to run without velocity commands
+    bool diagnostic_only = false;
+    pnh.param<bool>("diagnostic_only", diagnostic_only, false);
+
     // Call the node constructor
     TrackingNode node(nh, pnh, 
                       ctrl_mode, ang_ctrl_mode,
@@ -530,7 +543,9 @@ int main(int argc, char** argv) {
         node.aprilTagFilter();
 
         // Run controller step
-        node.runControlStep();
+        if (!diagnostic_only) {
+            node.runControlStep();
+        }
 
         // Sleep to maintain loop rate
         rate.sleep();
