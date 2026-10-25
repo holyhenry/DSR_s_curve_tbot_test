@@ -9,6 +9,13 @@
   <arg name="tau" default="0.04"/>
   <arg name="spacing" default="0.35"/>
   <arg name="follower_indx" default="0"/>
+
+  <!-- V-formation mode: zero-based follower_indx is 0 (F1) or 1 (F2). -->
+  <arg name="formation_type" default="platoon"/>
+  <arg name="leader_bot" default="205"/>
+  <arg name="arrow_a" default="0.25"/>
+  <arg name="arrow_b" default="0.15"/>
+  <arg name="marker_timeout" default="0.5"/>
   <arg name="diagnostic_only" default="false"/>
 
   <!-- ===================== Odom Covariance Wrapper ===================== -->
@@ -25,6 +32,11 @@
     <param name="tau" value="$(arg tau)"/>
     <param name="spacing" value="$(arg spacing)"/>
     <param name="follower_indx" value="$(arg follower_indx)"/>
+    <param name="formation_type" value="$(arg formation_type)"/>
+    <param name="leader_bot" value="$(arg leader_bot)"/>
+    <param name="arrow_a" value="$(arg arrow_a)"/>
+    <param name="arrow_b" value="$(arg arrow_b)"/>
+    <param name="marker_timeout" value="$(arg marker_timeout)"/>
     <param name="diagnostic_only" value="$(arg diagnostic_only)"/>
   </node>
 </launch>

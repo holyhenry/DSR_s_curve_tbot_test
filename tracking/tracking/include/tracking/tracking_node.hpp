@@ -1,6 +1,8 @@
 #pragma once
 
 #include <deque>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <cmath>
 #include <tf/tf.h>  // for quaternion to yaw conversion
@@ -43,6 +45,14 @@ private:
     double alpha_, alpha_angle_, beta1_, beta2_;
     double spacing_, tau_;
     int follower_indx_;
+    std::string formation_type_ = "platoon";
+    int leader_bot_ = 205;
+    int leader_tag_group_ = 0;
+    double arrow_a_ = 0.25, arrow_b_ = 0.15;
+    double marker_timeout_ = 0.5;
+    bool have_valid_tag_ = false;
+    bool new_tag_message_ = false;
+    ros::Time last_valid_tag_time_;
 
     // Controller object
     Controller controller_;
@@ -112,6 +122,7 @@ private:
     }
 
     // Helper functions
+    Eigen::Vector2d getVFormationTarget() const;
     double normalizeNodeTime(const ros::Time& t);
     double normalizeCamTime(const ros::Time& t);
     double normalizeOdomTime(const ros::Time& t);

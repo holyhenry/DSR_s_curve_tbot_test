@@ -14,6 +14,30 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
       tau_(tau), spacing_(spacing),
       follower_indx_(follower_indx)
 {
+    pnh.param<std::string>("formation_type", formation_type_, "platoon");
+    pnh.param<int>("leader_bot", leader_bot_, 205);
+    pnh.param<double>("arrow_a", arrow_a_, 0.25);
+    pnh.param<double>("arrow_b", arrow_b_, 0.15);
+    pnh.param<double>("marker_timeout", marker_timeout_, 0.5);
+
+    if (formation_type_ != "platoon" && formation_type_ != "v_formation")
+        throw std::invalid_argument("formation_type must be platoon or v_formation");
+    if (formation_type_ == "v_formation") {
+        if (follower_indx_ != 0 && follower_indx_ != 1)
+            throw std::invalid_argument("V formation requires follower_indx 0 (F1) or 1 (F2)");
+        if (leader_bot_ != 205 && leader_bot_ != 165)
+            throw std::invalid_argument("V formation leader_bot must be 205 or 165");
+        if (mode_str != "DSR" || ang_mode_str != "LOS")
+            throw std::invalid_argument("V formation requires DSR linear and LOS angular mode");
+        if (arrow_a_ <= 0.0 || arrow_b_ < 0.0 || marker_timeout_ <= 0.0)
+            throw std::invalid_argument("Invalid V formation geometry or marker_timeout");
+        // Both V followers observe the same physical leader, not their predecessor.
+        leader_tag_group_ = (leader_bot_ == 205) ? 0 : 3;
+    } else {
+        leader_tag_group_ = follower_indx_;
+    }
+    ROS_INFO("Tracking configuration: formation=%s, follower_indx=%d, leader_tag_group=%d",
+             formation_type_.c_str(), follower_indx_, leader_tag_group_);
     // Setup publisher (rm "/" in front of topic name to handle ns)
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 5);
 
@@ -49,13 +73,18 @@ TrackingNode::TrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
 
     // Initialize apriltag local measurement 
     tag_leader_state_ = Eigen::Vector2d(spacing_, 0.0);
+    if (formation_type_ == "v_formation") {
+        // Parallel initial arrangement: leader is forward and opposite the role offset.
+        const double side = (follower_indx_ == 0) ? arrow_b_ : -arrow_b_;
+        tag_leader_state_ = Eigen::Vector2d(arrow_a_, -side);
+    }
 
     // Interp virtual start trajectory 
     controller_.interpTraj(tag_leader_state_, 300);
 
     // Initialize global leader state
     // [Note]: the first gloabl aligns with local 
-    global_leader_state_last_ = Eigen::Vector2d(spacing_, 0.0);
+    global_leader_state_last_ = tag_leader_state_;
     global_leader_states_ = controller_.getObservations();
 
     // Initialize camera time stamp
@@ -103,6 +132,7 @@ void TrackingNode::tagCallback(const common_msgs::Float32ArrayStamped::ConstPtr&
     tag_stamp_     = msg->header.stamp;
     normalizeCamTime(tag_stamp_);
     tag_multi_raw_ = msg->data.data;
+    new_tag_message_ = true;
 }
 
 // ===============================Core operations==============================
@@ -121,17 +151,21 @@ void TrackingNode::aprilTagFilter()
     double tag_y = 0.0;
     double tag_phi = 0.0;
 
+    if (!new_tag_message_) return;
+    new_tag_message_ = false;
+
     if (tag_multi_raw_.empty())
     {
         ROS_WARN_THROTTLE(2.0, "No Apriltag detected.");
         return;
     }
 
-    for (size_t i = 0; i < tag_multi_raw_.size(); ++i)
-    {   
-        bool isCorrectID = static_cast<int>(tag_multi_raw_[i] - id_offset) / num_tag == follower_indx_;
-        if (i % tag_space == 0 && isCorrectID){   
-            int id = static_cast<int>(tag_multi_raw_[i]);
+    for (size_t i = 0; i + tag_space <= tag_multi_raw_.size(); i += tag_space)
+    {
+        const int id = static_cast<int>(tag_multi_raw_[i]);
+        const bool isCorrectID = (id >= id_offset && id < id_offset + 4 * num_tag) &&
+                                 ((id - id_offset) / num_tag == leader_tag_group_);
+        if (isCorrectID) {
             double x   =   tag_multi_raw_[i + 3];
             double y   = -(tag_multi_raw_[i + 1] - cam_pos_offset);
             double phi =  -tag_multi_raw_[i + 4];
@@ -141,7 +175,10 @@ void TrackingNode::aprilTagFilter()
 
             // Filter the outliers
             double norm_diff = (inferred_bot - tag_leader_state_).norm();
-            bool isOutlier = norm_diff > outlier_threshold;
+            const bool stale_reference = have_valid_tag_ &&
+                (ros::Time::now() - last_valid_tag_time_).toSec() > marker_timeout_;
+            const bool isOutlier = have_valid_tag_ && !stale_reference &&
+                                   norm_diff > outlier_threshold;
 
             if (!isOutlier){
                 count++;
@@ -163,16 +200,17 @@ void TrackingNode::aprilTagFilter()
 
         Eigen::Vector3d tag_raw(tag_x, tag_y, tag_phi);
         tag_leader_state_ = homoTrans2BotCenter(tag_raw);
-        tag_phi_ = tag_phi;
-
-        ROS_INFO_THROTTLE(0.5,
-                         "[TAG DEBUG] leader=(%.3f, %.3f), "
-                         "tag_phi=%.2f deg, accepted_tags=%d",
-                         tag_leader_state_.x(),
-                         tag_leader_state_.y(),
-                         tag_phi_ * 180.0 / M_PI,
-                         count
-        );
+        tag_phi_ = wrapPi(tag_phi);
+        have_valid_tag_ = true;
+        last_valid_tag_time_ = ros::Time::now();
+        ROS_INFO_THROTTLE(0.5, "[TAG] leader=(%.3f, %.3f) phi=%.2f deg tags=%d group=%d",
+                          tag_leader_state_.x(), tag_leader_state_.y(),
+                          tag_phi_ * 180.0 / M_PI, count, leader_tag_group_);
+        if (formation_type_ == "v_formation") {
+            const Eigen::Vector2d vt = getVFormationTarget();
+            ROS_INFO_THROTTLE(0.5, "[V TAG] local formation LOS target=(%.3f, %.3f)",
+                              vt.x(), vt.y());
+        }
 
         // Transform to global frame
         Eigen::Vector2d global_leader_state = homoTrans2Global(tag_leader_state_);
@@ -217,8 +255,26 @@ void TrackingNode::aprilTagFilter()
     }
 }
 
+
+Eigen::Vector2d TrackingNode::getVFormationTarget() const
+{
+    const double side = (follower_indx_ == 0) ? arrow_b_ : -arrow_b_;
+    const Eigen::Vector2d offset(-arrow_a_, side);
+    const double c = std::cos(tag_phi_);
+    const double s = std::sin(tag_phi_);
+    Eigen::Matrix2d R;
+    R << c, -s, s, c;
+    return tag_leader_state_ + R * offset;
+}
+
 void TrackingNode::runControlStep()
 {   
+    if (formation_type_ == "v_formation" &&
+        (!have_valid_tag_ || (ros::Time::now() - last_valid_tag_time_).toSec() > marker_timeout_)) {
+        cmd_vel_pub_.publish(geometry_msgs::Twist());
+        ROS_WARN_THROTTLE(1.0, "V formation: no fresh accepted leader tags; commanding stop");
+        return;
+    }
     // 0. Get node current time 
     controller_.setNodeTime(normalizeNodeTime(ros::Time::now()));
 
@@ -231,6 +287,12 @@ void TrackingNode::runControlStep()
     // 3. Compute the tracking target point
     bool MEMORY_MODE = true;
     Eigen::Vector2d target = controller_.getTarget(MEMORY_MODE);
+    Eigen::Vector2d angular_target = target;
+    if (formation_type_ == "v_formation") {
+        angular_target = getVFormationTarget();
+        ROS_INFO_THROTTLE(1.0, "[V] LOS target=(%.3f, %.3f), linear target=(%.3f, %.3f)",
+                          angular_target.x(), angular_target.y(), target.x(), target.y());
+    }
 
     // 4. Run control logic 
     double linear_controller;
@@ -247,7 +309,7 @@ void TrackingNode::runControlStep()
     switch (ang_mode_)
     {
         case AngControllerMode::LOS:
-            angular_controller = controller_.angularUpdate(target);
+            angular_controller = controller_.angularUpdate(angular_target);
             break;
         case AngControllerMode::PC:
             const double v_current = getVelocity();
@@ -504,6 +566,8 @@ int main(int argc, char** argv) {
     ros::Rate rate(25.0);
 
     // Platoon parameters
+    bool diagnostic_only = false;
+    pnh.param<bool>("diagnostic_only", diagnostic_only, false);
     std::string ctrl_mode;
     std::string ang_ctrl_mode;
     double alpha, alpha_angle, beta1, beta2, tau, spacing;
@@ -519,10 +583,6 @@ int main(int argc, char** argv) {
     pnh.param<double>("tau", tau, 0.04);
     pnh.param<double>("spacing", spacing, 0.25);
     pnh.param<int>("follower_indx", follower_indx, 0);
-
-    // For debugging purposes, allow the node to run without velocity commands
-    bool diagnostic_only = false;
-    pnh.param<bool>("diagnostic_only", diagnostic_only, false);
 
     // Call the node constructor
     TrackingNode node(nh, pnh, 
@@ -543,9 +603,7 @@ int main(int argc, char** argv) {
         node.aprilTagFilter();
 
         // Run controller step
-        if (!diagnostic_only) {
-            node.runControlStep();
-        }
+        if (!diagnostic_only) node.runControlStep();
 
         // Sleep to maintain loop rate
         rate.sleep();
