@@ -1,0 +1,51 @@
+<launch>
+  <!-- Run on one follower with its base and mocap already running (ROS 1).
+       bot162: follower_indx:=0; bot149: follower_indx:=1.
+       Commands go to this follower's relative cmd_vel topic only. -->
+  <arg name="follower_indx"/>
+  <arg name="leader_pose_topic" default="/bot205/pose"/>
+  <arg name="follower_pose_topic" default="$(eval '/bot162/pose' if int(arg('follower_indx')) == 0 else '/bot149/pose')"/>
+  <!-- Same rigid-body heading correction as follower_aware bot205, for all bots. -->
+  <arg name="leader_yaw_offset" default="3.141592653589793"/>
+  <arg name="follower_yaw_offset" default="3.141592653589793"/>
+  <!-- Both PoseStamped frames must match. Set this to require a specific frame. -->
+  <arg name="mocap_frame" default=""/>
+  <arg name="mocap_timeout" default="0.5"/>
+
+  <!-- Same parameters as tracking.launch. -->
+  <arg name="ctrl_mode" default="DSR"/>
+  <arg name="ang_ctrl_mode" default="LOS"/>
+  <arg name="alpha" default="0.3"/>
+  <arg name="alpha_angle" default="3.0"/>
+  <arg name="beta1" default="0.8"/>
+  <arg name="beta2" default="0.94"/>
+  <arg name="tau" default="0.04"/>
+  <arg name="spacing" default="0.35"/>
+  <arg name="arrow_a" default="0.25"/>
+  <arg name="arrow_b" default="0.15"/>
+  <arg name="diagnostic_only" default="false"/>
+
+  <include file="$(find tracking)/launch/odom_cov.launch"/>
+
+  <node name="tracking_mocap_node" pkg="tracking" type="tracking_mocap_node" output="screen">
+    <param name="formation_type" value="v_formation"/>
+    <param name="follower_indx" value="$(arg follower_indx)"/>
+    <param name="leader_pose_topic" value="$(arg leader_pose_topic)"/>
+    <param name="follower_pose_topic" value="$(arg follower_pose_topic)"/>
+    <param name="leader_yaw_offset" value="$(arg leader_yaw_offset)"/>
+    <param name="follower_yaw_offset" value="$(arg follower_yaw_offset)"/>
+    <param name="mocap_frame" value="$(arg mocap_frame)"/>
+    <param name="mocap_timeout" value="$(arg mocap_timeout)"/>
+    <param name="ctrl_mode" value="$(arg ctrl_mode)"/>
+    <param name="ang_ctrl_mode" value="$(arg ang_ctrl_mode)"/>
+    <param name="alpha" value="$(arg alpha)"/>
+    <param name="alpha_angle" value="$(arg alpha_angle)"/>
+    <param name="beta1" value="$(arg beta1)"/>
+    <param name="beta2" value="$(arg beta2)"/>
+    <param name="tau" value="$(arg tau)"/>
+    <param name="spacing" value="$(arg spacing)"/>
+    <param name="arrow_a" value="$(arg arrow_a)"/>
+    <param name="arrow_b" value="$(arg arrow_b)"/>
+    <param name="diagnostic_only" value="$(arg diagnostic_only)"/>
+  </node>
+</launch>

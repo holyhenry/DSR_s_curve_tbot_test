@@ -142,6 +142,10 @@ add_executable(${PROJECT_NAME}_node
                src/tracking_node.cpp
                src/controller.cpp
 )
+add_executable(tracking_mocap_node
+               src/tracking_mocap_node.cpp
+               src/controller.cpp
+)
 add_executable(odom_cov_injector 
                src/odom_cov_injector.cpp)
 
@@ -157,6 +161,9 @@ add_executable(odom_cov_injector
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(tracking_mocap_node
   ${catkin_LIBRARIES}
 )
 target_link_libraries(odom_cov_injector 
