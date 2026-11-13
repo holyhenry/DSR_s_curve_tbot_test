@@ -23,6 +23,9 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
     pnh.param<double>("arrow_a", arrow_a_, 0.25);
     pnh.param<double>("arrow_b", arrow_b_, 0.15);
     pnh.param<double>("mocap_timeout", mocap_timeout_, 0.5);
+    pnh.param<double>("mocap_max_linear_speed", mocap_max_linear_speed_, 0.0);
+    if (!std::isfinite(mocap_max_linear_speed_) || mocap_max_linear_speed_ < 0.0)
+        throw std::invalid_argument("mocap_max_linear_speed must be finite and nonnegative");
     pnh.param<int>("mocap_lsq_buffer", mocap_lsq_buffer_, 7);
     if (mocap_lsq_buffer_ < 4 || mocap_lsq_buffer_ > 100)
         throw std::invalid_argument("mocap_lsq_buffer must be between 4 and 100");
@@ -469,7 +472,15 @@ void MocapTrackingNode::runControlStep(bool diagnostic_only)
 
     // 5. Publish velocity command & debug info
     geometry_msgs::Twist twist_msg;
-    twist_msg.linear.x = cmd[0];
+    // Cap only the output command; retain the calculated controller value for diagnostics.
+    double speed_limited_linear = cmd[0];
+    if (mocap_max_linear_speed_ > 0.0 && std::isfinite(speed_limited_linear)) {
+        if (speed_limited_linear > mocap_max_linear_speed_)
+            speed_limited_linear = mocap_max_linear_speed_;
+        else if (speed_limited_linear < -mocap_max_linear_speed_)
+            speed_limited_linear = -mocap_max_linear_speed_;
+    }
+    twist_msg.linear.x = speed_limited_linear;
     twist_msg.angular.z = cmd[1];
 
     const bool direction_conflict = direction_interlock_ &&
@@ -489,14 +500,15 @@ void MocapTrackingNode::runControlStep(bool diagnostic_only)
                       "leader_local=(%.3f,%.3f) wheel_pose=(%.3f,%.3f,%.3f) "
                       "memory_last_odom=(%.3f,%.3f) memory_last_local=(%.3f,%.3f) samples=%ld "
                       "DSR_target=(%.3f,%.3f) LOS_target=(%.3f,%.3f) "
-                      "calculated_cmd=(%.4f,%.4f) guarded_cmd=(%.4f,%.4f) blocked=%d",
+                      "calculated_cmd=(%.4f,%.4f) speed_limited_linear=%.4f "
+                      "guarded_cmd=(%.4f,%.4f) blocked=%d",
                       diagnostic_only, leader_mocap_state_[0], leader_mocap_state_[1], leader_mocap_state_[2],
                       leader_local_state_.x(), leader_local_state_.y(),
                       odom_state_last_[0], odom_state_last_[1], odom_state_last_[2],
                       global_leader_states_(last,0), global_leader_states_(last,1),
                       history_local.x(), history_local.y(), static_cast<long>(global_leader_states_.rows()),
                       target.x(), target.y(), angular_target.x(), angular_target.y(),
-                      cmd[0], cmd[1], twist_msg.linear.x, twist_msg.angular.z,
+                      cmd[0], cmd[1], speed_limited_linear, twist_msg.linear.x, twist_msg.angular.z,
                       direction_conflict || invalid_command);
     if (!diagnostic_only) cmd_vel_pub_.publish(twist_msg);
 
