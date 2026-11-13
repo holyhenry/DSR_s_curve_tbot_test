@@ -22,6 +22,8 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
     pnh.param<double>("arrow_a", arrow_a_, 0.25);
     pnh.param<double>("arrow_b", arrow_b_, 0.15);
     pnh.param<double>("mocap_timeout", mocap_timeout_, 0.5);
+    pnh.param<double>("mocap_pair_slop", mocap_pair_slop_, 0.05);
+    pnh.param<double>("mocap_memory_step", mocap_memory_step_, 0.01);
     pnh.param<double>("leader_yaw_offset", leader_yaw_offset_, M_PI);
     pnh.param<double>("follower_yaw_offset", follower_yaw_offset_, M_PI);
     pnh.param<std::string>("mocap_frame", mocap_frame_, "");
@@ -34,7 +36,9 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
         throw std::invalid_argument("V formation requires follower_indx 0 (bot162) or 1 (bot149)");
     if (mode_str != "DSR" || ang_mode_str != "LOS")
         throw std::invalid_argument("V formation requires DSR linear and LOS angular mode");
-    if (!std::isfinite(arrow_a_) || !std::isfinite(arrow_b_) ||
+    if (!std::isfinite(mocap_pair_slop_) || mocap_pair_slop_ <= 0.0 ||
+        !std::isfinite(mocap_memory_step_) || mocap_memory_step_ <= 0.0 ||
+        !std::isfinite(arrow_a_) || !std::isfinite(arrow_b_) ||
         !std::isfinite(mocap_timeout_) || arrow_a_ <= 0.0 ||
         arrow_b_ < 0.0 || mocap_timeout_ <= 0.0 ||
         !std::isfinite(leader_yaw_offset_) || !std::isfinite(follower_yaw_offset_))
@@ -187,7 +191,12 @@ bool MocapTrackingNode::mocapReady() const
     const double follower_age = (now - follower_stamp_).toSec();
     const double leader_received_age = (now - leader_received_).toSec();
     const double follower_received_age = (now - follower_received_).toSec();
-    return leader_age >= 0.0 && leader_age <= mocap_timeout_ &&
+    // NatNet topics travel through independent UDP streams. Do not combine
+    // world poses acquired too far apart: the resulting relative position is
+    // not a physically measured robot-to-robot transform.
+    const double pair_delta = std::abs((leader_stamp_ - follower_stamp_).toSec());
+    return pair_delta <= mocap_pair_slop_ &&
+           leader_age >= 0.0 && leader_age <= mocap_timeout_ &&
            follower_age >= 0.0 && follower_age <= mocap_timeout_ &&
            leader_received_age >= 0.0 && leader_received_age <= mocap_timeout_ &&
            follower_received_age >= 0.0 && follower_received_age <= mocap_timeout_;
@@ -198,7 +207,6 @@ bool MocapTrackingNode::mocapReady() const
 void MocapTrackingNode::mocapFilter()
 {
     const double outlier_threshold = 0.04;
-    const double movement_threshold = 0.0004; // same gate as the AprilTag version
     if (!new_leader_message_ || !have_odom_ || !mocapReady()) return;
     new_leader_message_ = false;
 
@@ -219,6 +227,7 @@ void MocapTrackingNode::mocapFilter()
         ROS_INFO_THROTTLE(0.5, "[mocapFilter] Filtered leader position outlier");
         return;
     }
+    const bool first_measurement = !have_valid_mocap_;
     leader_local_state_ = relative_leader;
     leader_relative_yaw_ = relative_yaw;
     have_valid_mocap_ = true;
@@ -233,19 +242,36 @@ void MocapTrackingNode::mocapFilter()
     // Transform to global frame
     Eigen::Vector2d global_leader_state = homoTrans2Global(leader_local_state_);
 
+    // Anchor AprilTag-style virtual trajectory in the *current odometry frame*
+    // at the FIRST real relative measurement. The old implementation built
+    // the virtual trajectory while odometry was still (0,0,0); that synthetic
+    // trajectory then remained in the memory after wheel odometry initialized.
+    // This change does NOT change the Controller::interpTraj() implementation.
+    if (first_measurement) {
+        controller_.interpTraj(leader_local_state_, 300);
+        const Eigen::MatrixXd virtual_local = controller_.getObservations();
+        global_leader_states_.resize(virtual_local.rows(), 2);
+        for (Eigen::Index i = 0; i < virtual_local.rows(); ++i) {
+            const Eigen::Vector2d local = virtual_local.row(i).transpose();
+            global_leader_states_.row(i) = homoTrans2Global(local).transpose();
+        }
+        global_leader_state_last_ = global_leader_states_.bottomRows(1).transpose();
+        ROS_INFO("[MOCAP] Initialized virtual history from first synchronized pose");
+    }
+
     // LSQ filter
     mocap_t_sec_ = normalizeMocapTime(leader_stamp_);
     auto res = mocapLSQFilter(global_leader_state, mocap_t_sec_);
     Eigen::Vector2d global_leader_state_f = res.first;
-    Eigen::Vector2d disp_over_tau         = res.second;
-
-    // Add new state into system memory
-    const int n = static_cast<int>(global_leader_states_.rows());
-    double movement = disp_over_tau.norm();
-    if (movement > movement_threshold)
+    // Preserve original LSQ estimates; gate memory using *actual change in
+    // filtered world position*. A tiny nonzero LSQ velocity on stationary
+    // noisy mocap used to append a fake predecessor trajectory on every tick.
+    const double memory_step = (global_leader_state_f - global_leader_state_last_).norm();
+    if (memory_step >= mocap_memory_step_)
     {
         constexpr int kMaxStates = 2000;
 
+        const int n = static_cast<int>(global_leader_states_.rows());
         if (n < kMaxStates) {
             global_leader_states_.conservativeResize(n + 1, 2);
             global_leader_states_.row(n) = global_leader_state_f.transpose();
@@ -261,8 +287,8 @@ void MocapTrackingNode::mocapFilter()
 
     // Publish global leader states
     geometry_msgs::Pose2D msg;
-    msg.x = global_leader_states_(n - 1, 0);  // coordinate x
-    msg.y = global_leader_states_(n - 1, 1);  // coordinate y
+    msg.x = global_leader_states_(global_leader_states_.rows() - 1, 0);
+    msg.y = global_leader_states_(global_leader_states_.rows() - 1, 1);
     global_leader_pub_.publish(msg);
 
 }
@@ -322,6 +348,10 @@ void MocapTrackingNode::runControlStep()
     {
         case AngControllerMode::LOS:
             angular_controller = controller_.angularUpdate(angular_target);
+
+            if (angular_target.norm() < 0.03) {
+                angular_controller = 0.0;
+            }
             break;
         case AngControllerMode::PC:
             const double v_current = getVelocity();
@@ -335,6 +365,12 @@ void MocapTrackingNode::runControlStep()
     geometry_msgs::Twist twist_msg;
     twist_msg.linear.x = cmd[0];
     twist_msg.angular.z = cmd[1];
+
+    // Suppress very small forward/backward velocity commands.
+    if (std::abs(twist_msg.linear.x) < 0.005) {
+       twist_msg.linear.x = 0.0;
+       }
+
     cmd_vel_pub_.publish(twist_msg);
 
     ControllerDebug dbg = controller_.getDebugData();
