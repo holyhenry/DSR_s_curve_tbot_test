@@ -65,7 +65,7 @@ private:
     double leader_relative_yaw_ = 0.0;
     Eigen::Vector3d leader_mocap_state_ = Eigen::Vector3d::Zero();
     Eigen::Vector3d follower_mocap_state_ = Eigen::Vector3d::Zero();
-    double leader_yaw_offset_ = M_PI, follower_yaw_offset_ = M_PI;
+    double leader_yaw_offset_ = M_PI, follower_yaw_offset_ = 0.0;
     std::string mocap_frame_, leader_frame_, follower_frame_;
     ros::Time leader_stamp_, follower_stamp_;
     ros::Time leader_received_, follower_received_;

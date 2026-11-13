@@ -7,10 +7,11 @@
   <arg name="follower_pose_topic" default="$(eval '/bot162/pose' if int(arg('follower_indx')) == 0 else '/bot149/pose')"/>
   <!-- Same rigid-body heading correction as follower_aware bot205, for all bots. -->
   <arg name="leader_yaw_offset" default="3.141592653589793"/>
-  <arg name="follower_yaw_offset" default="3.141592653589793"/>
+  <arg name="follower_yaw_offset" default="0.0"/>
   <!-- Both PoseStamped frames must match. Set this to require a specific frame. -->
   <arg name="mocap_frame" default=""/>
   <arg name="mocap_timeout" default="0.5"/>
+  <arg name="mocap_lsq_buffer" default="7"/>
 
   <!-- Same parameters as tracking.launch. -->
   <arg name="ctrl_mode" default="DSR"/>
@@ -36,6 +37,7 @@
     <param name="follower_yaw_offset" value="$(arg follower_yaw_offset)"/>
     <param name="mocap_frame" value="$(arg mocap_frame)"/>
     <param name="mocap_timeout" value="$(arg mocap_timeout)"/>
+    <param name="mocap_lsq_buffer" value="$(arg mocap_lsq_buffer)" type="int"/>
     <param name="ctrl_mode" value="$(arg ctrl_mode)"/>
     <param name="ang_ctrl_mode" value="$(arg ang_ctrl_mode)"/>
     <param name="alpha" value="$(arg alpha)"/>

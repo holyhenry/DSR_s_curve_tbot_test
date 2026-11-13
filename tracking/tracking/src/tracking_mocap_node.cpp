@@ -22,10 +22,13 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
     pnh.param<double>("arrow_a", arrow_a_, 0.25);
     pnh.param<double>("arrow_b", arrow_b_, 0.15);
     pnh.param<double>("mocap_timeout", mocap_timeout_, 0.5);
+    pnh.param<int>("mocap_lsq_buffer", mocap_lsq_buffer_, 7);
+    if (mocap_lsq_buffer_ < 4 || mocap_lsq_buffer_ > 100)
+        throw std::invalid_argument("mocap_lsq_buffer must be between 4 and 100");
     pnh.param<double>("mocap_pair_slop", mocap_pair_slop_, 0.05);
     pnh.param<double>("mocap_memory_step", mocap_memory_step_, 0.01);
     pnh.param<double>("leader_yaw_offset", leader_yaw_offset_, M_PI);
-    pnh.param<double>("follower_yaw_offset", follower_yaw_offset_, M_PI);
+    pnh.param<double>("follower_yaw_offset", follower_yaw_offset_, 0.0);
     pnh.param<std::string>("mocap_frame", mocap_frame_, "");
     std::string leader_pose_topic, follower_pose_topic;
     pnh.param<std::string>("leader_pose_topic", leader_pose_topic, "/bot205/pose");
