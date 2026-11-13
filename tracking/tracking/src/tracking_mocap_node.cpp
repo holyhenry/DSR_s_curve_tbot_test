@@ -1,5 +1,6 @@
 // ROS 1 V formation: copy of tracking_node.cpp with mocap replacing AprilTags.
-// Controller equations, wheel odometry, LSQ windows, memory and loop rate are retained.
+// Controller equations, LSQ equations, movement gate and loop rate are retained.
+// MoCap history is anchored once to the first accepted pose in fresh wheel odometry.
 // PoseStamped inputs are base-center poses in one common frame, in meters, +z up.
 // A common world rotation/translation cancels when computing the relative pose.
 #include <ros/ros.h>
@@ -26,6 +27,14 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
     if (mocap_lsq_buffer_ < 4 || mocap_lsq_buffer_ > 100)
         throw std::invalid_argument("mocap_lsq_buffer must be between 4 and 100");
     pnh.param<double>("mocap_pair_slop", mocap_pair_slop_, 0.05);
+    pnh.param<double>("odom_timeout", odom_timeout_, 0.5);
+    pnh.param<bool>("direction_interlock", direction_interlock_, true);
+    pnh.param<double>("interlock_los_ahead", interlock_los_ahead_, 0.10);
+    pnh.param<double>("interlock_dsr_behind", interlock_dsr_behind_, 0.10);
+    if (!std::isfinite(odom_timeout_) || odom_timeout_ <= 0.0 ||
+        !std::isfinite(interlock_los_ahead_) || interlock_los_ahead_ <= 0.0 ||
+        !std::isfinite(interlock_dsr_behind_) || interlock_dsr_behind_ <= 0.0)
+        throw std::invalid_argument("Invalid odom timeout or direction interlock thresholds");
     pnh.param<double>("leader_yaw_offset", leader_yaw_offset_, M_PI);
     pnh.param<double>("follower_yaw_offset", follower_yaw_offset_, 0.0);
     pnh.param<std::string>("mocap_frame", mocap_frame_, "");
@@ -92,13 +101,10 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
         leader_local_state_ = Eigen::Vector2d(arrow_a_, -side);
     }
 
-    // Interp virtual start trajectory
-    controller_.interpTraj(leader_local_state_, 300);
-
-    // Initialize global leader state
-    // [Note]: the first gloabl aligns with local
-    global_leader_state_last_ = leader_local_state_;
-    global_leader_states_ = controller_.getObservations();
+    // No synthetic local points may be stored as odometry-frame history here.
+    // Defer interpTraj until both real relative pose and fresh odometry exist.
+    global_leader_states_.resize(0, 2);
+    global_leader_state_last_ = Eigen::Vector2d::Zero();
 
     // Initialize leader observation time stamp
     mocap_t_sec_ = 0.0;
@@ -109,6 +115,21 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
 void MocapTrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
     const ros::Time& stamp = msg->header.stamp;
+    const double age = (ros::Time::now() - stamp).toSec();
+    if (stamp.isZero() || age < 0.0 || age > odom_timeout_ ||
+        (have_odom_ && stamp <= odom_stamp_)) {
+        ROS_WARN_THROTTLE(1.0, "[ODOM reject] zero/future/stale/non-increasing stamp; age=%.3f", age);
+        return;
+    }
+    const auto& pose = msg->pose.pose;
+    const auto& orientation = pose.orientation;
+    const double qnorm = std::sqrt(orientation.x*orientation.x + orientation.y*orientation.y +
+                                   orientation.z*orientation.z + orientation.w*orientation.w);
+    if (!std::isfinite(pose.position.x) || !std::isfinite(pose.position.y) ||
+        !std::isfinite(qnorm) || qnorm < 1e-8 || !std::isfinite(msg->twist.twist.linear.x)) {
+        ROS_WARN_THROTTLE(1.0, "[ODOM reject] invalid pose/quaternion/velocity");
+        return;
+    }
     double odom_t_sec = normalizeOdomTime(stamp);
 
     // Extract pose & velocity
@@ -123,6 +144,7 @@ void MocapTrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
         msg->pose.pose.orientation.z,
         msg->pose.pose.orientation.w
     );
+    q.normalize();
     double roll, pitch, yaw;
     tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
@@ -138,6 +160,8 @@ void MocapTrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
     odom_displacement_ = disp_over_tau;
     odom_state_last_   = odom_state_f;
     have_odom_ = true;
+    odom_stamp_ = stamp;
+    odom_received_ = ros::Time::now();
 }
 
 bool MocapTrackingNode::readMocapPose(const geometry_msgs::PoseStamped& msg,
@@ -148,13 +172,20 @@ bool MocapTrackingNode::readMocapPose(const geometry_msgs::PoseStamped& msg,
     const double age = (ros::Time::now() - msg.header.stamp).toSec();
     if (msg.header.stamp.isZero() || age < 0.0 || age > mocap_timeout_ ||
         (!mocap_frame_.empty() && msg.header.frame_id != mocap_frame_))
+    {
+        ROS_WARN_THROTTLE(1.0, "[MOCAP reject] stamp/frame: age=%.3f frame='%s' required='%s' (check ROS clocks)",
+                          age, msg.header.frame_id.c_str(), mocap_frame_.c_str());
         return false;
+    }
     const auto& p = msg.pose.position;
     const auto& q = msg.pose.orientation;
     const double norm = std::sqrt(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
     if (!std::isfinite(p.x) || !std::isfinite(p.y) ||
         !std::isfinite(norm) || norm < 1e-8)
+    {
+        ROS_WARN_THROTTLE(1.0, "[MOCAP reject] nonfinite position or invalid quaternion");
         return false;
+    }
     tf::Quaternion rotation(q.x/norm, q.y/norm, q.z/norm, q.w/norm);
     double roll, pitch, yaw;
     tf::Matrix3x3(rotation).getRPY(roll, pitch, yaw);
@@ -164,7 +195,10 @@ bool MocapTrackingNode::readMocapPose(const geometry_msgs::PoseStamped& msg,
 
 void MocapTrackingNode::leaderMocapCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
-    if (have_leader_mocap_ && msg->header.stamp <= leader_stamp_) return;
+    if (have_leader_mocap_ && msg->header.stamp <= leader_stamp_) {
+        ROS_WARN_THROTTLE(1.0, "[MOCAP leader reject] non-increasing timestamp");
+        return;
+    }
     if (!readMocapPose(*msg, leader_yaw_offset_, leader_mocap_state_)) return;
     leader_stamp_ = msg->header.stamp;
     leader_received_ = ros::Time::now();
@@ -175,7 +209,10 @@ void MocapTrackingNode::leaderMocapCallback(const geometry_msgs::PoseStamped::Co
 
 void MocapTrackingNode::followerMocapCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
-    if (have_follower_mocap_ && msg->header.stamp <= follower_stamp_) return;
+    if (have_follower_mocap_ && msg->header.stamp <= follower_stamp_) {
+        ROS_WARN_THROTTLE(1.0, "[MOCAP follower reject] non-increasing timestamp");
+        return;
+    }
     if (!readMocapPose(*msg, follower_yaw_offset_, follower_mocap_state_)) return;
     follower_stamp_ = msg->header.stamp;
     follower_received_ = ros::Time::now();
@@ -203,13 +240,65 @@ bool MocapTrackingNode::mocapReady() const
            follower_received_age >= 0.0 && follower_received_age <= mocap_timeout_;
 }
 
+bool MocapTrackingNode::odomReady() const
+{
+    if (!have_odom_) return false;
+    const ros::Time now = ros::Time::now();
+    const double age = (now - odom_stamp_).toSec();
+    const double received_age = (now - odom_received_).toSec();
+    return age >= 0.0 && age <= odom_timeout_ &&
+           received_age >= 0.0 && received_age <= odom_timeout_;
+}
+
+void MocapTrackingNode::logInputStatus() const
+{
+    const ros::Time now = ros::Time::now();
+    ROS_WARN_THROTTLE(1.0,
+        "[INPUT stop] have(L/F/O/accepted/history)=%d/%d/%d/%d/%d ready(mocap/odom)=%d/%d "
+        "stamp_age(L/F/O)=%.3f/%.3f/%.3f receive_age=%.3f/%.3f/%.3f "
+        "pair_skew=%.3f limit=%.3f odom_leader_skew=%.3f accepted_age=%.3f "
+        "frames='%s'/'%s' timeouts(mocap/odom)=%.3f/%.3f",
+        have_leader_mocap_, have_follower_mocap_, have_odom_, have_valid_mocap_, history_initialized_,
+        mocapReady(), odomReady(),
+        (now-leader_stamp_).toSec(), (now-follower_stamp_).toSec(), (now-odom_stamp_).toSec(),
+        (now-leader_received_).toSec(), (now-follower_received_).toSec(), (now-odom_received_).toSec(),
+        std::abs((leader_stamp_-follower_stamp_).toSec()), mocap_pair_slop_,
+        (odom_stamp_-leader_stamp_).toSec(), (now-last_valid_mocap_time_).toSec(),
+        leader_frame_.c_str(), follower_frame_.c_str(), mocap_timeout_, odom_timeout_);
+}
+
+void MocapTrackingNode::logMotionSigns()
+{
+    // Compare measured displacements projected on each frame's own forward axis.
+    // No frame alignment, sign correction, filtering or control substitution is applied.
+    if (have_sign_reference_ && (follower_stamp_-sign_mocap_stamp_).toSec() < 0.5) return;
+    if (have_sign_reference_) {
+        const Eigen::Vector2d dm = (follower_mocap_state_-sign_mocap_reference_).head<2>();
+        const Eigen::Vector2d dw = (odom_state_last_-sign_odom_reference_).head<2>();
+        const double mf = dm.dot(Eigen::Vector2d(std::cos(sign_mocap_reference_[2]), std::sin(sign_mocap_reference_[2])));
+        const double wf = dw.dot(Eigen::Vector2d(std::cos(sign_odom_reference_[2]), std::sin(sign_odom_reference_[2])));
+        ROS_INFO("[SIGN] forward_displacement mocap=%.4f wheel=%.4f m dt(mocap/wheel)=%.3f/%.3f "
+                 "wheel_twist_v=%.4f wheel_LSQ_v=%.4f heading_delta(mocap/wheel)=%.3f/%.3f rad",
+                 mf, wf, (follower_stamp_-sign_mocap_stamp_).toSec(), (odom_stamp_-sign_odom_stamp_).toSec(),
+                 odom_vel_x_, getVelocity(), angDiff(follower_mocap_state_[2], sign_mocap_reference_[2]),
+                 angDiff(odom_state_last_[2], sign_odom_reference_[2]));
+        if (std::abs(mf) > 0.01 && std::abs(wf) > 0.01 && mf*wf < 0.0)
+            ROS_WARN("[SIGN mismatch] wheel and mocap forward motion disagree; inspect heading offsets/odom axes");
+    }
+    sign_mocap_reference_ = follower_mocap_state_;
+    sign_odom_reference_ = odom_state_last_;
+    sign_mocap_stamp_ = follower_stamp_;
+    sign_odom_stamp_ = odom_stamp_;
+    have_sign_reference_ = true;
+}
+
 // ===============================Core operations==============================
 
 void MocapTrackingNode::mocapFilter()
 {
     const double outlier_threshold = 0.04;
     const double movement_threshold = 0.0004; // Same displacement-over-tau gate as AprilTag.
-    if (!new_leader_message_ || !have_odom_ || !mocapReady()) return;
+    if (!new_leader_message_ || !odomReady() || !mocapReady()) return;
     new_leader_message_ = false;
 
     // Replace camera/tag reconstruction with the mocap world-to-follower transform.
@@ -226,7 +315,9 @@ void MocapTrackingNode::mocapFilter()
         (ros::Time::now() - last_valid_mocap_time_).toSec() > mocap_timeout_;
     if (have_valid_mocap_ && !stale_reference &&
         (relative_leader - leader_local_state_).norm() > outlier_threshold) {
-        ROS_INFO_THROTTLE(0.5, "[mocapFilter] Filtered leader position outlier");
+        ROS_WARN_THROTTLE(0.5, "[MOCAP outlier] jump=%.4f m limit=%.4f accepted_age=%.3f; sample rejected",
+                          (relative_leader-leader_local_state_).norm(), outlier_threshold,
+                          (ros::Time::now()-last_valid_mocap_time_).toSec());
         return;
     }
     leader_local_state_ = relative_leader;
@@ -243,6 +334,26 @@ void MocapTrackingNode::mocapFilter()
     // Transform to global frame
     Eigen::Vector2d global_leader_state = homoTrans2Global(leader_local_state_);
 
+    if (!history_initialized_) {
+        // interpTraj returns LOCAL points from -leader to +leader. Transform
+        // EVERY point, not only the endpoint, into the current odometry frame.
+        controller_.interpTraj(leader_local_state_, 300);
+        const Eigen::MatrixXd virtual_local = controller_.getObservations();
+        global_leader_states_.resize(virtual_local.rows(), 2);
+        for (Eigen::Index i = 0; i < virtual_local.rows(); ++i) {
+            const Eigen::Vector2d point = virtual_local.row(i).transpose();
+            global_leader_states_.row(i) = homoTrans2Global(point).transpose();
+        }
+        global_leader_state_last_ = global_leader_state;
+        history_initialized_ = true;
+        ROS_INFO("[HISTORY init] anchored 300 points to REAL local leader=(%.3f,%.3f) "
+                 "at wheel pose=(%.3f,%.3f,%.3f), endpoint_odom=(%.3f,%.3f)",
+                 leader_local_state_.x(), leader_local_state_.y(),
+                 odom_state_last_[0], odom_state_last_[1], odom_state_last_[2],
+                 global_leader_state.x(), global_leader_state.y());
+    }
+    logMotionSigns();
+
     // LSQ filter
     mocap_t_sec_ = normalizeMocapTime(leader_stamp_);
     auto res = mocapLSQFilter(global_leader_state, mocap_t_sec_);
@@ -252,6 +363,8 @@ void MocapTrackingNode::mocapFilter()
     // Add new state into system memory (identical to AprilTag).
     const int n = static_cast<int>(global_leader_states_.rows());
     double movement = disp_over_tau.norm();
+    memory_movement_ = movement;
+    memory_appended_ = false;
     if (movement > movement_threshold)
     {
         constexpr int kMaxStates = 2000;
@@ -267,12 +380,22 @@ void MocapTrackingNode::mocapFilter()
             global_leader_states_.row(kMaxStates - 1) = global_leader_state_f.transpose();
         }
         global_leader_state_last_ = global_leader_state_f;
+        memory_appended_ = true;
+        ++memory_appends_;
     }
 
-    // Publish global leader states
+    ROS_INFO_THROTTLE(0.5, "[MEMORY] leader_odom_raw=(%.3f,%.3f) filtered=(%.3f,%.3f) "
+                      "disp_tau=%.6f gate=%.6f appended=%d total_appends=%lu samples=%ld endpoint_gap=%.4f",
+                      global_leader_state.x(), global_leader_state.y(),
+                      global_leader_state_f.x(), global_leader_state_f.y(),
+                      memory_movement_, movement_threshold, memory_appended_, memory_appends_,
+                      static_cast<long>(global_leader_states_.rows()),
+                      (global_leader_state-global_leader_state_last_).norm());
+
+    // Publish the actual last point, including a sample appended this cycle.
     geometry_msgs::Pose2D msg;
-    msg.x = global_leader_states_(n - 1, 0);
-    msg.y = global_leader_states_(n - 1, 1);
+    msg.x = global_leader_states_(global_leader_states_.rows() - 1, 0);
+    msg.y = global_leader_states_(global_leader_states_.rows() - 1, 1);
     global_leader_pub_.publish(msg);
 
 }
@@ -289,12 +412,14 @@ Eigen::Vector2d MocapTrackingNode::getVFormationTarget() const
     return leader_local_state_ + R * offset;
 }
 
-void MocapTrackingNode::runControlStep()
+void MocapTrackingNode::runControlStep(bool diagnostic_only)
 {
-    if (!have_odom_ || !mocapReady() || !have_valid_mocap_ ||
+    if (!odomReady() || !mocapReady() || !have_valid_mocap_ || !history_initialized_ ||
+        (ros::Time::now() - last_valid_mocap_time_).toSec() < 0.0 ||
         (ros::Time::now() - last_valid_mocap_time_).toSec() > mocap_timeout_) {
-        cmd_vel_pub_.publish(geometry_msgs::Twist());
-        ROS_WARN_THROTTLE(1.0, "V formation: waiting for odometry and fresh accepted mocap; commanding stop");
+        // Diagnostic mode publishes no cmd_vel at all, including stop messages.
+        if (!diagnostic_only) cmd_vel_pub_.publish(geometry_msgs::Twist());
+        logInputStatus();
         return;
     }
     // 0. Get node current time
@@ -347,7 +472,33 @@ void MocapTrackingNode::runControlStep()
     twist_msg.linear.x = cmd[0];
     twist_msg.angular.z = cmd[1];
 
-    cmd_vel_pub_.publish(twist_msg);
+    const bool direction_conflict = direction_interlock_ &&
+        angular_target.x() > interlock_los_ahead_ && target.x() < -interlock_dsr_behind_;
+    const bool invalid_command = !target.allFinite() || !angular_target.allFinite() ||
+        !std::isfinite(cmd[0]) || !std::isfinite(cmd[1]);
+    if (direction_conflict || invalid_command) {
+        twist_msg = geometry_msgs::Twist();
+        ROS_WARN_THROTTLE(0.5, "[INTERLOCK stop] conflict=%d invalid=%d LOS_x=%.3f DSR_x=%.3f "
+                          "calculated_cmd=(%.3f,%.3f); target unchanged; diagnostic_only=%d",
+                          direction_conflict, invalid_command, angular_target.x(), target.x(),
+                          cmd[0], cmd[1], diagnostic_only);
+    }
+    const Eigen::Index last = global_leader_states_.rows()-1;
+    const Eigen::Vector2d history_local = local_leader_states.row(last).transpose();
+    ROS_INFO_THROTTLE(0.5, "[CONTROL] diagnostic_only=%d mocap_leader_world=(%.3f,%.3f,%.3f) "
+                      "leader_local=(%.3f,%.3f) wheel_pose=(%.3f,%.3f,%.3f) "
+                      "memory_last_odom=(%.3f,%.3f) memory_last_local=(%.3f,%.3f) samples=%ld "
+                      "DSR_target=(%.3f,%.3f) LOS_target=(%.3f,%.3f) "
+                      "calculated_cmd=(%.4f,%.4f) guarded_cmd=(%.4f,%.4f) blocked=%d",
+                      diagnostic_only, leader_mocap_state_[0], leader_mocap_state_[1], leader_mocap_state_[2],
+                      leader_local_state_.x(), leader_local_state_.y(),
+                      odom_state_last_[0], odom_state_last_[1], odom_state_last_[2],
+                      global_leader_states_(last,0), global_leader_states_(last,1),
+                      history_local.x(), history_local.y(), static_cast<long>(global_leader_states_.rows()),
+                      target.x(), target.y(), angular_target.x(), angular_target.y(),
+                      cmd[0], cmd[1], twist_msg.linear.x, twist_msg.angular.z,
+                      direction_conflict || invalid_command);
+    if (!diagnostic_only) cmd_vel_pub_.publish(twist_msg);
 
     ControllerDebug dbg = controller_.getDebugData();
     Eigen::Vector3d odom_state = odom_state_last_;
@@ -589,7 +740,7 @@ int main(int argc, char** argv) {
         node.mocapFilter();
 
         // Run controller step
-        if (!diagnostic_only) node.runControlStep();
+        node.runControlStep(diagnostic_only);
 
         // Sleep to maintain loop rate
         rate.sleep();

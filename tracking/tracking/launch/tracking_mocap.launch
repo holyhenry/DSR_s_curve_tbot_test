@@ -11,6 +11,12 @@
   <!-- Both PoseStamped frames must match. Set this to require a specific frame. -->
   <arg name="mocap_frame" default=""/>
   <arg name="mocap_timeout" default="0.5"/>
+  <arg name="mocap_pair_slop" default="0.05"/>
+  <arg name="odom_timeout" default="0.5"/>
+  <!-- Stop on contradictory targets; distances are in follower-local meters. -->
+  <arg name="direction_interlock" default="true"/>
+  <arg name="interlock_los_ahead" default="0.10"/>
+  <arg name="interlock_dsr_behind" default="0.10"/>
   <arg name="mocap_lsq_buffer" default="7"/>
 
   <!-- Same parameters as tracking.launch. -->
@@ -40,6 +46,11 @@
     <param name="follower_yaw_offset" value="$(arg follower_yaw_offset)"/>
     <param name="mocap_frame" value="$(arg mocap_frame)"/>
     <param name="mocap_timeout" value="$(arg mocap_timeout)"/>
+    <param name="mocap_pair_slop" value="$(arg mocap_pair_slop)"/>
+    <param name="odom_timeout" value="$(arg odom_timeout)"/>
+    <param name="direction_interlock" value="$(arg direction_interlock)"/>
+    <param name="interlock_los_ahead" value="$(arg interlock_los_ahead)"/>
+    <param name="interlock_dsr_behind" value="$(arg interlock_dsr_behind)"/>
     <param name="mocap_lsq_buffer" value="$(arg mocap_lsq_buffer)" type="int"/>
     <param name="ctrl_mode" value="$(arg ctrl_mode)"/>
     <param name="ang_ctrl_mode" value="$(arg ang_ctrl_mode)"/>

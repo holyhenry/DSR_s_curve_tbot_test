@@ -34,7 +34,7 @@ public:
     // =============================Core functions=============================
     Eigen::MatrixXd getGlobalLeaderStates() const;
     void mocapFilter();
-    void runControlStep();
+    void runControlStep(bool diagnostic_only = true);
 
     // =============================Getter functions=============================
     double getVelocity() const;
@@ -48,6 +48,17 @@ private:
     double arrow_a_ = 0.25, arrow_b_ = 0.15;
     double mocap_timeout_ = 0.5;
     double mocap_pair_slop_ = 0.05;     // max difference between leader/follower stamps
+    double odom_timeout_ = 0.5;
+    bool direction_interlock_ = true;
+    double interlock_los_ahead_ = 0.10, interlock_dsr_behind_ = 0.10;
+    bool history_initialized_ = false;
+    double memory_movement_ = 0.0;
+    unsigned long memory_appends_ = 0;
+    bool memory_appended_ = false;
+    ros::Time odom_stamp_, odom_received_;
+    bool have_sign_reference_ = false;
+    Eigen::Vector3d sign_mocap_reference_, sign_odom_reference_;
+    ros::Time sign_mocap_stamp_, sign_odom_stamp_;
     bool have_valid_mocap_ = false;
     ros::Time last_valid_mocap_time_;
 
@@ -119,6 +130,9 @@ private:
     bool readMocapPose(const geometry_msgs::PoseStamped& msg, double yaw_offset,
                        Eigen::Vector3d& state) const;
     bool mocapReady() const;
+    bool odomReady() const;
+    void logInputStatus() const;
+    void logMotionSigns();
 
     // Static helper functions
     static double wrapPi(double a){
