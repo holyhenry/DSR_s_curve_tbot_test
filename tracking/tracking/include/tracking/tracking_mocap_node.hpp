@@ -48,7 +48,6 @@ private:
     double arrow_a_ = 0.25, arrow_b_ = 0.15;
     double mocap_timeout_ = 0.5;
     double mocap_pair_slop_ = 0.05;     // max difference between leader/follower stamps
-    double mocap_memory_step_ = 0.01;  // min real filtered movement to append memory
     bool have_valid_mocap_ = false;
     ros::Time last_valid_mocap_time_;
 

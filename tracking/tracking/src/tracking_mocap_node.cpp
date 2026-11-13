@@ -26,7 +26,6 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
     if (mocap_lsq_buffer_ < 4 || mocap_lsq_buffer_ > 100)
         throw std::invalid_argument("mocap_lsq_buffer must be between 4 and 100");
     pnh.param<double>("mocap_pair_slop", mocap_pair_slop_, 0.05);
-    pnh.param<double>("mocap_memory_step", mocap_memory_step_, 0.01);
     pnh.param<double>("leader_yaw_offset", leader_yaw_offset_, M_PI);
     pnh.param<double>("follower_yaw_offset", follower_yaw_offset_, 0.0);
     pnh.param<std::string>("mocap_frame", mocap_frame_, "");
@@ -40,7 +39,6 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
     if (mode_str != "DSR" || ang_mode_str != "LOS")
         throw std::invalid_argument("V formation requires DSR linear and LOS angular mode");
     if (!std::isfinite(mocap_pair_slop_) || mocap_pair_slop_ <= 0.0 ||
-        !std::isfinite(mocap_memory_step_) || mocap_memory_step_ <= 0.0 ||
         !std::isfinite(arrow_a_) || !std::isfinite(arrow_b_) ||
         !std::isfinite(mocap_timeout_) || arrow_a_ <= 0.0 ||
         arrow_b_ < 0.0 || mocap_timeout_ <= 0.0 ||
@@ -146,7 +144,7 @@ bool MocapTrackingNode::readMocapPose(const geometry_msgs::PoseStamped& msg,
                                      double yaw_offset, Eigen::Vector3d& state) const
 {
     // Both poses must describe base centers in the same mocap world frame.
-    // The confirmed rigid-body forward-axis correction is pi for all three bots.
+    // Apply each robot's configured rigid-body heading correction.
     const double age = (ros::Time::now() - msg.header.stamp).toSec();
     if (msg.header.stamp.isZero() || age < 0.0 || age > mocap_timeout_ ||
         (!mocap_frame_.empty() && msg.header.frame_id != mocap_frame_))
@@ -210,6 +208,7 @@ bool MocapTrackingNode::mocapReady() const
 void MocapTrackingNode::mocapFilter()
 {
     const double outlier_threshold = 0.04;
+    const double movement_threshold = 0.0004; // Same displacement-over-tau gate as AprilTag.
     if (!new_leader_message_ || !have_odom_ || !mocapReady()) return;
     new_leader_message_ = false;
 
@@ -230,7 +229,6 @@ void MocapTrackingNode::mocapFilter()
         ROS_INFO_THROTTLE(0.5, "[mocapFilter] Filtered leader position outlier");
         return;
     }
-    const bool first_measurement = !have_valid_mocap_;
     leader_local_state_ = relative_leader;
     leader_relative_yaw_ = relative_yaw;
     have_valid_mocap_ = true;
@@ -245,36 +243,19 @@ void MocapTrackingNode::mocapFilter()
     // Transform to global frame
     Eigen::Vector2d global_leader_state = homoTrans2Global(leader_local_state_);
 
-    // Anchor AprilTag-style virtual trajectory in the *current odometry frame*
-    // at the FIRST real relative measurement. The old implementation built
-    // the virtual trajectory while odometry was still (0,0,0); that synthetic
-    // trajectory then remained in the memory after wheel odometry initialized.
-    // This change does NOT change the Controller::interpTraj() implementation.
-    if (first_measurement) {
-        controller_.interpTraj(leader_local_state_, 300);
-        const Eigen::MatrixXd virtual_local = controller_.getObservations();
-        global_leader_states_.resize(virtual_local.rows(), 2);
-        for (Eigen::Index i = 0; i < virtual_local.rows(); ++i) {
-            const Eigen::Vector2d local = virtual_local.row(i).transpose();
-            global_leader_states_.row(i) = homoTrans2Global(local).transpose();
-        }
-        global_leader_state_last_ = global_leader_states_.bottomRows(1).transpose();
-        ROS_INFO("[MOCAP] Initialized virtual history from first synchronized pose");
-    }
-
     // LSQ filter
     mocap_t_sec_ = normalizeMocapTime(leader_stamp_);
     auto res = mocapLSQFilter(global_leader_state, mocap_t_sec_);
     Eigen::Vector2d global_leader_state_f = res.first;
-    // Preserve original LSQ estimates; gate memory using *actual change in
-    // filtered world position*. A tiny nonzero LSQ velocity on stationary
-    // noisy mocap used to append a fake predecessor trajectory on every tick.
-    const double memory_step = (global_leader_state_f - global_leader_state_last_).norm();
-    if (memory_step >= mocap_memory_step_)
+    Eigen::Vector2d disp_over_tau         = res.second;
+
+    // Add new state into system memory (identical to AprilTag).
+    const int n = static_cast<int>(global_leader_states_.rows());
+    double movement = disp_over_tau.norm();
+    if (movement > movement_threshold)
     {
         constexpr int kMaxStates = 2000;
 
-        const int n = static_cast<int>(global_leader_states_.rows());
         if (n < kMaxStates) {
             global_leader_states_.conservativeResize(n + 1, 2);
             global_leader_states_.row(n) = global_leader_state_f.transpose();
@@ -290,8 +271,8 @@ void MocapTrackingNode::mocapFilter()
 
     // Publish global leader states
     geometry_msgs::Pose2D msg;
-    msg.x = global_leader_states_(global_leader_states_.rows() - 1, 0);
-    msg.y = global_leader_states_(global_leader_states_.rows() - 1, 1);
+    msg.x = global_leader_states_(n - 1, 0);
+    msg.y = global_leader_states_(n - 1, 1);
     global_leader_pub_.publish(msg);
 
 }
@@ -352,9 +333,6 @@ void MocapTrackingNode::runControlStep()
         case AngControllerMode::LOS:
             angular_controller = controller_.angularUpdate(angular_target);
 
-            if (angular_target.norm() < 0.03) {
-                angular_controller = 0.0;
-            }
             break;
         case AngControllerMode::PC:
             const double v_current = getVelocity();
@@ -368,11 +346,6 @@ void MocapTrackingNode::runControlStep()
     geometry_msgs::Twist twist_msg;
     twist_msg.linear.x = cmd[0];
     twist_msg.angular.z = cmd[1];
-
-    // Suppress very small forward/backward velocity commands.
-    if (std::abs(twist_msg.linear.x) < 0.005) {
-       twist_msg.linear.x = 0.0;
-       }
 
     cmd_vel_pub_.publish(twist_msg);
 
@@ -579,8 +552,8 @@ int main(int argc, char** argv) {
     ros::Rate rate(25.0);
 
     // Platoon parameters
-    bool diagnostic_only = false;
-    pnh.param<bool>("diagnostic_only", diagnostic_only, false);
+    bool diagnostic_only = true;
+    pnh.param<bool>("diagnostic_only", diagnostic_only, true);
     std::string ctrl_mode;
     std::string ang_ctrl_mode;
     double alpha, alpha_angle, beta1, beta2, tau, spacing;
