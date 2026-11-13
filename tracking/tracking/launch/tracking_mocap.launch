@@ -13,6 +13,9 @@
   <arg name="mocap_timeout" default="0.5"/>
   <!-- Symmetric linear command cap in m/s; zero preserves controller output. -->
   <arg name="mocap_max_linear_speed" default="0.0"/>
+  <!-- Both zero disables settling; experiment: enter:=0.05, exit:=0.10 meters. -->
+  <arg name="mocap_stop_enter_radius" default="0.0"/>
+  <arg name="mocap_stop_exit_radius" default="0.0"/>
   <arg name="mocap_pair_slop" default="0.05"/>
   <arg name="odom_timeout" default="0.5"/>
   <!-- Stop on contradictory targets; distances are in follower-local meters. -->
@@ -49,6 +52,8 @@
     <param name="mocap_frame" value="$(arg mocap_frame)"/>
     <param name="mocap_timeout" value="$(arg mocap_timeout)"/>
     <param name="mocap_max_linear_speed" value="$(arg mocap_max_linear_speed)"/>
+    <param name="mocap_stop_enter_radius" value="$(arg mocap_stop_enter_radius)"/>
+    <param name="mocap_stop_exit_radius" value="$(arg mocap_stop_exit_radius)"/>
     <param name="mocap_pair_slop" value="$(arg mocap_pair_slop)"/>
     <param name="odom_timeout" value="$(arg odom_timeout)"/>
     <param name="direction_interlock" value="$(arg direction_interlock)"/>

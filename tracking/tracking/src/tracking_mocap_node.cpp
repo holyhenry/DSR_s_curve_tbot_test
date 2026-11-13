@@ -26,6 +26,13 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
     pnh.param<double>("mocap_max_linear_speed", mocap_max_linear_speed_, 0.0);
     if (!std::isfinite(mocap_max_linear_speed_) || mocap_max_linear_speed_ < 0.0)
         throw std::invalid_argument("mocap_max_linear_speed must be finite and nonnegative");
+    pnh.param<double>("mocap_stop_enter_radius", mocap_stop_enter_radius_, 0.0);
+    pnh.param<double>("mocap_stop_exit_radius", mocap_stop_exit_radius_, 0.0);
+    if (!std::isfinite(mocap_stop_enter_radius_) || !std::isfinite(mocap_stop_exit_radius_) ||
+        mocap_stop_enter_radius_ < 0.0 || mocap_stop_exit_radius_ < 0.0 ||
+        ((mocap_stop_enter_radius_ != 0.0 || mocap_stop_exit_radius_ != 0.0) &&
+         (mocap_stop_enter_radius_ <= 0.0 || mocap_stop_exit_radius_ <= mocap_stop_enter_radius_)))
+        throw std::invalid_argument("MoCap stop radii must both be zero (disabled), or 0 < enter < exit");
     pnh.param<int>("mocap_lsq_buffer", mocap_lsq_buffer_, 7);
     if (mocap_lsq_buffer_ < 4 || mocap_lsq_buffer_ > 100)
         throw std::invalid_argument("mocap_lsq_buffer must be between 4 and 100");
@@ -494,6 +501,20 @@ void MocapTrackingNode::runControlStep(bool diagnostic_only)
                           direction_conflict, invalid_command, angular_target.x(), target.x(),
                           cmd[0], cmd[1], diagnostic_only);
     }
+    const geometry_msgs::Twist guarded_cmd = twist_msg;
+    // Use the current MoCap formation LOS target, never the DSR history target.
+    // Keep calculating DSR + LOS while settled; only the proposed output is stopped.
+    const double formation_error = angular_target.norm();
+    if (mocap_stop_enter_radius_ > 0.0) {
+        if (!settled_ && formation_error < mocap_stop_enter_radius_)
+            settled_ = true;
+        else if (settled_ && formation_error > mocap_stop_exit_radius_)
+            settled_ = false;
+    } else {
+        settled_ = false;
+    }
+    if (settled_) twist_msg = geometry_msgs::Twist();
+
     const Eigen::Index last = global_leader_states_.rows()-1;
     const Eigen::Vector2d history_local = local_leader_states.row(last).transpose();
     ROS_INFO_THROTTLE(0.5, "[CONTROL] diagnostic_only=%d mocap_leader_world=(%.3f,%.3f,%.3f) "
@@ -501,15 +522,19 @@ void MocapTrackingNode::runControlStep(bool diagnostic_only)
                       "memory_last_odom=(%.3f,%.3f) memory_last_local=(%.3f,%.3f) samples=%ld "
                       "DSR_target=(%.3f,%.3f) LOS_target=(%.3f,%.3f) "
                       "calculated_cmd=(%.4f,%.4f) speed_limited_linear=%.4f "
-                      "guarded_cmd=(%.4f,%.4f) blocked=%d",
+                      "guarded_cmd=(%.4f,%.4f) blocked=%d "
+                      "formation_error=%.4f settled=%d stop_enter_radius=%.4f stop_exit_radius=%.4f "
+                      "final_cmd=(%.4f,%.4f)",
                       diagnostic_only, leader_mocap_state_[0], leader_mocap_state_[1], leader_mocap_state_[2],
                       leader_local_state_.x(), leader_local_state_.y(),
                       odom_state_last_[0], odom_state_last_[1], odom_state_last_[2],
                       global_leader_states_(last,0), global_leader_states_(last,1),
                       history_local.x(), history_local.y(), static_cast<long>(global_leader_states_.rows()),
                       target.x(), target.y(), angular_target.x(), angular_target.y(),
-                      cmd[0], cmd[1], speed_limited_linear, twist_msg.linear.x, twist_msg.angular.z,
-                      direction_conflict || invalid_command);
+                      cmd[0], cmd[1], speed_limited_linear, guarded_cmd.linear.x, guarded_cmd.angular.z,
+                      direction_conflict || invalid_command,
+                      formation_error, settled_, mocap_stop_enter_radius_, mocap_stop_exit_radius_,
+                      twist_msg.linear.x, twist_msg.angular.z);
     if (!diagnostic_only) cmd_vel_pub_.publish(twist_msg);
 
     ControllerDebug dbg = controller_.getDebugData();

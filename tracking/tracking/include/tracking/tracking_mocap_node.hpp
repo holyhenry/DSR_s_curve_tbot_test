@@ -48,6 +48,8 @@ private:
     double arrow_a_ = 0.25, arrow_b_ = 0.15;
     double mocap_timeout_ = 0.5;
     double mocap_max_linear_speed_ = 0.0; // m/s; zero disables the output cap
+    double mocap_stop_enter_radius_ = 0.0, mocap_stop_exit_radius_ = 0.0;
+    bool settled_ = false; // Output-only hysteresis latch; preserved across stale-data stops
     double mocap_pair_slop_ = 0.05;     // max difference between leader/follower stamps
     double odom_timeout_ = 0.5;
     bool direction_interlock_ = true;
