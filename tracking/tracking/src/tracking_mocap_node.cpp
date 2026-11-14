@@ -55,8 +55,6 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
         throw std::invalid_argument("Mocap tracking requires formation_type v_formation");
     if (follower_indx_ != 0 && follower_indx_ != 1)
         throw std::invalid_argument("V formation requires follower_indx 0 (bot162) or 1 (bot149)");
-    if (mode_str != "DSR" || ang_mode_str != "LOS")
-        throw std::invalid_argument("V formation requires DSR linear and LOS angular mode");
     if (!std::isfinite(mocap_pair_slop_) || mocap_pair_slop_ <= 0.0 ||
         !std::isfinite(arrow_a_) || !std::isfinite(arrow_b_) ||
         !std::isfinite(mocap_timeout_) || arrow_a_ <= 0.0 ||
