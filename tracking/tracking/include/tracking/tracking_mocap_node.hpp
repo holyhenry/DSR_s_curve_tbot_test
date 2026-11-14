@@ -46,6 +46,7 @@ private:
     int follower_indx_;
     std::string formation_type_ = "v_formation";
     double arrow_a_ = 0.25, arrow_b_ = 0.15;
+    bool no_wheel_ = false; // Use follower MoCap for self pose and displacement
     double mocap_timeout_ = 0.5;
     double mocap_max_linear_speed_ = 0.0; // m/s; zero disables the output cap
     double mocap_stop_enter_radius_ = 0.0, mocap_stop_exit_radius_ = 0.0;
@@ -68,12 +69,12 @@ private:
     // Controller object
     Controller controller_;
 
-    // Robot odom states (GLOBAL frame) & velocity (LOCAL frame)
+    // Selected self-motion states: wheel odom frame, or MoCap world when no_wheel
     Eigen::Vector3d odom_displacement_; // [x, y, yaw]
     Eigen::Vector3d odom_state_last_;   // [x, y, yaw]
     double odom_vel_x_ = 0.0;           // vy ≈ 0 for diff-drive
 
-    // Mocap is used only to replace the relative leader measurement.
+    // MoCap supplies relative leader pose and optionally follower self motion.
     Eigen::Vector2d leader_local_state_;
     double leader_relative_yaw_ = 0.0;
     Eigen::Vector3d leader_mocap_state_ = Eigen::Vector3d::Zero();
@@ -86,7 +87,7 @@ private:
     bool have_leader_mocap_ = false, have_follower_mocap_ = false;
     bool have_odom_ = false;
 
-    // Leader trajectory in the follower odometry frame
+    // Leader trajectory in the selected self-motion global frame
     Eigen::Vector2d global_leader_state_last_; // [x, y]
     Eigen::MatrixXd global_leader_states_;     // Nx2 matrix
     double mocap_t_sec_;                         // leader mocap timestamp

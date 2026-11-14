@@ -1,6 +1,6 @@
 // ROS 1 V formation: copy of tracking_node.cpp with mocap replacing AprilTags.
 // Controller equations, LSQ equations, movement gate and loop rate are retained.
-// MoCap history is anchored once to the first accepted pose in fresh wheel odometry.
+// History is anchored once in the selected self-pose frame (wheel odometry or MoCap).
 // PoseStamped inputs are base-center poses in one common frame, in meters, +z up.
 // A common world rotation/translation cancels when computing the relative pose.
 #include <ros/ros.h>
@@ -19,6 +19,7 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
       tau_(tau), spacing_(spacing),
       follower_indx_(follower_indx)
 {
+    pnh.param<bool>("no_wheel", no_wheel_, false);
     pnh.param<std::string>("formation_type", formation_type_, "v_formation");
     pnh.param<double>("arrow_a", arrow_a_, 0.25);
     pnh.param<double>("arrow_b", arrow_b_, 0.15);
@@ -72,8 +73,10 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
     global_leader_pub_ = nh.advertise<geometry_msgs::Pose2D>("global_leader_states", 5);
     controllr_log_pub_ = nh.advertise<std_msgs::Float32MultiArray>("controller_log_info", 5);
 
-    // Wheel odometry still supplies follower motion; mocap supplies relative leader pose.
-    odom_sub_ = nh.subscribe("wheelodom", 10, &MocapTrackingNode::odomCallback, this);
+    // Select exactly one self-motion source; no wheel subscription in MoCap-only mode.
+    if (!no_wheel_)
+        odom_sub_ = nh.subscribe("wheelodom", 10, &MocapTrackingNode::odomCallback, this);
+    ROS_INFO("Self-motion source: %s", no_wheel_ ? "follower MoCap (no_wheel)" : "wheel odometry");
     leader_mocap_sub_ = nh.subscribe(leader_pose_topic, 10,
                                     &MocapTrackingNode::leaderMocapCallback, this);
     follower_mocap_sub_ = nh.subscribe(follower_pose_topic, 10,
@@ -122,6 +125,7 @@ MocapTrackingNode::MocapTrackingNode(ros::NodeHandle& nh, ros::NodeHandle& pnh,
 
 void MocapTrackingNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
+    if (no_wheel_) return;
     const ros::Time& stamp = msg->header.stamp;
     const double age = (ros::Time::now() - stamp).toSec();
     if (stamp.isZero() || age < 0.0 || age > odom_timeout_ ||
@@ -226,6 +230,18 @@ void MocapTrackingNode::followerMocapCallback(const geometry_msgs::PoseStamped::
     follower_received_ = ros::Time::now();
     follower_frame_ = msg->header.frame_id;
     have_follower_mocap_ = true;
+    if (no_wheel_) {
+        // Keep the raw corrected MoCap pose for transforms, so the relative
+        // measurement and self pose use the same frame and follower sample.
+        // Reuse the existing self-motion LSQ equations only for displacement.
+        const auto res = odomLSQFilter(follower_mocap_state_, normalizeOdomTime(follower_stamp_));
+        odom_state_last_ = follower_mocap_state_;
+        odom_displacement_ = res.second;
+        odom_vel_x_ = getVelocity();
+        odom_stamp_ = follower_stamp_;
+        odom_received_ = follower_received_;
+        have_odom_ = true;
+    }
 }
 
 bool MocapTrackingNode::mocapReady() const
@@ -254,29 +270,34 @@ bool MocapTrackingNode::odomReady() const
     const ros::Time now = ros::Time::now();
     const double age = (now - odom_stamp_).toSec();
     const double received_age = (now - odom_received_).toSec();
-    return age >= 0.0 && age <= odom_timeout_ &&
-           received_age >= 0.0 && received_age <= odom_timeout_;
+    const double timeout = no_wheel_ ? mocap_timeout_ : odom_timeout_;
+    return age >= 0.0 && age <= timeout &&
+           received_age >= 0.0 && received_age <= timeout;
 }
 
 void MocapTrackingNode::logInputStatus() const
 {
     const ros::Time now = ros::Time::now();
     ROS_WARN_THROTTLE(1.0,
-        "[INPUT stop] have(L/F/O/accepted/history)=%d/%d/%d/%d/%d ready(mocap/odom)=%d/%d "
+        "[INPUT stop] self_source=%s have(L/F/self/accepted/history)=%d/%d/%d/%d/%d ready(mocap/odom)=%d/%d "
         "stamp_age(L/F/O)=%.3f/%.3f/%.3f receive_age=%.3f/%.3f/%.3f "
         "pair_skew=%.3f limit=%.3f odom_leader_skew=%.3f accepted_age=%.3f "
-        "frames='%s'/'%s' timeouts(mocap/odom)=%.3f/%.3f",
+        "frames='%s'/'%s' timeouts(mocap/self)=%.3f/%.3f",
+        no_wheel_ ? "mocap" : "wheel",
         have_leader_mocap_, have_follower_mocap_, have_odom_, have_valid_mocap_, history_initialized_,
         mocapReady(), odomReady(),
         (now-leader_stamp_).toSec(), (now-follower_stamp_).toSec(), (now-odom_stamp_).toSec(),
         (now-leader_received_).toSec(), (now-follower_received_).toSec(), (now-odom_received_).toSec(),
         std::abs((leader_stamp_-follower_stamp_).toSec()), mocap_pair_slop_,
         (odom_stamp_-leader_stamp_).toSec(), (now-last_valid_mocap_time_).toSec(),
-        leader_frame_.c_str(), follower_frame_.c_str(), mocap_timeout_, odom_timeout_);
+        leader_frame_.c_str(), follower_frame_.c_str(), mocap_timeout_,
+        no_wheel_ ? mocap_timeout_ : odom_timeout_);
 }
 
 void MocapTrackingNode::logMotionSigns()
 {
+    // There is no independent wheel measurement to compare in MoCap-only mode.
+    if (no_wheel_) return;
     // Compare measured displacements projected on each frame's own forward axis.
     // No frame alignment, sign correction, filtering or control substitution is applied.
     if (have_sign_reference_ && (follower_stamp_-sign_mocap_stamp_).toSec() < 0.5) return;
@@ -340,7 +361,9 @@ void MocapTrackingNode::mocapFilter()
                       vt.x(), vt.y());
 
     // Transform to global frame
-    Eigen::Vector2d global_leader_state = homoTrans2Global(leader_local_state_);
+    Eigen::Vector2d global_leader_state = no_wheel_
+        ? Eigen::Vector2d(leader_mocap_state_.head<2>())
+        : homoTrans2Global(leader_local_state_);
 
     if (!history_initialized_) {
         // interpTraj returns LOCAL points from -leader to +leader. Transform
@@ -355,7 +378,7 @@ void MocapTrackingNode::mocapFilter()
         global_leader_state_last_ = global_leader_state;
         history_initialized_ = true;
         ROS_INFO("[HISTORY init] anchored 300 points to REAL local leader=(%.3f,%.3f) "
-                 "at wheel pose=(%.3f,%.3f,%.3f), endpoint_odom=(%.3f,%.3f)",
+                 "at self pose=(%.3f,%.3f,%.3f), endpoint_odom=(%.3f,%.3f)",
                  leader_local_state_.x(), leader_local_state_.y(),
                  odom_state_last_[0], odom_state_last_[1], odom_state_last_[2],
                  global_leader_state.x(), global_leader_state.y());
@@ -515,15 +538,16 @@ void MocapTrackingNode::runControlStep(bool diagnostic_only)
 
     const Eigen::Index last = global_leader_states_.rows()-1;
     const Eigen::Vector2d history_local = local_leader_states.row(last).transpose();
-    ROS_INFO_THROTTLE(0.5, "[CONTROL] diagnostic_only=%d mocap_leader_world=(%.3f,%.3f,%.3f) "
-                      "leader_local=(%.3f,%.3f) wheel_pose=(%.3f,%.3f,%.3f) "
+    ROS_INFO_THROTTLE(0.5, "[CONTROL] diagnostic_only=%d self_source=%s mocap_leader_world=(%.3f,%.3f,%.3f) "
+                      "leader_local=(%.3f,%.3f) self_pose=(%.3f,%.3f,%.3f) "
                       "memory_last_odom=(%.3f,%.3f) memory_last_local=(%.3f,%.3f) samples=%ld "
                       "DSR_target=(%.3f,%.3f) LOS_target=(%.3f,%.3f) "
                       "calculated_cmd=(%.4f,%.4f) speed_limited_linear=%.4f "
                       "guarded_cmd=(%.4f,%.4f) blocked=%d "
                       "formation_error=%.4f settled=%d stop_enter_radius=%.4f stop_exit_radius=%.4f "
                       "final_cmd=(%.4f,%.4f)",
-                      diagnostic_only, leader_mocap_state_[0], leader_mocap_state_[1], leader_mocap_state_[2],
+                      diagnostic_only, no_wheel_ ? "mocap" : "wheel",
+                      leader_mocap_state_[0], leader_mocap_state_[1], leader_mocap_state_[2],
                       leader_local_state_.x(), leader_local_state_.y(),
                       odom_state_last_[0], odom_state_last_[1], odom_state_last_[2],
                       global_leader_states_(last,0), global_leader_states_(last,1),
@@ -736,6 +760,10 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     ros::NodeHandle pnh("~");
     ros::Rate rate(25.0);
+    // roslaunch uses no_wheel:=true; direct rosrun also accepts --no-wheel.
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "--no-wheel") pnh.setParam("no_wheel", true);
+    }
 
     // Platoon parameters
     bool diagnostic_only = true;

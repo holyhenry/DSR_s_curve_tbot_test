@@ -3,6 +3,7 @@
        bot162: follower_indx:=0; bot149: follower_indx:=1.
        Commands go to this follower's relative cmd_vel topic only. -->
   <arg name="follower_indx"/>
+  <arg name="no_wheel" default="false"/>
   <arg name="leader_pose_topic" default="/bot205/pose"/>
   <arg name="follower_pose_topic" default="$(eval '/bot162/pose' if int(arg('follower_indx')) == 0 else '/bot149/pose')"/>
   <!-- Validated heading corrections for leader and follower rigid bodies. -->
@@ -40,9 +41,10 @@
   <arg name="enable_lighting" default="true"/>
   <arg name="brightness" default="0.02"/>
 
-  <include file="$(find tracking)/launch/odom_cov.launch"/>
+  <include unless="$(arg no_wheel)" file="$(find tracking)/launch/odom_cov.launch"/>
 
   <node name="tracking_mocap_node" pkg="tracking" type="tracking_mocap_node" output="screen">
+    <param name="no_wheel" value="$(arg no_wheel)"/>
     <param name="formation_type" value="v_formation"/>
     <param name="follower_indx" value="$(arg follower_indx)"/>
     <param name="leader_pose_topic" value="$(arg leader_pose_topic)"/>
