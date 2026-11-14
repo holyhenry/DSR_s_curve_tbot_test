@@ -388,7 +388,7 @@ void MocapTrackingNode::mocapFilter()
     // LSQ filter
     mocap_t_sec_ = normalizeMocapTime(leader_stamp_);
     auto res = mocapLSQFilter(global_leader_state, mocap_t_sec_);
-    Eigen::Vector2d global_leader_state_f = res.first;
+    Eigen::Vector2d global_leader_state_f = global_leader_state;
     Eigen::Vector2d disp_over_tau         = res.second;
 
     // Add new state into system memory (identical to AprilTag).
