@@ -1,0 +1,84 @@
+<launch>
+  <!-- One follower per host. Absolute namespace avoids nesting under ROS_NAMESPACE.
+       roslaunch starts a local master automatically when ROS_MASTER_URI points
+       to this host (for example http://localhost:11311) and no master is running.
+       bot162 uses index 0 / UDP 15062; bot149 uses index 1 / UDP 15149.
+       Example: roslaunch tracking follower_mocap_bringup.launch robot_name:=bot149 -->
+  <arg name="robot_name" default="bot162"/>
+  <arg name="udp_port" default="$(eval {'bot162': 15062, 'bot149': 15149}[arg('robot_name')])"/>
+  <arg name="follower_indx" default="$(eval {'bot162': 0, 'bot149': 1}[arg('robot_name')])"/>
+  <arg name="no_wheel" default="false"/>
+  <arg name="leader_pose_topic" value="/bot205/pose"/>
+  <arg name="follower_pose_topic" default="$(eval '/' + arg('robot_name') + '/pose')"/>
+  <arg name="leader_yaw_offset" default="3.141592653589793"/>
+  <arg name="follower_yaw_offset" default="0.0"/>
+  <arg name="mocap_frame" default=""/>
+  <arg name="mocap_timeout" default="0.5"/>
+  <arg name="mocap_max_linear_speed" default="0.0"/>
+  <arg name="mocap_pair_slop" default="0.05"/>
+  <arg name="odom_timeout" default="0.5"/>
+  <arg name="direction_interlock" default="true"/>
+  <arg name="interlock_los_ahead" default="0.10"/>
+  <arg name="interlock_dsr_behind" default="0.10"/>
+  <arg name="mocap_lsq_buffer" default="7"/>
+  <arg name="ctrl_mode" default="DSR"/>
+  <arg name="ang_ctrl_mode" default="LOS"/>
+  <arg name="alpha" default="0.3"/>
+  <arg name="alpha_angle" default="3.0"/>
+  <arg name="beta1" default="0.8"/>
+  <arg name="beta2" default="0.94"/>
+  <arg name="tau" default="0.04"/>
+  <arg name="spacing" default="0.35"/>
+  <arg name="arrow_a" default="0.25"/>
+  <arg name="arrow_b" default="0.15"/>
+  <arg name="diagnostic_only" default="true"/>
+  <arg name="enable_lighting" default="true"/>
+  <arg name="brightness" default="0.02"/>
+
+  <!-- Keep the receiver sender filter configurable for the MoCap network. -->
+  <arg name="expected_sender_ip" default="192.168.0.181"/>
+
+  <group ns="$(eval '/' + arg('robot_name'))">
+    <include file="$(find turtlebot3_bringup)/launch/turtlebot3_core.launch"/>
+    <include file="$(find mocap_udp_receiver)/launch/mocap_udp_receiver.launch">
+      <arg name="robot_name" value="$(arg robot_name)"/>
+      <arg name="udp_port" value="$(arg udp_port)"/>
+      <arg name="expected_sender_ip" value="$(arg expected_sender_ip)"/>
+      <arg name="own_pose_topic" value="$(arg follower_pose_topic)"/>
+      <arg name="leader_pose_topic" value="$(arg leader_pose_topic)"/>
+      <arg name="forward_leader" value="true"/>
+    </include>
+
+    <!-- tracking_mocap owns wheel odometry injection and optional lighting. -->
+    <include file="$(find tracking)/launch/tracking_mocap.launch">
+      <arg name="follower_indx" value="$(arg follower_indx)"/>
+      <arg name="no_wheel" value="$(arg no_wheel)"/>
+      <arg name="leader_pose_topic" value="$(arg leader_pose_topic)"/>
+      <arg name="follower_pose_topic" value="$(arg follower_pose_topic)"/>
+      <arg name="leader_yaw_offset" value="$(arg leader_yaw_offset)"/>
+      <arg name="follower_yaw_offset" value="$(arg follower_yaw_offset)"/>
+      <arg name="mocap_frame" value="$(arg mocap_frame)"/>
+      <arg name="mocap_timeout" value="$(arg mocap_timeout)"/>
+      <arg name="mocap_max_linear_speed" value="$(arg mocap_max_linear_speed)"/>
+      <arg name="mocap_pair_slop" value="$(arg mocap_pair_slop)"/>
+      <arg name="odom_timeout" value="$(arg odom_timeout)"/>
+      <arg name="direction_interlock" value="$(arg direction_interlock)"/>
+      <arg name="interlock_los_ahead" value="$(arg interlock_los_ahead)"/>
+      <arg name="interlock_dsr_behind" value="$(arg interlock_dsr_behind)"/>
+      <arg name="mocap_lsq_buffer" value="$(arg mocap_lsq_buffer)"/>
+      <arg name="ctrl_mode" value="$(arg ctrl_mode)"/>
+      <arg name="ang_ctrl_mode" value="$(arg ang_ctrl_mode)"/>
+      <arg name="alpha" value="$(arg alpha)"/>
+      <arg name="alpha_angle" value="$(arg alpha_angle)"/>
+      <arg name="beta1" value="$(arg beta1)"/>
+      <arg name="beta2" value="$(arg beta2)"/>
+      <arg name="tau" value="$(arg tau)"/>
+      <arg name="spacing" value="$(arg spacing)"/>
+      <arg name="arrow_a" value="$(arg arrow_a)"/>
+      <arg name="arrow_b" value="$(arg arrow_b)"/>
+      <arg name="diagnostic_only" value="$(arg diagnostic_only)"/>
+      <arg name="enable_lighting" value="$(arg enable_lighting)"/>
+      <arg name="brightness" value="$(arg brightness)"/>
+    </include>
+  </group>
+</launch>
